@@ -1,0 +1,84 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Tableau de bord - AIC Métallurgie{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">Tableau de bord</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card dashboard-main-card">
+            <div class="dashboard-particles">
+                <h3 class="card-title">
+                    <i class="fas fa-tachometer-alt mr-2"></i>
+                    Tableau de bord AIC Métallurgie
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- KPI Cards -->
+                    <div class="col-lg-3 col-6 dashboard-animate">
+                        <div class="small-box bg-info">
+                            <div class="inner">
+                                <h3>150</h3>
+                                <p>Lancements actifs</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-rocket"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-3 col-6 dashboard-animate">
+                        <div class="small-box bg-success">
+                            <div class="inner">
+                                <h3>53</h3>
+                                <p>Lancements terminés</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-3 col-6 dashboard-animate">
+                        <div class="small-box bg-warning">
+                            <div class="inner">
+                                <h3>44</h3>
+                                <p>Collaborateurs</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-3 col-6 dashboard-animate">
+                        <div class="small-box bg-danger">
+                            <div class="inner">
+                                <h3>8</h3>
+                                <p>Ateliers</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-industry"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="alert alert-info dashboard-welcome-alert" >
+                            <h5><i class="icon fas fa-info"></i> Bienvenue !</h5>
+                            Système de gestion des lancements AIC Métallurgie configuré avec succès.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

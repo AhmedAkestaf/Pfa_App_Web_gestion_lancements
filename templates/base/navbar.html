@@ -1,0 +1,150 @@
+{% load static %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <!-- Logo et nom de l'entreprise -->
+        <a class="navbar-brand d-flex align-items-center" href="{% url 'core:dashboard' %}">
+            <img src="{% static 'img/logo-aic.png' %}" alt="AIC Métallurgie" height="40" class="me-2">
+            <span class="fw-bold">AIC Métallurgie</span>
+        </a>
+        
+        <!-- Bouton pour mobile -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <!-- Menu de navigation -->
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <!-- Dashboard -->
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'core:dashboard' %}">
+                        <i class="fas fa-tachometer-alt"></i> Tableau de bord
+                    </a>
+                </li>
+                
+                <!-- Gestion des données -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-database"></i> Données de base
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="">
+                            <i class="fas fa-users"></i> Collaborateurs
+                        </a></li>
+                        <li><a class="dropdown-item" href="">
+                            <i class="fas fa-industry"></i> Ateliers
+                        </a></li>
+                        <li><a class="dropdown-item" href="">
+                            <i class="fas fa-tags"></i> Catégories
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="">
+                            <i class="fas fa-briefcase"></i> Affaires
+                        </a></li>
+                    </ul>
+                </li>
+                
+                <!-- Lancements -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-rocket"></i> Lancements
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="">
+                            <i class="fas fa-list"></i> Liste des lancements
+                        </a></li>
+                        <li><a class="dropdown-item" href="">
+                            <i class="fas fa-plus"></i> Nouveau lancement
+                        </a></li>
+                        <li><a class="dropdown-item" href="">
+                            <i class="fas fa-calendar"></i> Planning
+                        </a></li>
+                    </ul>
+                </li>
+                
+                <!-- Reporting -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-chart-bar"></i> Reporting
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="">
+                            <i class="fas fa-chart-line"></i> Tableaux de bord
+                        </a></li>
+                        <li><a class="dropdown-item" href="">
+                            <i class="fas fa-file-alt"></i> Rapports
+                        </a></li>
+                        <li><a class="dropdown-item" href="">
+                            <i class="fas fa-download"></i> Export
+                        </a></li>
+                    </ul>
+                </li>
+            </ul>
+            
+            <!-- Menu utilisateur -->
+            <ul class="navbar-nav">
+                <!-- Recherche globale -->
+                <li class="nav-item me-3">
+                    <form class="d-flex" method="GET" action="">
+                        <input class="form-control form-control-sm" type="search" name="q" 
+                               placeholder="Rechercher..." style="width: 200px;">
+                        <button class="btn btn-outline-light btn-sm ms-1" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+                </li>
+                
+                <!-- Notifications -->
+                <li class="nav-item dropdown me-2">
+                    <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-bell"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            3
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" style="width: 300px;">
+                        <li><h6 class="dropdown-header">Notifications récentes</h6></li>
+                        <li><a class="dropdown-item" href="#">
+                            <small class="text-muted">Il y a 2 minutes</small><br>
+                            Nouveau lancement créé
+                        </a></li>
+                        <li><a class="dropdown-item" href="#">
+                            <small class="text-muted">Il y a 1 heure</small><br>
+                            Lancement terminé en atelier
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-center" href="#">Voir toutes les notifications</a></li>
+                    </ul>
+                </li>
+                
+                <!-- Menu utilisateur -->
+                {% if user.is_authenticated %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user-circle"></i> 
+                        {{ user.get_full_name|default:user.username }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="">
+                            <i class="fas fa-user"></i> Mon profil
+                        </a></li>
+                        <li><a class="dropdown-item" href="">
+                            <i class="fas fa-cog"></i> Paramètres
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="">
+                            <i class="fas fa-sign-out-alt"></i> Déconnexion
+                        </a></li>
+                    </ul>
+                </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="">
+                        <i class="fas fa-sign-in-alt"></i> Connexion
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
