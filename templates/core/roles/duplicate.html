@@ -1,0 +1,123 @@
+<!-- templates/core/roles/duplicate.html - Duplication d'un rôle -->
+{% extends 'base/base.html' %}
+
+{% block title %}Dupliquer le Rôle : {{ original_role.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- En-tête -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Dupliquer un Rôle</h1>
+                <a href="{% url 'core:role_detail' original_role.id %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Retour au rôle
+                </a>
+            </div>
+
+            <!-- Information sur le rôle source -->
+            <div class="alert alert-info mb-4">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-info-circle fa-lg me-3"></i>
+                    <div>
+                        <strong>Rôle source :</strong> {{ original_role.name }}<br>
+                        <small>
+                            Ce nouveau rôle aura les mêmes permissions que le rôle source.
+                            Vous pourrez les modifier après création.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulaire -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Nouveau rôle</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Messages d'erreur globaux -->
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <!-- Nom du rôle -->
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">
+                                {{ form.name.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.name.errors.0 }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                {{ form.description.label }}
+                            </label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.description.errors.0 }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Statut actif -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    {{ form.is_active.label }}
+                                </label>
+                            </div>
+                            {% if form.is_active.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.is_active.errors.0 }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Résumé des permissions qui seront copiées -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="fas fa-copy"></i> Permissions qui seront copiées
+                                </h6>
+                                <p class="card-text">
+                                    <strong>{{ original_role.permissions.count }}</strong> 
+                                    permission{{ original_role.permissions.count|pluralize }} 
+                                    du rôle "{{ original_role.name }}" seront automatiquement assignées au nouveau rôle.
+                                </p>
+                                {% if original_role.permissions.count > 0 %}
+                                <small class="text-muted">
+                                    Vous pourrez modifier ces permissions après la création.
+                                </small>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Boutons d'action -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'core:role_detail' original_role.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Annuler
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-copy"></i> {{ submit_text }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

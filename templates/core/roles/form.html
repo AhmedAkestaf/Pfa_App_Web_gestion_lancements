@@ -1,0 +1,104 @@
+<!-- templates/core/roles/form.html - Formulaire création/modification rôle -->
+{% extends 'base/base.html' %}
+
+{% block title %}{{ action }} un Rôle{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- En-tête -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">{{ action }} un Rôle</h1>
+                <a href="{% url 'core:roles_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Retour à la liste
+                </a>
+            </div>
+
+            <!-- Formulaire -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Informations du rôle</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Messages d'erreur globaux -->
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <!-- Nom du rôle -->
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">
+                                {{ form.name.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.name.errors.0 }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                {{ form.description.label }}
+                            </label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.description.errors.0 }}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Décrivez brièvement le rôle et ses responsabilités.
+                            </div>
+                        </div>
+
+                        <!-- Statut actif -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    {{ form.is_active.label }}
+                                </label>
+                            </div>
+                            {% if form.is_active.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.is_active.errors.0 }}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Les rôles inactifs ne peuvent pas être assignés aux utilisateurs.
+                            </div>
+                        </div>
+
+                        <!-- Boutons d'action -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'core:roles_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Annuler
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {{ submit_text }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Note pour les nouveaux rôles -->
+            {% if not role %}
+            <div class="alert alert-info mt-4">
+                <i class="fas fa-info-circle"></i>
+                <strong>Prochaine étape :</strong> Après création du rôle, vous pourrez configurer ses permissions.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

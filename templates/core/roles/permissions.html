@@ -1,0 +1,171 @@
+<!-- templates/core/roles/permissions.html - Matrice des permissions -->
+{% extends 'base/base.html' %}
+
+{% block title %}Permissions - {{ role.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- En-tête -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">Permissions du rôle</h1>
+                    <p class="text-muted mb-0">{{ role.name }}</p>
+                </div>
+                <div>
+                    <a href="{% url 'core:role_detail' role.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Retour
+                    </a>
+                </div>
+            </div>
+
+            <!-- Informations du rôle -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5>{{ role.name }}</h5>
+                            <p class="text-muted">{{ role.description|default:"Aucune description" }}</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span class="badge bg-{% if role.is_active %}success{% else %}danger{% endif %} me-2">
+                                {% if role.is_active %}Actif{% else %}Inactif{% endif %}
+                            </span>
+                            {% if role.is_system_role %}
+                            <span class="badge bg-warning">Rôle Système</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Matrice des permissions -->
+            <form method="post">
+                {% csrf_token %}
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Matrice des Permissions</h5>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAll()">
+                                Tout sélectionner
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAll()">
+                                Tout désélectionner
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-bordered mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 150px;">Module</th>
+                                        <th class="text-center">Créer</th>
+                                        <th class="text-center">Lire</th>
+                                        <th class="text-center">Modifier</th>
+                                        <th class="text-center">Supprimer</th>
+                                        <th class="text-center">Assigner</th>
+                                        <th class="text-center">Exporter</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for module_key, module_data in permission_matrix.items %}
+                                    <tr>
+                                        <td class="fw-bold">{{ module_data.name }}</td>
+                                        {% for action_key, action_data in module_data.actions.items %}
+                                        <td class="text-center">
+                                            {% if action_data.exists %}
+                                            <div class="form-check d-flex justify-content-center">
+                                                <input class="form-check-input permission-checkbox" 
+                                                       type="checkbox" 
+                                                       name="permissions" 
+                                                       value="{{ action_data.permission_id }}"
+                                                       id="perm_{{ action_data.permission_id }}"
+                                                       data-module="{{ module_key }}"
+                                                       data-action="{{ action_key }}"
+                                                       {% if action_data.permission_id in current_permissions %}checked{% endif %}>
+                                            </div>
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div id="permissions-count" class="text-muted">
+                                <span id="selected-count">{{ current_permissions|length }}</span> permission(s) sélectionnée(s)
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Sauvegarder les permissions
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function selectAll() {
+    document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    updateCount();
+}
+
+function clearAll() {
+    document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateCount();
+}
+
+function updateCount() {
+    const checkedCount = document.querySelectorAll('.permission-checkbox:checked').length;
+    document.getElementById('selected-count').textContent = checkedCount;
+}
+
+// Mettre à jour le compteur quand on coche/décoche
+document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', updateCount);
+});
+
+// Gestion des dépendances : si on coche "Modifier", cocher automatiquement "Lire"
+document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const module = this.dataset.module;
+        const action = this.dataset.action;
+        
+        if (this.checked && action === 'update') {
+            // Si on coche "Modifier", cocher automatiquement "Lire"
+            const readCheckbox = document.querySelector(`[data-module="${module}"][data-action="read"]`);
+            if (readCheckbox) {
+                readCheckbox.checked = true;
+            }
+        }
+        
+        if (this.checked && (action === 'delete' || action === 'assign')) {
+            // Si on coche "Supprimer" ou "Assigner", cocher "Modifier" et "Lire"
+            const updateCheckbox = document.querySelector(`[data-module="${module}"][data-action="update"]`);
+            const readCheckbox = document.querySelector(`[data-module="${module}"][data-action="read"]`);
+            if (updateCheckbox) updateCheckbox.checked = true;
+            if (readCheckbox) readCheckbox.checked = true;
+        }
+        
+        updateCount();
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,205 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Gestion des Rôles{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- En-tête -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Gestion des Rôles</h1>
+                <div>
+                    <a href="{% url 'core:role_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nouveau Rôle
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filtres et recherche -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-6">
+                            <input type="text" name="search" value="{{ search }}" 
+                                   class="form-control" placeholder="Rechercher un rôle...">
+                        </div>
+                        <div class="col-md-3">
+                            <select name="status" class="form-select">
+                                <option value="">Tous les statuts</option>
+                                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>
+                                    Actifs seulement
+                                </option>
+                                <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>
+                                    Inactifs seulement
+                                </option>
+                                <option value="system" {% if status_filter == 'system' %}selected{% endif %}>
+                                    Rôles système
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-search"></i> Rechercher
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Résultats -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Rôles ({{ total_roles }} trouvé{{ total_roles|pluralize }})</h5>
+                    {% if page_obj %}
+                    <small class="text-muted">
+                        Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
+                    </small>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body p-0">
+                    {% if page_obj %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nom du Rôle</th>
+                                    <th>Description</th>
+                                    <th>Utilisateurs</th>
+                                    <th>Permissions</th>
+                                    <th>Statut</th>
+                                    <th>Type</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for role in page_obj %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ role.name }}</strong>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ role.description|truncatechars:50 }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">
+                                            {{ role.users_count }} utilisateur{{ role.users_count|pluralize }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">
+                                            {{ role.permissions.count }} permission{{ role.permissions.count|pluralize }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if role.is_active %}
+                                            <span class="badge bg-success">Actif</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactif</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if role.is_system_role %}
+                                            <span class="badge bg-warning">Système</span>
+                                        {% else %}
+                                            <span class="badge bg-primary">Personnalisé</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'core:role_detail' role.id %}" 
+                                               class="btn btn-outline-info" title="Voir">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'core:role_permissions' role.id %}" 
+                                               class="btn btn-outline-primary" title="Permissions">
+                                                <i class="fas fa-key"></i>
+                                            </a>
+                                            <a href="{% url 'core:role_duplicate' role.id %}" 
+                                               class="btn btn-outline-secondary" title="Dupliquer">
+                                                <i class="fas fa-copy"></i>
+                                            </a>
+                                            {% if not role.is_system_role %}
+                                            <a href="{% url 'core:role_edit' role.id %}" 
+                                               class="btn btn-outline-success" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'core:role_toggle_status' role.id %}" 
+                                               class="btn btn-outline-{% if role.is_active %}warning{% else %}success{% endif %}" 
+                                               title="{% if role.is_active %}Désactiver{% else %}Activer{% endif %}"
+                                               onclick="return confirm('Confirmer cette action ?')">
+                                                <i class="fas fa-{% if role.is_active %}pause{% else %}play{% endif %}"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                    <div class="card-footer">
+                        <nav aria-label="Navigation des rôles">
+                            <ul class="pagination mb-0 justify-content-center">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                                            Précédent
+                                        </a>
+                                    </li>
+                                {% endif %}
+
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                                                {{ num }}
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                                            Suivant
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-user-slash fa-3x text-muted mb-3"></i>
+                        <h5>Aucun rôle trouvé</h5>
+                        <p class="text-muted">
+                            {% if search or status_filter %}
+                                Aucun rôle ne correspond à vos critères de recherche.
+                            {% else %}
+                                Aucun rôle n'a été créé pour le moment.
+                            {% endif %}
+                        </p>
+                        <a href="{% url 'core:role_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Créer le premier rôle
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

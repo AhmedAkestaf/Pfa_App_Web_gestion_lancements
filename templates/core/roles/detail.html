@@ -1,0 +1,182 @@
+<!-- templates/core/roles/detail.html - Détail d'un rôle -->
+{% extends 'base/base.html' %}
+
+{% block title %}Rôle : {{ role.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- En-tête -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1">{{ role.name }}</h1>
+                    <div class="d-flex align-items-center gap-2">
+                        {% if role.is_active %}
+                            <span class="badge bg-success">Actif</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactif</span>
+                        {% endif %}
+                        {% if role.is_system_role %}
+                            <span class="badge bg-warning">Rôle Système</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <a href="{% url 'core:roles_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Retour
+                    </a>
+                    <a href="{% url 'core:role_permissions' role.id %}" class="btn btn-primary">
+                        <i class="fas fa-key"></i> Permissions
+                    </a>
+                    {% if not role.is_system_role %}
+                    <a href="{% url 'core:role_edit' role.id %}" class="btn btn-outline-success">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Informations générales -->
+                <div class="col-md-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Informations générales</h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-3">Nom :</dt>
+                                <dd class="col-sm-9">{{ role.name }}</dd>
+                                
+                                <dt class="col-sm-3">Description :</dt>
+                                <dd class="col-sm-9">{{ role.description|default:"Aucune description" }}</dd>
+                                
+                                <dt class="col-sm-3">Statut :</dt>
+                                <dd class="col-sm-9">
+                                    {% if role.is_active %}
+                                        <span class="text-success">
+                                            <i class="fas fa-check-circle"></i> Actif
+                                        </span>
+                                    {% else %}
+                                        <span class="text-danger">
+                                            <i class="fas fa-times-circle"></i> Inactif
+                                        </span>
+                                    {% endif %}
+                                </dd>
+                                
+                                <dt class="col-sm-3">Type :</dt>
+                                <dd class="col-sm-9">
+                                    {% if role.is_system_role %}
+                                        <span class="text-warning">
+                                            <i class="fas fa-cog"></i> Rôle système
+                                        </span>
+                                    {% else %}
+                                        <span class="text-primary">
+                                            <i class="fas fa-user-cog"></i> Rôle personnalisé
+                                        </span>
+                                    {% endif %}
+                                </dd>
+                                
+                                <dt class="col-sm-3">Créé le :</dt>
+                                <dd class="col-sm-9">{{ role.created_at|date:"d/m/Y à H:i" }}</dd>
+                                
+                                <dt class="col-sm-3">Modifié le :</dt>
+                                <dd class="col-sm-9">{{ role.updated_at|date:"d/m/Y à H:i" }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <!-- Permissions par module -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Permissions ({{ permissions_count }})</h5>
+                            <a href="{% url 'core:role_permissions' role.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit"></i> Modifier
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            {% if permissions_by_module %}
+                                {% for module, permissions in permissions_by_module.items %}
+                                <div class="mb-3">
+                                    <h6 class="text-primary">
+                                        <i class="fas fa-folder"></i> {{ module|title }}
+                                    </h6>
+                                    <div class="ms-3">
+                                        {% for permission in permissions %}
+                                        <span class="badge bg-light text-dark me-1 mb-1">
+                                            {{ permission.action|title }}
+                                        </span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-key fa-2x mb-2"></i>
+                                    <p>Aucune permission assignée à ce rôle.</p>
+                                    <a href="{% url 'core:role_permissions' role.id %}" class="btn btn-primary">
+                                        Configurer les permissions
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistiques -->
+                <div class="col-md-4">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Statistiques</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <div class="border-end">
+                                        <h3 class="text-info">{{ users_count }}</h3>
+                                        <small class="text-muted">Utilisateur{{ users_count|pluralize }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <h3 class="text-primary">{{ permissions_count }}</h3>
+                                    <small class="text-muted">Permission{{ permissions_count|pluralize }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions rapides -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Actions rapides</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'core:role_permissions' role.id %}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-key"></i> Gérer les permissions
+                                </a>
+                                <a href="{% url 'core:role_users' role.id %}" class="btn btn-info btn-sm">
+                                    <i class="fas fa-users"></i> Voir les utilisateurs
+                                </a>
+                                <a href="{% url 'core:role_duplicate' role.id %}" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-copy"></i> Dupliquer ce rôle
+                                </a>
+                                {% if not role.is_system_role %}
+                                <hr>
+                                <a href="{% url 'core:role_toggle_status' role.id %}" 
+                                   class="btn btn-outline-{% if role.is_active %}warning{% else %}success{% endif %} btn-sm"
+                                   onclick="return confirm('Confirmer cette action ?')">
+                                    <i class="fas fa-{% if role.is_active %}pause{% else %}play{% endif %}"></i>
+                                    {% if role.is_active %}Désactiver{% else %}Activer{% endif %}
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
