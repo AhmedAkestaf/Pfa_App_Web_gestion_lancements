@@ -1,8 +1,11 @@
-from django.core.management.base import BaseCommand
 from apps.core.models import Permission, Role
 from functools import wraps
-from django.http import HttpResponseForbidden
+from django.http import JsonResponse
 from django.shortcuts import redirect
+from functools import wraps
+from django.shortcuts import redirect
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 
 
 def create_default_permissions():
@@ -185,22 +188,22 @@ def get_permission_matrix():
     return matrix
 
 
-def permission_required(module, action):
-    """Décorateur pour vérifier les permissions avant l'exécution d'une vue"""
+def permission_required(module, action, ajax_support=True):
+    """Décorateur pour vérifier les permissions"""
     
     def decorator(view_func):
         @wraps(view_func)
+        @login_required
         def _wrapped_view(request, *args, **kwargs):
-            # Ici vous devrez adapter selon votre système d'authentification
-            # En supposant que vous avez un collaborateur connecté
-            
-            collaborateur = getattr(request, 'user', None)  # À adapter selon votre système
-            
-           # if not collaborateur or not hasattr(collaborateur, 'has_permission'):
-            #    return redirect('login')  # À adapter selon votre URL de login
-            
-            if not collaborateur.has_permission(module, action):
-                return HttpResponseForbidden("Vous n'avez pas les permissions nécessaires.")
+            if not request.user.has_permission(module, action):
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest' and ajax_support:
+                    return JsonResponse({
+                        'error': True,
+                        'message': 'Permissions insuffisantes'
+                    }, status=403)
+                
+                messages.error(request, "Vous n'avez pas les permissions nécessaires pour cette action.")
+                return redirect('dashboard')
             
             return view_func(request, *args, **kwargs)
         

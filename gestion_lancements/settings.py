@@ -56,6 +56,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.core.middleware.PermissionMiddleware',
 ]
 
 ROOT_URLCONF = 'gestion_lancements.urls'
@@ -70,6 +71,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'apps.core.context_processors.user_permissions',
             ],
         },
     },
@@ -118,6 +120,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Backend d'authentification personnalisé
+AUTHENTICATION_BACKENDS = [
+    'apps.collaborateurs.backends.CollaborateurBackend',
+    'django.contrib.auth.backends.ModelBackend',  # Garde le backend par défaut en fallback
+]
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -143,6 +151,12 @@ STATICFILES_DIRS = [
 # configuration des fichiers médias
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+#configuration d'authentification 
+AUTH_USER_MODEL = 'collaborateurs.Collaborateur'
+LOGIN_URL = '/auth/login/'
+LOGIN_REDIRECT_URL = '/dashboard/'
+LOGOUT_REDIRECT_URL = '/auth/login/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

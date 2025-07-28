@@ -1,0 +1,9 @@
+{% if has_permission %}
+    <a href="{{ url }}" class="{{ button_class }}">
+        {{ button_text }}
+    </a>
+{% else %}
+    <button class="{{ button_class }} disabled" disabled title="Permissions insuffisantes">
+        {{ button_text }}
+    </button>
+{% endif %}

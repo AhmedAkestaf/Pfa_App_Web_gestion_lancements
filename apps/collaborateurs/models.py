@@ -12,7 +12,13 @@ class Collaborateur(models.Model):
     
     # Authentification et autorisation
     password = models.CharField(max_length=255, verbose_name="Mot de passe")
-    role = models.CharField(max_length=50)   
+   # role = models.CharField(max_length=50)   
+
+    email = models.EmailField(unique=True, verbose_name="Email", default= None , blank=True , null=True)
+
+    # Utiliser email comme username
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['nom_collaborateur', 'prenom_collaborateur']
     
     # Timestamps pour le suivi des modifications
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Date de création")
@@ -41,6 +47,31 @@ class Collaborateur(models.Model):
     def __str__(self):
         """Retourne le nom complet du collaborateur"""
         return f"{self.nom_collaborateur} {self.prenom_collaborateur}"
+    
+    @property
+    def username(self):
+        """Propriété pour la compatibilité avec Django Auth"""
+        return self.email
+    
+    def get_full_name(self):
+        """Retourne le nom complet du collaborateur"""
+        return f"{self.nom_collaborateur} {self.prenom_collaborateur}"
+    
+    def get_short_name(self):
+        """Retourne le prénom du collaborateur"""
+        return self.prenom_collaborateur
+    
+    @property
+    def is_anonymous(self):
+        """Vérifie si l'utilisateur est anonyme"""
+        if not self.email:
+            return True
+        return False
+    
+    @property
+    def is_authenticated(self):
+        """Vérifie si l'utilisateur est authentifié"""
+        return self.email is not None and self.password is not None
 
     class Meta:
         db_table = 'collaborateur'
