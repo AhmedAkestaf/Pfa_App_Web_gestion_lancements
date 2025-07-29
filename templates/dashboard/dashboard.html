@@ -1,5 +1,6 @@
 {% extends 'base/base.html' %}
 {% load static %}
+{% load permission_tags %}
 
 {% block title %}Tableau de bord - AIC Métallurgie{% endblock %}
 
@@ -9,75 +10,286 @@
 
 {% block content %}
 <div class="row">
-    <div class="col-12">
+    <!-- Message de bienvenue personnalisé -->
+    <div class="col-12 mb-4">
         <div class="card dashboard-main-card">
             <div class="dashboard-particles">
                 <h3 class="card-title">
-                    <i class="fas fa-tachometer-alt mr-2"></i>
-                    Tableau de bord AIC Métallurgie
+                    <i class="fas fa-tachometer-alt me-2"></i>
+                    Bienvenue {{ user.get_full_name }}
                 </h3>
+                <p class="text-muted mb-0">
+                    Rôle: {{ user.user_role.name|default:"Aucun rôle assigné" }} | 
+                    Dernière connexion: {{ user.last_login|date:"d/m/Y à H:i"|default:"Première connexion" }}
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistiques principales -->
+    <div class="col-12">
+        <div class="row">
+            <!-- Lancements actifs -->
+            {% has_permission 'lancements' 'read' as can_view_lancements %}
+            {% if can_view_lancements and stats.total_lancements %}
+            <div class="col-lg-3 col-6 dashboard-animate mb-4">
+                <div class="small-box bg-info">
+                    <div class="inner">
+                        <h3>{{ stats.lancements_en_cours|default:0 }}</h3>
+                        <p>Lancements actifs</p>
+                        <small class="text-light opacity-75">
+                            Total: {{ stats.total_lancements }}
+                        </small>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <a href="#" class="small-box-footer">
+                        Plus d'infos <i class="fas fa-arrow-circle-right"></i>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Collaborateurs -->
+            {% has_permission 'collaborateurs' 'read' as can_view_collaborateurs %}
+            {% if can_view_collaborateurs and stats.total_collaborateurs %}
+            <div class="col-lg-3 col-6 dashboard-animate mb-4">
+                <div class="small-box bg-success">
+                    <div class="inner">
+                        <h3>{{ stats.collaborateurs_actifs|default:0 }}</h3>
+                        <p>Collaborateurs actifs</p>
+                        <small class="text-light opacity-75">
+                            Total: {{ stats.total_collaborateurs }}
+                        </small>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <a href="#" class="small-box-footer">
+                        Plus d'infos <i class="fas fa-arrow-circle-right"></i>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Ateliers -->
+            {% has_permission 'ateliers' 'read' as can_view_ateliers %}
+            {% if can_view_ateliers and stats.total_ateliers %}
+            <div class="col-lg-3 col-6 dashboard-animate mb-4">
+                <div class="small-box bg-warning">
+                    <div class="inner">
+                        <h3>{{ stats.total_ateliers|default:0 }}</h3>
+                        <p>Ateliers</p>
+                        <small class="text-light opacity-75">
+                            Actifs
+                        </small>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-industry"></i>
+                    </div>
+                    <a href="#" class="small-box-footer">
+                        Plus d'infos <i class="fas fa-arrow-circle-right"></i>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Affaires -->
+            {% has_permission 'affaires' 'read' as can_view_affaires %}
+            {% if can_view_affaires and stats.total_affaires %}
+            <div class="col-lg-3 col-6 dashboard-animate mb-4">
+                <div class="small-box bg-danger">
+                    <div class="inner">
+                        <h3>{{ stats.affaires_actives|default:0 }}</h3>
+                        <p>Affaires actives</p>
+                        <small class="text-light opacity-75">
+                            Total: {{ stats.total_affaires }}
+                        </small>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-briefcase"></i>
+                    </div>
+                    <a href="#" class="small-box-footer">
+                        Plus d'infos <i class="fas fa-arrow-circle-right"></i>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Actions rapides -->
+    <div class="col-12 mt-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>Actions rapides
+                </h5>
             </div>
             <div class="card-body">
                 <div class="row">
-                    <!-- KPI Cards -->
-                    <div class="col-lg-3 col-6 dashboard-animate">
-                        <div class="small-box bg-info">
-                            <div class="inner">
-                                <h3>150</h3>
-                                <p>Lancements actifs</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-rocket"></i>
-                            </div>
-                        </div>
+                    {% has_permission 'lancements' 'create' as can_create_lancement %}
+                    {% if can_create_lancement %}
+                    <div class="col-md-3 mb-3">
+                        <a href="#" class="btn btn-success btn-lg w-100">
+                            <i class="fas fa-plus-circle me-2"></i>
+                            <div>Nouveau lancement</div>
+                            <small class="opacity-75">Créer un lancement</small>
+                        </a>
                     </div>
+                    {% endif %}
                     
-                    <div class="col-lg-3 col-6 dashboard-animate">
-                        <div class="small-box bg-success">
-                            <div class="inner">
-                                <h3>53</h3>
-                                <p>Lancements terminés</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                        </div>
+                    {% has_permission 'collaborateurs' 'create' as can_create_collaborateur %}
+                    {% if can_create_collaborateur %}
+                    <div class="col-md-3 mb-3">
+                        <a href="#" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-user-plus me-2"></i>
+                            <div>Nouveau collaborateur</div>
+                            <small class="opacity-75">Ajouter un collaborateur</small>
+                        </a>
                     </div>
+                    {% endif %}
                     
-                    <div class="col-lg-3 col-6 dashboard-animate">
-                        <div class="small-box bg-warning">
-                            <div class="inner">
-                                <h3>44</h3>
-                                <p>Collaborateurs</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-users"></i>
-                            </div>
-                        </div>
+                    {% has_permission 'rapports' 'read' as can_view_rapports %}
+                    {% if can_view_rapports %}
+                    <div class="col-md-3 mb-3">
+                        <a href="#" class="btn btn-info btn-lg w-100">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            <div>Rapports</div>
+                            <small class="opacity-75">Consulter les rapports</small>
+                        </a>
                     </div>
+                    {% endif %}
                     
-                    <div class="col-lg-3 col-6 dashboard-animate">
-                        <div class="small-box bg-danger">
-                            <div class="inner">
-                                <h3>8</h3>
-                                <p>Ateliers</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-industry"></i>
-                            </div>
-                        </div>
+                    {% if can_view_lancements %}
+                    <div class="col-md-3 mb-3">
+                        <a href="#" class="btn btn-warning btn-lg w-100">
+                            <i class="fas fa-calendar-alt me-2"></i>
+                            <div>Planning</div>
+                            <small class="opacity-75">Voir le planning</small>
+                        </a>
                     </div>
+                    {% endif %}
                 </div>
-                
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="alert alert-info dashboard-welcome-alert" >
-                            <h5><i class="icon fas fa-info"></i> Bienvenue !</h5>
-                            Système de gestion des lancements AIC Métallurgie configuré avec succès.
+            </div>
+        </div>
+    </div>
+    
+    <!-- Activité récente -->
+    {% if can_view_lancements %}
+    <div class="col-md-8 mt-4">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="fas fa-clock me-2"></i>Activité récente
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-success"></div>
+                        <div class="timeline-content">
+                            <h6 class="timeline-title">Lancement LC-2024-156 terminé</h6>
+                            <p class="timeline-text">Débitage terminé par Jean Dupont</p>
+                            <small class="text-muted">Il y a 2 heures</small>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-info"></div>
+                        <div class="timeline-content">
+                            <h6 class="timeline-title">Nouveau lancement créé</h6>
+                            <p class="timeline-text">LC-2024-157 assigné à l'atelier assemblage</p>
+                            <small class="text-muted">Il y a 4 heures</small>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-warning"></div>
+                        <div class="timeline-content">
+                            <h6 class="timeline-title">Affaire AF-2024-89 mise à jour</h6>
+                            <p class="timeline-text">Date de livraison modifiée</p>
+                            <small class="text-muted">Hier à 16:30</small>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Informations utilisateur -->
+    <div class="col-md-4 mt-4">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="fas fa-user me-2"></i>Mes informations
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="avatar-circle bg-primary text-white mx-auto" style="width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                        {{ user.prenom_collaborateur.0|default:"U" }}{{ user.nom_collaborateur.0|default:"" }}
+                    </div>
+                    <h6 class="mt-2 mb-1">{{ user.get_full_name }}</h6>
+                    <small class="text-muted">{{ user.email }}</small>
+                </div>
+                
+                <hr>
+                
+                <div class="row text-center">
+                    <div class="col-12 mb-2">
+                        <strong>Rôle:</strong><br>
+                        <span class="badge bg-secondary">{{ user.user_role.name|default:"Aucun" }}</span>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 mt-3">
+                    <a href="{% url 'collaborateurs:profile' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-eye me-1"></i>Voir mon profil
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Aide rapide -->
+        <div class="card mt-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">
+                    <i class="fas fa-question-circle me-2"></i>Aide rapide
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <a href="#" class="list-group-item list-group-item-action border-0 px-0">
+                        <i class="fas fa-book me-2 text-primary"></i>Guide d'utilisation
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action border-0 px-0">
+                        <i class="fas fa-video me-2 text-success"></i>Tutoriels vidéo
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action border-0 px-0">
+                        <i class="fas fa-headset me-2 text-info"></i>Support technique
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Message d'information système -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info dashboard-welcome-alert">
+            <h5><i class="icon fas fa-info-circle"></i> Système opérationnel</h5>
+            <p class="mb-0">
+                Système de gestion des lancements AIC Métallurgie configuré avec succès. 
+                {% if user.user_role %}
+                Vous êtes connecté avec le rôle <strong>{{ user.user_role.name }}</strong>.
+                {% else %}
+                Contactez votre administrateur pour obtenir un rôle et des permissions.
+                {% endif %}
+            </p>
         </div>
     </div>
 </div>

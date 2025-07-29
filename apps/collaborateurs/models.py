@@ -1,6 +1,40 @@
 from django.db import models
+from django.contrib.auth.models import BaseUserManager, AbstractBaseUser
 
-class Collaborateur(models.Model):
+class CollaborateurManager(BaseUserManager):
+    """Manager personnalisé pour le modèle Collaborateur"""
+    
+    def create_user(self, email, nom_collaborateur, prenom_collaborateur, password=None):
+        """Crée et sauvegarde un utilisateur avec email et mot de passe"""
+        if not email:
+            raise ValueError('L\'utilisateur doit avoir une adresse email')
+        
+        user = self.model(
+            email=self.normalize_email(email),
+            nom_collaborateur=nom_collaborateur,
+            prenom_collaborateur=prenom_collaborateur,
+        )
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+    
+    def create_superuser(self, email, nom_collaborateur, prenom_collaborateur, password=None):
+        """Crée et sauvegarde un superutilisateur"""
+        user = self.create_user(
+            email=email,
+            nom_collaborateur=nom_collaborateur,
+            prenom_collaborateur=prenom_collaborateur,
+            password=password,
+        )
+        user.is_admin = True
+        user.save(using=self._db)
+        return user
+    
+    def get_by_natural_key(self, email):
+        """Méthode requise pour l'authentification Django"""
+        return self.get(email=email)
+
+class Collaborateur(AbstractBaseUser):
     """
     Modèle représentant les collaborateurs de l'entreprise.
     Cette classe gère les informations personnelles et professionnelles
@@ -10,15 +44,12 @@ class Collaborateur(models.Model):
     nom_collaborateur = models.CharField(max_length=100, verbose_name="Nom")
     prenom_collaborateur = models.CharField(max_length=100, verbose_name="Prénom")
     
-    # Authentification et autorisation
-    password = models.CharField(max_length=255, verbose_name="Mot de passe")
-   # role = models.CharField(max_length=50)   
-
-    email = models.EmailField(unique=True, verbose_name="Email", default= None , blank=True , null=True)
-
-    # Utiliser email comme username
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['nom_collaborateur', 'prenom_collaborateur']
+    # Email unique pour l'authentification
+    email = models.EmailField(unique=True, verbose_name="Email" , default=None ,blank=True , null=True) 
+    
+    # Champs pour la compatibilité avec Django Admin
+    is_active = models.BooleanField(default=True)
+    is_admin = models.BooleanField(default=False)
     
     # Timestamps pour le suivi des modifications
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Date de création")
@@ -31,6 +62,13 @@ class Collaborateur(models.Model):
         blank=True,
         verbose_name="Rôle utilisateur"
     )
+    
+    # Manager personnalisé
+    objects = CollaborateurManager()
+    
+    # Configuration pour l'authentification
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['nom_collaborateur', 'prenom_collaborateur']
     
     def has_permission(self, module, action):
         """Vérifie si le collaborateur a une permission spécifique"""
@@ -48,11 +86,6 @@ class Collaborateur(models.Model):
         """Retourne le nom complet du collaborateur"""
         return f"{self.nom_collaborateur} {self.prenom_collaborateur}"
     
-    @property
-    def username(self):
-        """Propriété pour la compatibilité avec Django Auth"""
-        return self.email
-    
     def get_full_name(self):
         """Retourne le nom complet du collaborateur"""
         return f"{self.nom_collaborateur} {self.prenom_collaborateur}"
@@ -61,17 +94,19 @@ class Collaborateur(models.Model):
         """Retourne le prénom du collaborateur"""
         return self.prenom_collaborateur
     
-    @property
-    def is_anonymous(self):
-        """Vérifie si l'utilisateur est anonyme"""
-        if not self.email:
-            return True
-        return False
+    # Méthodes requises pour Django Admin
+    def has_perm(self, perm, obj=None):
+        """L'utilisateur a-t-il une permission spécifique?"""
+        return True
+    
+    def has_module_perms(self, app_label):
+        """L'utilisateur a-t-il des permissions pour voir l'app app_label?"""
+        return True
     
     @property
-    def is_authenticated(self):
-        """Vérifie si l'utilisateur est authentifié"""
-        return self.email is not None and self.password is not None
+    def is_staff(self):
+        """L'utilisateur est-il membre du staff?"""
+        return self.is_admin
 
     class Meta:
         db_table = 'collaborateur'

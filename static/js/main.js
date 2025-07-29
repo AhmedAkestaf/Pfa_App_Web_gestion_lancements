@@ -13,9 +13,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeSearch();
     initializeNavigation();
     
-    // Gestion des notifications
-    initializeNotifications();
-    
     // Animation au scroll
     initializeScrollAnimations();
 });
@@ -144,21 +141,9 @@ function initializeSearch() {
             }
         });
         
-        // Placeholder dynamique
-        const placeholders = [
-            'Rechercher un lancement...',
-            'Nom d\'un collaborateur...',
-            'Code affaire...',
-            'Nom d\'atelier...'
-        ];
-        
-        let currentPlaceholder = 0;
-        setInterval(function() {
-            if (!searchInput.value && document.activeElement !== searchInput) {
-                searchInput.placeholder = placeholders[currentPlaceholder];
-                currentPlaceholder = (currentPlaceholder + 1) % placeholders.length;
-            }
-        }, 3000);
+        // CORRECTION: Placeholder statique au lieu d'un changement automatique
+        // qui pourrait causer des problèmes
+        searchInput.placeholder = 'Rechercher...';
     }
 }
 
@@ -224,51 +209,6 @@ function initializeNavigation() {
                 to {
                     transform: scale(4);
                     opacity: 0;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-}
-
-/**
- * Système de notifications
- */
-function initializeNotifications() {
-    // Simuler des notifications (à remplacer par des vraies données)
-    const notificationBadge = document.querySelector('.navbar .badge');
-    const notificationDropdown = document.querySelector('.dropdown-menu');
-    
-    if (notificationBadge) {
-        // Animation du badge quand il y a de nouvelles notifications
-        function animateNotificationBadge() {
-            notificationBadge.style.animation = 'none';
-            notificationBadge.offsetHeight; // Force reflow
-            notificationBadge.style.animation = 'bounce 0.5s ease';
-        }
-        
-        // Exemple: nouvelle notification après 10 secondes
-        setTimeout(() => {
-            const currentCount = parseInt(notificationBadge.textContent);
-            notificationBadge.textContent = currentCount + 1;
-            animateNotificationBadge();
-        }, 10000);
-    }
-    
-    // CSS pour l'animation bounce
-    if (!document.getElementById('notification-style')) {
-        const style = document.createElement('style');
-        style.id = 'notification-style';
-        style.textContent = `
-            @keyframes bounce {
-                0%, 20%, 60%, 100% {
-                    transform: translateY(0);
-                }
-                40% {
-                    transform: translateY(-10px);
-                }
-                80% {
-                    transform: translateY(-5px);
                 }
             }
         `;
@@ -403,11 +343,8 @@ window.addEventListener('error', function(e) {
     }
 });
 
-console.log('✅ Scripts AIC Métallurgie chargés avec succès');
-// JavaScript principal pour AIC Métallurgie
+// Gestion des dropdowns
 document.addEventListener('DOMContentLoaded', function() {
-    
-    // Gestion des dropdowns
     const dropdowns = document.querySelectorAll('[data-toggle="dropdown"]');
     dropdowns.forEach(function(dropdown) {
         dropdown.addEventListener('click', function(e) {
@@ -429,35 +366,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Gestion des alerts avec auto-fermeture
-    const alerts = document.querySelectorAll('.alert');
-    alerts.forEach(function(alert) {
-        if (alert.classList.contains('alert-success')) {
-            setTimeout(function() {
-                alert.style.opacity = '0';
-                setTimeout(function() {
-                    alert.remove();
-                }, 300);
-            }, 3000);
-        }
-    });
-
-    // Animation des compteurs sur le dashboard
-    const counters = document.querySelectorAll('.small-box h3');
-    counters.forEach(function(counter) {
-        const target = parseInt(counter.innerText);
-        const increment = target / 50;
-        let current = 0;
-        
-        const timer = setInterval(function() {
-            current += increment;
-            if (current >= target) {
-                current = target;
-                clearInterval(timer);
+    // Animation des compteurs sur le dashboard (UNIQUEMENT si on est sur le dashboard)
+    if (window.location.pathname.includes('dashboard')) {
+        const counters = document.querySelectorAll('.small-box h3');
+        counters.forEach(function(counter) {
+            const target = parseInt(counter.innerText);
+            if (!isNaN(target)) {
+                const increment = target / 50;
+                let current = 0;
+                
+                const timer = setInterval(function() {
+                    current += increment;
+                    if (current >= target) {
+                        current = target;
+                        clearInterval(timer);
+                    }
+                    counter.innerText = Math.floor(current);
+                }, 30);
             }
-            counter.innerText = Math.floor(current);
-        }, 30);
-    });
+        });
+    }
 
-    console.log('AIC Métallurgie - Système initialisé');
+    console.log('✅ Scripts AIC Métallurgie chargés avec succès');
 });

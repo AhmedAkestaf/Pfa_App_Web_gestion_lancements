@@ -17,7 +17,7 @@ def login_view(request):
                 messages.success(request, f'Bienvenue {user}!')
                 
                 # Redirection selon le rôle
-                next_url = request.GET.get('next', '/dashboard/')
+                next_url = request.GET.get('next', 'core/dashboard/')
                 return redirect(next_url)
             else:
                 messages.error(request, 'Email ou mot de passe incorrect.')

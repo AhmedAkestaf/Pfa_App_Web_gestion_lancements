@@ -438,3 +438,4 @@ def import_role_config(request):
             messages.error(request, f'Erreur lors de l\'import : {str(e)}')
     
     return render(request, 'core/roles/import.html')
+

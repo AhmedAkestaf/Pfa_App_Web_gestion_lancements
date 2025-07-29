@@ -1,4 +1,6 @@
 {% load static %}
+{% load permission_tags %}
+
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container-fluid">
         <!-- Logo et nom de l'entreprise -->
@@ -28,66 +30,121 @@
                         <i class="fas fa-database"></i> Données de base
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="">
+                        {% has_permission 'collaborateurs' 'read' as can_view_collaborateurs %}
+                        {% if can_view_collaborateurs %}
+                        <li><a class="dropdown-item" href="#">
                             <i class="fas fa-users"></i> Collaborateurs
                         </a></li>
-                        <li><a class="dropdown-item" href="">
+                        {% endif %}
+                        
+                        {% has_permission 'ateliers' 'read' as can_view_ateliers %}
+                        {% if can_view_ateliers %}
+                        <li><a class="dropdown-item" href="#">
                             <i class="fas fa-industry"></i> Ateliers
                         </a></li>
-                        <li><a class="dropdown-item" href="">
+                        {% endif %}
+                        
+                        {% has_permission 'categories' 'read' as can_view_categories %}
+                        {% if can_view_categories %}
+                        <li><a class="dropdown-item" href="#">
                             <i class="fas fa-tags"></i> Catégories
                         </a></li>
+                        {% endif %}
+                        
+                        {% if can_view_collaborateurs or can_view_ateliers or can_view_categories %}
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="">
+                        {% endif %}
+                        
+                        {% has_permission 'affaires' 'read' as can_view_affaires %}
+                        {% if can_view_affaires %}
+                        <li><a class="dropdown-item" href="#">
                             <i class="fas fa-briefcase"></i> Affaires
                         </a></li>
+                        {% endif %}
                     </ul>
                 </li>
                 
                 <!-- Lancements -->
+                {% has_permission 'lancements' 'read' as can_view_lancements %}
+                {% if can_view_lancements %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="fas fa-rocket"></i> Lancements
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="">
+                        <li><a class="dropdown-item" href="#">
                             <i class="fas fa-list"></i> Liste des lancements
                         </a></li>
-                        <li><a class="dropdown-item" href="">
+                        
+                        {% has_permission 'lancements' 'create' as can_create_lancement %}
+                        {% if can_create_lancement %}
+                        <li><a class="dropdown-item" href="#">
                             <i class="fas fa-plus"></i> Nouveau lancement
                         </a></li>
-                        <li><a class="dropdown-item" href="">
+                        {% endif %}
+                        
+                        <li><a class="dropdown-item" href="#">
                             <i class="fas fa-calendar"></i> Planning
                         </a></li>
                     </ul>
                 </li>
+                {% endif %}
                 
                 <!-- Reporting -->
+                {% has_permission 'rapports' 'read' as can_view_rapports %}
+                {% if can_view_rapports %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="fas fa-chart-bar"></i> Reporting
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="">
+                        <li><a class="dropdown-item" href="#">
                             <i class="fas fa-chart-line"></i> Tableaux de bord
                         </a></li>
-                        <li><a class="dropdown-item" href="">
+                        <li><a class="dropdown-item" href="#">
                             <i class="fas fa-file-alt"></i> Rapports
                         </a></li>
-                        <li><a class="dropdown-item" href="">
+                        
+                        {% has_permission 'rapports' 'export' as can_export_rapports %}
+                        {% if can_export_rapports %}
+                        <li><a class="dropdown-item" href="#">
                             <i class="fas fa-download"></i> Export
+                        </a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+                
+                <!-- Administration -->
+                {% has_permission 'administration' 'read' as can_admin %}
+                {% if can_admin %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-cog"></i> Administration
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'core:roles_list' %}">
+                            <i class="fas fa-user-tag"></i> Gestion des rôles
+                        </a></li>
+                        <li><a class="dropdown-item" href="#">
+                            <i class="fas fa-key"></i> Permissions
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="/admin/">
+                            <i class="fas fa-tools"></i> Admin Django
                         </a></li>
                     </ul>
                 </li>
+                {% endif %}
             </ul>
             
             <!-- Menu utilisateur -->
             <ul class="navbar-nav">
                 <!-- Recherche globale -->
                 <li class="nav-item me-3">
-                    <form class="d-flex" method="GET" action="">
+                    <form class="d-flex" method="GET" action="#">
                         <input class="form-control form-control-sm" type="search" name="q" 
-                               placeholder="Rechercher..." style="width: 200px;">
+                               placeholder="Rechercher..." style="width: 200px;" value="{{ request.GET.q }}">
                         <button class="btn btn-outline-light btn-sm ms-1" type="submit">
                             <i class="fas fa-search"></i>
                         </button>
@@ -98,7 +155,7 @@
                 <li class="nav-item dropdown me-2">
                     <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="fas fa-bell"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notification-count">
                             3
                         </span>
                     </a>
@@ -106,14 +163,23 @@
                         <li><h6 class="dropdown-header">Notifications récentes</h6></li>
                         <li><a class="dropdown-item" href="#">
                             <small class="text-muted">Il y a 2 minutes</small><br>
-                            Nouveau lancement créé
+                            <strong>Nouveau lancement créé</strong><br>
+                            <small>Lancement LC-2024-001 créé par {{ user.get_full_name }}</small>
                         </a></li>
                         <li><a class="dropdown-item" href="#">
                             <small class="text-muted">Il y a 1 heure</small><br>
-                            Lancement terminé en atelier
+                            <strong>Lancement terminé</strong><br>
+                            <small>LC-2024-045 terminé en atelier débitage</small>
+                        </a></li>
+                        <li><a class="dropdown-item" href="#">
+                            <small class="text-muted">Il y a 3 heures</small><br>
+                            <strong>Nouveau collaborateur</strong><br>
+                            <small>Jean Dupont ajouté à l'équipe</small>
                         </a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-center" href="#">Voir toutes les notifications</a></li>
+                        <li><a class="dropdown-item text-center" href="#">
+                            Voir toutes les notifications
+                        </a></li>
                     </ul>
                 </li>
                 
@@ -122,25 +188,31 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="fas fa-user-circle"></i> 
-                        {{ user|default:"Utilisateur" }}
-
+                        {{ user.get_full_name|default:"Utilisateur" }}
+                        {% if user.user_role %}
+                        <small class="text-light opacity-75 d-block">{{ user.user_role.name }}</small>
+                        {% endif %}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="">
+                        <li><a class="dropdown-item" href="{% url 'collaborateurs:profile' %}">
                             <i class="fas fa-user"></i> Mon profil
                         </a></li>
-                        <li><a class="dropdown-item" href="">
+                        <li><a class="dropdown-item" href="#">
                             <i class="fas fa-cog"></i> Paramètres
                         </a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="">
+                        <li class="dropdown-item-text">
+                            <small class="text-muted">Connecté depuis {{ user.last_login|timesince }}</small>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'collaborateurs:logout' %}">
                             <i class="fas fa-sign-out-alt"></i> Déconnexion
                         </a></li>
                     </ul>
                 </li>
                 {% else %}
                 <li class="nav-item">
-                    <a class="nav-link" href="">
+                    <a class="nav-link" href="{% url 'collaborateurs:login' %}">
                         <i class="fas fa-sign-in-alt"></i> Connexion
                     </a>
                 </li>
