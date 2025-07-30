@@ -29,7 +29,7 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     messages.info(request, 'Vous avez été déconnecté avec succès.')
-    return redirect('login')
+    return render(request, 'auth/logout.html')
 
 @login_required
 def profile_view(request):
