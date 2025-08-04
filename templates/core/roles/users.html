@@ -1,3 +1,5 @@
+{% extends 'base/base.html' %}
+
 {% block title %}Utilisateurs - {{ role.name }}{% endblock %}
 
 {% block content %}
@@ -62,10 +64,50 @@
                         <div class="card-header">
                             <h5 class="mb-0">
                                 <i class="fas fa-user-plus text-success"></i> 
-                                Assigner des utilisateurs
+                                {% if request.user.collaborateur.user_role.name == 'Admin' %}
+                                    Gestion complète des utilisateurs
+                                {% else %}
+                                    Assigner des utilisateurs
+                                {% endif %}
                             </h5>
                         </div>
                         <div class="card-body">
+                            {% if request.user.collaborateur.user_role.name == 'Admin' %}
+                                <!-- Interface Admin complète -->
+                                <div class="mb-3">
+                                    <label for="userSelect" class="form-label">Sélectionner un utilisateur :</label>
+                                    <select id="userSelect" class="form-select">
+                                        <option value="">-- Choisir un utilisateur --</option>
+                                        {% for collaborateur in all_users %}
+                                            <option value="{{ collaborateur.id }}" 
+                                                    data-name="{{ collaborateur.prenom_collaborateur }} {{ collaborateur.nom_collaborateur }}"
+                                                    data-current-role="{{ collaborateur.user_role.name|default:'Aucun' }}">
+                                                {{ collaborateur.prenom_collaborateur }} {{ collaborateur.nom_collaborateur }} 
+                                                ({{ collaborateur.user_role.name|default:'Aucun rôle' }})
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="roleSelect" class="form-label">Assigner le rôle :</label>
+                                    <select id="roleSelect" class="form-select">
+                                        <option value="">-- Choisir un rôle --</option>
+                                        {% for available_role in all_roles %}
+                                            <option value="{{ available_role.id }}">{{ available_role.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <button id="assignRoleBtn" class="btn btn-primary" disabled onclick="assignRoleAdmin()">
+                                    <i class="fas fa-user-tag"></i> Assigner le rôle
+                                </button>
+                                
+                                <hr class="my-4">
+                                
+                                <h6>Ou rechercher dans la liste :</h6>
+                            {% endif %}
+                            
                             <!-- Recherche -->
                             <div class="mb-3">
                                 <input type="text" id="userSearch" class="form-control" 
@@ -74,29 +116,65 @@
 
                             <!-- Liste des utilisateurs disponibles -->
                             <div id="availableUsers" style="max-height: 400px; overflow-y: auto;">
-                                {% if available_users %}
-                                    {% for user in available_users %}
-                                    <div class="d-flex justify-content-between align-items-center p-2 border-bottom user-item">
-                                        <div>
-                                            <strong>{{ user.prenom_collaborateur }} {{ user.nom_collaborateur }}</strong>
-                                            <br>
-                                            <small class="text-muted">
-                                                Rôle actuel: {{ user.user_role.name|default:"Aucun" }}
-                                            </small>
+                                {% if request.user.collaborateur.user_role.name == 'Admin' %}
+                                    <!-- Pour admin : tous les utilisateurs -->
+                                    {% if all_users %}
+                                        {% for collaborateur in all_users %}
+                                        <div class="d-flex justify-content-between align-items-center p-2 border-bottom user-item">
+                                            <div>
+                                                <strong>{{ collaborateur.prenom_collaborateur }} {{ collaborateur.nom_collaborateur }}</strong>
+                                                <br>
+                                                <small class="text-muted">
+                                                    Rôle actuel: {{ collaborateur.user_role.name|default:"Aucun" }}
+                                                </small>
+                                            </div>
+                                            <div class="btn-group-vertical btn-group-sm">
+                                                {% for available_role in all_roles %}
+                                                    <button class="btn btn-sm btn-outline-primary mb-1" 
+                                                            data-user-id="{{ collaborateur.id }}"
+                                                            data-user-name="{{ collaborateur.prenom_collaborateur }} {{ collaborateur.nom_collaborateur }}"
+                                                            data-role-id="{{ available_role.id }}"
+                                                            data-role-name="{{ available_role.name }}"
+                                                            onclick="assignSpecificRole(this.dataset.userId, this.dataset.userName, this.dataset.roleId, this.dataset.roleName)"
+                                                            title="Assigner le rôle {{ available_role.name }}">
+                                                        {{ available_role.name }}
+                                                    </button>
+                                                {% endfor %}
+                                            </div>
                                         </div>
-                                        <button class="btn btn-sm btn-success" 
-                                                data-user-id="{{ user.id }}"
-                                                data-user-name="{{ user.prenom_collaborateur }} {{ user.nom_collaborateur }}"
-                                                onclick="assignRoleToUser(this.dataset.userId, this.dataset.userName)">
-                                            <i class="fas fa-plus"></i> Assigner
-                                        </button>
+                                        {% endfor %}
+                                    {% else %}
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-users fa-2x text-muted mb-2"></i>
+                                        <p class="text-muted">Aucun utilisateur dans la base</p>
                                     </div>
-                                    {% endfor %}
+                                    {% endif %}
                                 {% else %}
-                                <div class="text-center py-4">
-                                    <i class="fas fa-users fa-2x text-muted mb-2"></i>
-                                    <p class="text-muted">Aucun utilisateur disponible</p>
-                                </div>
+                                    <!-- Pour non-admin : utilisateurs disponibles uniquement -->
+                                    {% if available_users %}
+                                        {% for user_item in available_users %}
+                                        <div class="d-flex justify-content-between align-items-center p-2 border-bottom user-item">
+                                            <div>
+                                                <strong>{{ user_item.prenom_collaborateur }} {{ user_item.nom_collaborateur }}</strong>
+                                                <br>
+                                                <small class="text-muted">
+                                                    Rôle actuel: {{ user_item.user_role.name|default:"Aucun" }}
+                                                </small>
+                                            </div>
+                                            <button class="btn btn-sm btn-success" 
+                                                    data-user-id="{{ user_item.id }}"
+                                                    data-user-name="{{ user_item.prenom_collaborateur }} {{ user_item.nom_collaborateur }}"
+                                                    onclick="assignRoleToUser(this.dataset.userId, this.dataset.userName)">
+                                                <i class="fas fa-plus"></i> Assigner
+                                            </button>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-users fa-2x text-muted mb-2"></i>
+                                        <p class="text-muted">Aucun utilisateur disponible</p>
+                                    </div>
+                                    {% endif %}
                                 {% endif %}
                             </div>
                         </div>
@@ -129,6 +207,59 @@
 {% csrf_token %}
 
 <script>
+// Activer/désactiver le bouton d'assignation admin
+document.addEventListener('DOMContentLoaded', function() {
+    const userSelect = document.getElementById('userSelect');
+    const roleSelect = document.getElementById('roleSelect');
+    
+    if (userSelect && roleSelect) {
+        userSelect.addEventListener('change', toggleAssignButton);
+        roleSelect.addEventListener('change', toggleAssignButton);
+    }
+});
+
+function toggleAssignButton() {
+    const userSelect = document.getElementById('userSelect');
+    const roleSelect = document.getElementById('roleSelect');
+    const assignBtn = document.getElementById('assignRoleBtn');
+    
+    if (userSelect && roleSelect && assignBtn) {
+        assignBtn.disabled = !(userSelect.value && roleSelect.value);
+    }
+}
+
+// Fonction d'assignation pour admin avec sélecteurs
+function assignRoleAdmin() {
+    const userSelect = document.getElementById('userSelect');
+    const roleSelect = document.getElementById('roleSelect');
+    
+    if (!userSelect.value || !roleSelect.value) return;
+    
+    const userId = userSelect.value;
+    const userName = userSelect.options[userSelect.selectedIndex].dataset.name;
+    const roleId = roleSelect.value;
+    const roleName = roleSelect.options[roleSelect.selectedIndex].text;
+    
+    showConfirmModal(
+        'Assigner le rôle',
+        `Voulez-vous assigner le rôle <strong>"${escapeHtml(roleName)}"</strong> à <strong>${escapeHtml(userName)}</strong> ?`,
+        'warning',
+        'Cette action remplacera le rôle actuel de l\'utilisateur.',
+        () => performRoleAssignment(userId, userName, roleId)
+    );
+}
+
+// Fonction d'assignation de rôle spécifique (pour les boutons dans la liste)
+function assignSpecificRole(userId, userName, roleId, roleName) {
+    showConfirmModal(
+        'Assigner le rôle',
+        `Voulez-vous assigner le rôle <strong>"${escapeHtml(roleName)}"</strong> à <strong>${escapeHtml(userName)}</strong> ?`,
+        'warning',
+        'Cette action remplacera le rôle actuel de l\'utilisateur.',
+        () => performRoleAssignment(userId, userName, roleId)
+    );
+}
+
 // Recherche d'utilisateurs
 document.getElementById('userSearch').addEventListener('input', function() {
     const searchTerm = this.value.toLowerCase();
@@ -140,46 +271,44 @@ document.getElementById('userSearch').addEventListener('input', function() {
     });
 });
 
-// Assigner un rôle à un utilisateur
+// Assigner un rôle à un utilisateur (fonction originale pour non-admin)
 function assignRoleToUser(userId, userName) {
-    const modalTitle = document.getElementById('confirmModalTitle');
-    const modalBody = document.getElementById('confirmModalBody');
-    const confirmButton = document.getElementById('confirmButton');
-    
-    modalTitle.textContent = 'Assigner le rôle';
-    modalBody.innerHTML = `
-        <p>Voulez-vous assigner le rôle <strong>"{{ role.name|escapejs }}"</strong> à <strong>${escapeHtml(userName)}</strong> ?</p>
-        <div class="alert alert-warning">
-            <i class="fas fa-exclamation-triangle"></i>
-            Cette action remplacera le rôle actuel de l'utilisateur.
-        </div>
-    `;
-    
-    confirmButton.onclick = function() {
-        performRoleAssignment(userId, userName);
-    };
-    
-    new bootstrap.Modal(document.getElementById('confirmModal')).show();
+    showConfirmModal(
+        'Assigner le rôle',
+        `Voulez-vous assigner le rôle <strong>"{{ role.name|escapejs }}"</strong> à <strong>${escapeHtml(userName)}</strong> ?`,
+        'warning',
+        'Cette action remplacera le rôle actuel de l\'utilisateur.',
+        () => performRoleAssignment(userId, userName, '{{ role.id }}')
+    );
 }
 
 // Retirer un utilisateur du rôle
 function removeUserFromRole(userId, userName) {
+    showConfirmModal(
+        'Retirer le rôle',
+        `Voulez-vous retirer le rôle de <strong>${escapeHtml(userName)}</strong> ?`,
+        'info',
+        'L\'utilisateur n\'aura plus aucun rôle assigné.',
+        () => performRoleRemoval(userId, userName)
+    );
+}
+
+// Fonction utilitaire pour afficher le modal de confirmation
+function showConfirmModal(title, message, alertType, alertMessage, confirmCallback) {
     const modalTitle = document.getElementById('confirmModalTitle');
     const modalBody = document.getElementById('confirmModalBody');
     const confirmButton = document.getElementById('confirmButton');
     
-    modalTitle.textContent = 'Retirer le rôle';
+    modalTitle.textContent = title;
     modalBody.innerHTML = `
-        <p>Voulez-vous retirer le rôle de <strong>${escapeHtml(userName)}</strong> ?</p>
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle"></i>
-            L'utilisateur n'aura plus aucun rôle assigné.
+        <p>${message}</p>
+        <div class="alert alert-${alertType}">
+            <i class="fas fa-${alertType === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+            ${alertMessage}
         </div>
     `;
     
-    confirmButton.onclick = function() {
-        performRoleRemoval(userId, userName);
-    };
+    confirmButton.onclick = confirmCallback;
     
     new bootstrap.Modal(document.getElementById('confirmModal')).show();
 }
@@ -197,8 +326,9 @@ function escapeHtml(text) {
 }
 
 // Effectuer l'assignation
-function performRoleAssignment(userId, userName) {
+function performRoleAssignment(userId, userName, roleId = null) {
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const finalRoleId = roleId || '{{ role.id }}';
     
     fetch('{% url "core:assign_role_to_user" %}', {
         method: 'POST',
@@ -206,7 +336,7 @@ function performRoleAssignment(userId, userName) {
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-CSRFToken': csrfToken
         },
-        body: `user_id=${encodeURIComponent(userId)}&role_id={{ role.id }}`
+        body: `user_id=${encodeURIComponent(userId)}&role_id=${encodeURIComponent(finalRoleId)}`
     })
     .then(response => response.json())
     .then(data => {

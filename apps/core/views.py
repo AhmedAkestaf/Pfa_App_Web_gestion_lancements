@@ -244,10 +244,20 @@ def role_users(request, role_id):
     from apps.collaborateurs.models import Collaborateur
     available_users = Collaborateur.objects.exclude(user_role=role).order_by('nom_collaborateur', 'prenom_collaborateur')
     
+    # Pour les administrateurs : tous les utilisateurs et tous les rôles
+    all_users = None
+    all_roles = None
+    
+    if hasattr(request.user, 'collaborateur') and request.user.collaborateur.user_role and request.user.collaborateur.user_role.name == 'Admin':
+        all_users = Collaborateur.objects.all().order_by('nom_collaborateur', 'prenom_collaborateur')
+        all_roles = Role.objects.filter(is_active=True).order_by('name')
+    
     context = {
         'role': role,
         'current_users': current_users,
         'available_users': available_users,
+        'all_users': all_users,
+        'all_roles': all_roles,
     }
     
     return render(request, 'core/roles/users.html', context)
@@ -262,27 +272,31 @@ def assign_role_to_user(request):
         role_id = request.POST.get('role_id')
         
         try:
-            from apps.collaborateurs.models import Collaborateur
+            from apps.collaborateurs.models import Collaborateur, RoleHistory
             user = get_object_or_404(Collaborateur, id=user_id)
-            role = get_object_or_404(Role, id=role_id)
+            role = get_object_or_404(Role, id=role_id) if role_id else None
             
             old_role = user.user_role
             user.user_role = role
             user.save()
             
-            # Enregistrer l'historique si nécessaire
-            if hasattr(user, 'rolehistory_set'):
-                from .models import RoleHistory
-                RoleHistory.objects.create(
-                    collaborateur=user,
-                    old_role=old_role,
-                    new_role=role,
-                    change_reason="Assignation via interface admin"
-                )
+            # Enregistrer l'historique
+            RoleHistory.objects.create(
+                collaborateur=user,
+                old_role=old_role,
+                new_role=role,
+                changed_by=request.user.collaborateur if hasattr(request.user, 'collaborateur') else None,
+                change_reason="Assignation via interface admin"
+            )
+            
+            if role:
+                message = f'Rôle "{role.name}" assigné à {user.prenom_collaborateur} {user.nom_collaborateur}'
+            else:
+                message = f'Rôle retiré pour {user.prenom_collaborateur} {user.nom_collaborateur}'
             
             return JsonResponse({
                 'success': True,
-                'message': f'Rôle "{role.name}" assigné à {user.prenom_collaborateur} {user.nom_collaborateur}'
+                'message': message
             })
             
         except Exception as e:
@@ -438,4 +452,3 @@ def import_role_config(request):
             messages.error(request, f'Erreur lors de l\'import : {str(e)}')
     
     return render(request, 'core/roles/import.html')
-

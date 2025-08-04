@@ -119,4 +119,5 @@ class Role(models.Model):
     
     def has_permission(self, module, action):
         """Vérifie si le rôle a une permission spécifique"""
-        return self.permissions.filter(module=module, action=action).exists()
+        return self.permissions.filter(module=module, action=action).exists() 
+    
