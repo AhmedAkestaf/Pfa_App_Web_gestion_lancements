@@ -1,0 +1,397 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{{ collaborateur.get_full_name }} - Détails{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+    <!-- Main content -->
+    <main class="px-4">
+        <div class="container-fluid">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">
+                        <i class="fas fa-user" style="margin-right: 18px;"></i> {{ collaborateur.get_full_name }}
+                    </h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <a href="{% url 'collaborateurs:list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Retour à la liste
+                            </a>
+                            {% if can_update %}
+                                <a href="{% url 'collaborateurs:edit' collaborateur.pk %}" class="btn btn-outline-warning">
+                                    <i class="fas fa-edit"></i> Modifier
+                                </a>
+                            {% endif %}
+                            {% if can_delete and collaborateur != user %}
+                                <a href="{% url 'collaborateurs:delete' collaborateur.pk %}" class="btn btn-outline-danger">
+                                    <i class="fas fa-trash"></i> Supprimer
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="row">
+                    <!-- Informations personnelles -->
+                    <div class="col-md-4">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-user-circle"></i> Informations personnelles
+                                </h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="avatar bg-primary text-white rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 2rem;">
+                                    {{ collaborateur.nom_collaborateur.0 }}{{ collaborateur.prenom_collaborateur.0 }}
+                                </div>
+                                <h4>{{ collaborateur.get_full_name }}</h4>
+                                <p class="text-muted">{{ collaborateur.email|default:"Email non renseigné" }}</p>
+                                
+                                <div class="row text-start mt-4">
+                                    <div class="col-12 mb-2">
+                                        <strong>Statut:</strong>
+                                        {% if collaborateur.is_active %}
+                                            <span class="badge bg-success ms-2">Actif</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary ms-2">Inactif</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-12 mb-2">
+                                        <strong>Rôle:</strong>
+                                        {% if collaborateur.user_role %}
+                                            <span class="badge bg-info ms-2">{{ collaborateur.user_role.name }}</span>
+                                        {% else %}
+                                            <span class="text-muted ms-2">Aucun rôle assigné</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-12 mb-2">
+                                        <strong>Membre depuis:</strong>
+                                        <span class="ms-2">{{ collaborateur.created_at|date:"d/m/Y" }}</span>
+                                    </div>
+                                    <div class="col-12 mb-2">
+                                        <strong>Dernière modification:</strong>
+                                        <span class="ms-2">{{ collaborateur.updated_at|date:"d/m/Y H:i" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Statistiques rapides -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-chart-bar"></i> Statistiques
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-6 mb-3">
+                                        <div class="bg-light p-3 rounded">
+                                            <h4 class="text-primary mb-0">{{ affectations_ateliers.count }}</h4>
+                                            <small class="text-muted">Ateliers</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <div class="bg-light p-3 rounded">
+                                            <h4 class="text-success mb-0">{{ competences.count }}</h4>
+                                            <small class="text-muted">Compétences</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="bg-light p-3 rounded">
+                                            <h4 class="text-warning mb-0">{{ lancements.count }}</h4>
+                                            <small class="text-muted">Lancements</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="bg-light p-3 rounded">
+                                            <h4 class="text-info mb-0">{{ historique_roles.count }}</h4>
+                                            <small class="text-muted">Changements</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Détails étendus -->
+                    <div class="col-md-8">
+                        <!-- Navigation par onglets -->
+                        <ul class="nav nav-tabs" id="detailTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="ateliers-tab" data-bs-toggle="tab" data-bs-target="#ateliers" type="button" role="tab">
+                                    <i class="fas fa-industry"></i> Affectations Ateliers
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="competences-tab" data-bs-toggle="tab" data-bs-target="#competences" type="button" role="tab">
+                                    <i class="fas fa-certificate"></i> Compétences
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="lancements-tab" data-bs-toggle="tab" data-bs-target="#lancements" type="button" role="tab">
+                                    <i class="fas fa-rocket"></i> Lancements Récents
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="historique-tab" data-bs-toggle="tab" data-bs-target="#historique" type="button" role="tab">
+                                    <i class="fas fa-history"></i> Historique des Rôles
+                                </button>
+                            </li>
+                        </ul>
+
+                        <!-- Contenu des onglets -->
+                        <div class="tab-content" id="detailTabsContent">
+                            <!-- Affectations Ateliers -->
+                            <div class="tab-pane fade show active" id="ateliers" role="tabpanel">
+                                <div class="card">
+                                    <div class="card-body">
+                                        {% if affectations_ateliers %}
+                                            <div class="table-responsive">
+                                                <table class="table table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Atelier</th>
+                                                            <th>Rôle</th>
+                                                            <th>Date Affectation</th>
+                                                            <th>Date Fin</th>
+                                                            <th>Statut</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for affectation in affectations_ateliers %}
+                                                            <tr>
+                                                                <td>
+                                                                    <strong>{{ affectation.atelier.nom_atelier }}</strong><br>
+                                                                    <small class="text-muted">{{ affectation.atelier.type_atelier }}</small>
+                                                                </td>
+                                                                <td>{{ affectation.role_dans_atelier }}</td>
+                                                                <td>{{ affectation.date_affectation|date:"d/m/Y" }}</td>
+                                                                <td>
+                                                                    {% if affectation.date_fin_affectation %}
+                                                                        {{ affectation.date_fin_affectation|date:"d/m/Y" }}
+                                                                    {% else %}
+                                                                        <span class="text-muted">En cours</span>
+                                                                    {% endif %}
+                                                                </td>
+                                                                <td>
+                                                                    {% if not affectation.date_fin_affectation %}
+                                                                        <span class="badge bg-success">Actif</span>
+                                                                    {% else %}
+                                                                        <span class="badge bg-secondary">Terminé</span>
+                                                                    {% endif %}
+                                                                </td>
+                                                            </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        {% else %}
+                                            <div class="text-center py-4">
+                                                <i class="fas fa-industry fa-2x text-muted mb-3"></i>
+                                                <p class="text-muted">Aucune affectation d'atelier trouvée.</p>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Compétences -->
+                            <div class="tab-pane fade" id="competences" role="tabpanel">
+                                <div class="card">
+                                    <div class="card-body">
+                                        {% if competences %}
+                                            <div class="row">
+                                                {% for competence in competences %}
+                                                    <div class="col-md-6 mb-3">
+                                                        <div class="border rounded p-3">
+                                                            <h6 class="mb-2">{{ competence.categorie.nom_categorie }}</h6>
+                                                            <div class="d-flex justify-content-between align-items-center">
+                                                                <span class="badge bg-{% if competence.niveau_competence == 'expert' %}success{% elif competence.niveau_competence == 'avance' %}warning{% else %}info{% endif %}">
+                                                                    {{ competence.get_niveau_competence_display }}
+                                                                </span>
+                                                                <small class="text-muted">
+                                                                    Certifié le {{ competence.date_certification|date:"d/m/Y" }}
+                                                                </small>
+                                                            </div>
+                                                            {% if competence.categorie.description %}
+                                                                <small class="text-muted d-block mt-2">
+                                                                    {{ competence.categorie.description|truncatewords:10 }}
+                                                                </small>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <div class="text-center py-4">
+                                                <i class="fas fa-certificate fa-2x text-muted mb-3"></i>
+                                                <p class="text-muted">Aucune compétence certifiée trouvée.</p>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Lancements Récents -->
+                            <div class="tab-pane fade" id="lancements" role="tabpanel">
+                                <div class="card">
+                                    <div class="card-body">
+                                        {% if lancements %}
+                                            <div class="table-responsive">
+                                                <table class="table table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>N° Lancement</th>
+                                                            <th>Affaire</th>
+                                                            <th>Atelier</th>
+                                                            <th>Date Lancement</th>
+                                                            <th>Statut</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for lancement in lancements %}
+                                                            <tr>
+                                                                <td>
+                                                                    <strong>{{ lancement.num_lanc }}</strong>
+                                                                </td>
+                                                                <td>
+                                                                    {{ lancement.affaire.code_affaire }}<br>
+                                                                    <small class="text-muted">{{ lancement.affaire.client }}</small>
+                                                                </td>
+                                                                <td>{{ lancement.atelier.nom_atelier }}</td>
+                                                                <td>{{ lancement.date_lancement|date:"d/m/Y" }}</td>
+                                                                <td>
+                                                                    <span class="badge bg-{% if lancement.statut == 'termine' %}success{% elif lancement.statut == 'en_cours' %}primary{% else %}warning{% endif %}">
+                                                                        {{ lancement.get_statut_display }}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div class="text-center mt-3">
+                                                <a href="{% url 'lancements:list' %}?collaborateur={{ collaborateur.pk }}" class="btn btn-outline-primary">
+                                                    Voir tous les lancements
+                                                </a>
+                                            </div>
+                                        {% else %}
+                                            <div class="text-center py-4">
+                                                <i class="fas fa-rocket fa-2x text-muted mb-3"></i>
+                                                <p class="text-muted">Aucun lancement assigné trouvé.</p>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Historique des Rôles -->
+                            <div class="tab-pane fade" id="historique" role="tabpanel">
+                                <div class="card">
+                                    <div class="card-body">
+                                        {% if historique_roles %}
+                                            <div class="timeline">
+                                                {% for changement in historique_roles %}
+                                                    <div class="timeline-item">
+                                                        <div class="timeline-marker"></div>
+                                                        <div class="timeline-content">
+                                                            <h6 class="timeline-title">
+                                                                {% if changement.old_role %}
+                                                                    Changement de rôle: {{ changement.old_role.name }} → {{ changement.new_role.name|default:"Aucun rôle" }}
+                                                                {% else %}
+                                                                    Attribution du rôle: {{ changement.new_role.name }}
+                                                                {% endif %}
+                                                            </h6>
+                                                            <p class="timeline-body">
+                                                                {{ changement.change_reason|default:"Aucune raison spécifiée" }}
+                                                            </p>
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-clock"></i> {{ changement.changed_at|date:"d/m/Y H:i" }}
+                                                                {% if changement.changed_by %}
+                                                                    par {{ changement.changed_by.get_full_name }}
+                                                                {% endif %}
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <div class="text-center py-4">
+                                                <i class="fas fa-history fa-2x text-muted mb-3"></i>
+                                                <p class="text-muted">Aucun changement de rôle trouvé.</p>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<style>
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    .timeline:before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #dee2e6;
+    }
+    .timeline-item {
+        position: relative;
+        margin-bottom: 30px;
+    }
+    .timeline-marker {
+        position: absolute;
+        left: -23px;
+        top: 0;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #007bff;
+        border: 3px solid #fff;
+        box-shadow: 0 0 0 3px #dee2e6;
+    }
+    .timeline-content {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #007bff;
+    }
+    .timeline-title {
+        margin-bottom: 10px;
+        color: #495057;
+    }
+    .timeline-body {
+        margin-bottom: 10px;
+        color: #6c757d;
+    }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
+{% endblock %}

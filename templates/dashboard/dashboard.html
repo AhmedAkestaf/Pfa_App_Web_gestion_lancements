@@ -66,7 +66,7 @@
                     <div class="icon">
                         <i class="fas fa-users"></i>
                     </div>
-                    <a href="#" class="small-box-footer">
+                    <a href="{% url 'collaborateurs:list' %}" class="small-box-footer">
                         Plus d'infos <i class="fas fa-arrow-circle-right"></i>
                     </a>
                 </div>
@@ -143,7 +143,7 @@
                     {% has_permission 'collaborateurs' 'create' as can_create_collaborateur %}
                     {% if can_create_collaborateur %}
                     <div class="col-md-3 mb-3">
-                        <a href="#" class="btn btn-primary btn-lg w-100">
+                        <a href="{% url 'collaborateurs:create' %}" class="btn btn-primary btn-lg w-100">
                             <i class="fas fa-user-plus me-2"></i>
                             <div>Nouveau collaborateur</div>
                             <small class="opacity-75">Ajouter un collaborateur</small>

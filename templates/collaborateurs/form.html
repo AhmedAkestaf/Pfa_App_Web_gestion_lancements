@@ -1,0 +1,279 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Main content -->
+        <main class="col-12 px-4">
+            <div class="container">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-user-plus" style="margin-right: 18px;"></i> {{ title }}
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{% url 'collaborateurs:list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Retour à la liste
+                    </a>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Formulaire -->
+            <div class="row justify-content-center">
+                <div class="col-lg-6 col-md-8 col-sm-10">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-user-circle"></i> Informations du collaborateur
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" novalidate>
+                                {% csrf_token %}
+                                
+                                <div class="row">
+                                    <!-- Nom -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="nom_collaborateur" class="form-label">
+                                            Nom <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="nom_collaborateur" 
+                                               name="nom_collaborateur" 
+                                               value="{{ collaborateur.nom_collaborateur|default:'' }}"
+                                               required>
+                                        <div class="form-text">Le nom de famille du collaborateur</div>
+                                    </div>
+
+                                    <!-- Prénom -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="prenom_collaborateur" class="form-label">
+                                            Prénom <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="prenom_collaborateur" 
+                                               name="prenom_collaborateur" 
+                                               value="{{ collaborateur.prenom_collaborateur|default:'' }}"
+                                               required>
+                                        <div class="form-text">Le prénom du collaborateur</div>
+                                    </div>
+                                </div>
+
+                                <!-- Email -->
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">
+                                        Email <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="email" 
+                                           class="form-control" 
+                                           id="email" 
+                                           name="email" 
+                                           value="{{ collaborateur.email|default:'' }}"
+                                           required>
+                                    <div class="form-text">Adresse email unique pour la connexion</div>
+                                </div>
+
+                                {% if action == 'create' %}
+                                    <!-- Mot de passe (uniquement à la création) -->
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="password" class="form-label">
+                                                Mot de passe <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="input-group">
+                                                <input type="password" 
+                                                       class="form-control" 
+                                                       id="password" 
+                                                       name="password" 
+                                                       minlength="8"
+                                                       required>
+                                                <button class="btn btn-outline-secondary" 
+                                                        type="button" 
+                                                        id="togglePassword">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                            <div class="form-text">Minimum 8 caractères</div>
+                                        </div>
+
+                                        <div class="col-md-6 mb-3">
+                                            <label for="password_confirm" class="form-label">
+                                                Confirmer le mot de passe <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="password" 
+                                                   class="form-control" 
+                                                   id="password_confirm" 
+                                                   name="password_confirm"
+                                                   minlength="8"
+                                                   required>
+                                            <div class="form-text">Retapez le mot de passe</div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                <!-- Rôle -->
+                                <div class="mb-3">
+                                    <label for="user_role" class="form-label">Rôle utilisateur</label>
+                                    <select class="form-select" id="user_role" name="user_role">
+                                        <option value="">Aucun rôle assigné</option>
+                                        {% for role in roles %}
+                                            <option value="{{ role.id }}" 
+                                                    {% if collaborateur.user_role_id == role.id %}selected{% endif %}>
+                                                {{ role.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Définit les permissions d'accès du collaborateur</div>
+                                </div>
+
+                                <!-- Statut (uniquement pour la modification) -->
+                                {% if action == 'edit' %}
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" 
+                                                   type="checkbox" 
+                                                   id="is_active" 
+                                                   name="is_active"
+                                                   {% if collaborateur.is_active %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_active">
+                                                Compte actif
+                                            </label>
+                                        </div>
+                                        <div class="form-text">Décocher pour désactiver le compte du collaborateur</div>
+                                    </div>
+
+                                    <!-- Raison du changement de rôle -->
+                                    <div class="mb-3">
+                                        <label for="change_reason" class="form-label">Raison du changement</label>
+                                        <textarea class="form-control" 
+                                                  id="change_reason" 
+                                                  name="change_reason" 
+                                                  rows="3"
+                                                  placeholder="Expliquez la raison de cette modification..."></textarea>
+                                        <div class="form-text">Optionnel : explique la raison de la modification</div>
+                                    </div>
+                                {% endif %}
+
+                                <!-- Boutons d'action -->
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'collaborateurs:list' %}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> Annuler
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> 
+                                        {% if action == 'create' %}Créer le collaborateur{% else %}Enregistrer les modifications{% endif %}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Aide contextuelle -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-info-circle"></i> Aide
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="mb-0">
+                                <li><strong>Nom et Prénom :</strong> Informations personnelles du collaborateur</li>
+                                <li><strong>Email :</strong> Utilisé comme identifiant de connexion (doit être unique)</li>
+                                {% if action == 'create' %}
+                                    <li><strong>Mot de passe :</strong> Mot de passe initial (le collaborateur pourra le changer)</li>
+                                {% endif %}
+                                <li><strong>Rôle :</strong> Détermine les permissions d'accès aux différents modules</li>
+                                {% if action == 'edit' %}
+                                    <li><strong>Compte actif :</strong> Permet de désactiver temporairement un collaborateur</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
+
+<script>
+    // Pass Django context to JavaScript
+    const formAction = "{{ action }}";
+    
+    // Toggle password visibility
+    const togglePasswordBtn = document.getElementById('togglePassword');
+    if (togglePasswordBtn) {
+        togglePasswordBtn.addEventListener('click', function() {
+            const password = document.getElementById('password');
+            const icon = this.querySelector('i');
+            
+            if (password.type === 'password') {
+                password.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                password.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+    }
+
+    // Password confirmation validation (only for create action)
+    if (formAction === 'create') {
+        const passwordConfirm = document.getElementById('password_confirm');
+        if (passwordConfirm) {
+            passwordConfirm.addEventListener('input', function() {
+                const password = document.getElementById('password').value;
+                const confirmPassword = this.value;
+                
+                if (confirmPassword && password !== confirmPassword) {
+                    this.setCustomValidity('Les mots de passe ne correspondent pas');
+                    this.classList.add('is-invalid');
+                } else {
+                    this.setCustomValidity('');
+                    this.classList.remove('is-invalid');
+                }
+            });
+        }
+    }
+
+    // Form validation
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            const forms = document.getElementsByTagName('form');
+            Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+</script>
+{% endblock %}

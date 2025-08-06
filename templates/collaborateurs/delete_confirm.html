@@ -1,0 +1,441 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Supprimer {{ collaborateur.get_full_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<style>
+    .delete-container {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding: 2rem 0;
+    }
+    
+    .centered-content {
+        max-width: 800px;
+        margin: 0 auto;
+        width: 100%;
+        padding: 0 1rem;
+    }
+    
+    .main-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    @media (max-width: 768px) {
+        .centered-content {
+            max-width: 100%;
+            padding: 0 0.5rem;
+        }
+        
+        .delete-container {
+            padding: 1rem 0;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+    <!-- Main content -->
+    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="margin-right: 100px;">
+        <div class="delete-container">
+            <div class="centered-content">
+                
+                <!-- Header centré -->
+                <div class="main-header">
+                    <h1 class="h2 text-danger mb-3" style="position: relative;">
+                        <i class="fas fa-user-times" style="margin-right: 25px;"></i> {{ title }}
+                    </h1>
+                    <div class="mb-3">
+                        <a href="{% url 'collaborateurs:detail' collaborateur.pk %}" class="btn btn-outline-info">
+                            <i class="fas fa-eye"></i> Voir détails
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                {% if messages %}
+                    <div class="mb-4">
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <!-- Alerte de danger -->
+                <div class="alert alert-danger border-danger mb-4">
+                    <div class="d-flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h4 class="alert-heading">Attention - Action irréversible</h4>
+                            <p class="mb-0">
+                                Vous êtes sur le point de supprimer définitivement ce collaborateur. 
+                                Cette action ne peut pas être annulée.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informations du collaborateur -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-user"></i> Collaborateur à supprimer
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 text-center">
+                                <div class="avatar bg-danger text-white rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 2rem;">
+                                    {{ collaborateur.nom_collaborateur.0 }}{{ collaborateur.prenom_collaborateur.0 }}
+                                </div>
+                            </div>
+                            <div class="col-md-9">
+                                <h4>{{ collaborateur.get_full_name }}</h4>
+                                <p class="text-muted mb-3">{{ collaborateur.email|default:"Email non renseigné" }}</p>
+                                
+                                <div class="row">
+                                    <div class="col-sm-6 mb-2">
+                                        <strong>Statut:</strong>
+                                        {% if collaborateur.is_active %}
+                                            <span class="badge bg-success ms-2">Actif</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary ms-2">Inactif</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-sm-6 mb-2">
+                                        <strong>Rôle:</strong>
+                                        {% if collaborateur.user_role %}
+                                            <span class="badge bg-info ms-2">{{ collaborateur.user_role.name }}</span>
+                                        {% else %}
+                                            <span class="text-muted ms-2">Aucun rôle</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-sm-6 mb-2">
+                                        <strong>Membre depuis:</strong>
+                                        <span class="ms-2">{{ collaborateur.created_at|date:"d/m/Y" }}</span>
+                                    </div>
+                                    <div class="col-sm-6 mb-2">
+                                        <strong>Dernière activité:</strong>
+                                        <span class="ms-2">{{ collaborateur.updated_at|date:"d/m/Y H:i" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Impact de la suppression -->
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-info-circle"></i> Impact de la suppression
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-3">La suppression de ce collaborateur aura les conséquences suivantes :</p>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-database text-warning"></i> Données supprimées :</h6>
+                                <ul>
+                                    <li>Informations personnelles</li>
+                                    <li>Historique des rôles</li>
+                                    <li>Affectations aux ateliers</li>
+                                    <li>Compétences certifiées</li>
+                                    <li>Compte d'authentification</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-link text-info"></i> Données conservées :</h6>
+                                <ul>
+                                    <li>Lancements déjà créés (référence maintenue)</li>
+                                    <li>Historique des actions dans les logs</li>
+                                    <li>Affaires où il était responsable</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info mt-3">
+                            <strong>Note :</strong> Les références à ce collaborateur dans les lancements et affaires existants seront conservées pour maintenir l'intégrité historique des données.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistiques du collaborateur -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-bar"></i> Statistiques du collaborateur
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-primary mb-0">{{ stats.affectations_count|default:0 }}</h4>
+                                    <small class="text-muted">Affectations ateliers</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-success mb-0">{{ stats.competences_count|default:0 }}</h4>
+                                    <small class="text-muted">Compétences certifiées</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-warning mb-0">{{ stats.lancements_count|default:0 }}</h4>
+                                    <small class="text-muted">Lancements assignés</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-info mb-0">{{ stats.affaires_count|default:0 }}</h4>
+                                    <small class="text-muted">Affaires en responsabilité</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vérifications de sécurité -->
+                {% if not can_delete %}
+                    <div class="alert alert-danger mb-4">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-ban"></i> Suppression bloquée
+                        </h6>
+                        <p class="mb-3">Ce collaborateur ne peut pas être supprimé pour les raisons suivantes :</p>
+                        <ul class="mb-3">
+                            {% if has_active_lancements %}
+                                <li>Il a des lancements en cours ou lancés</li>
+                            {% endif %}
+                            {% if has_active_affaires %}
+                                <li>Il est responsable d'affaires en cours</li>
+                            {% endif %}
+                        </ul>
+                        <p class="mb-0">
+                            <strong>Action recommandée :</strong> Désactivez le compte au lieu de le supprimer, 
+                            ou réassignez ses responsabilités à un autre collaborateur.
+                        </p>
+                    </div>
+                    
+                    <div class="d-flex flex-column flex-md-row justify-content-center gap-3 mb-4">
+                        <a href="{% url 'collaborateurs:detail' collaborateur.pk %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Retour aux détails
+                        </a>
+                        <a href="{% url 'collaborateurs:list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-list"></i> Retour à la liste
+                        </a>
+                        <a href="{% url 'collaborateurs:edit' collaborateur.pk %}" class="btn btn-warning">
+                            <i class="fas fa-user-slash"></i> Désactiver le compte
+                        </a>
+                    </div>
+
+                {% else %}
+                    <!-- Formulaire de confirmation -->
+                    <div class="card border-danger mb-4">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-check-circle"></i> Confirmation de suppression
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" id="deleteForm">
+                                {% csrf_token %}
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="confirmDelete" required>
+                                    <label class="form-check-label" for="confirmDelete">
+                                        <strong>Je comprends que cette action est irréversible</strong>
+                                    </label>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="confirmBackup" required>
+                                    <label class="form-check-label" for="confirmBackup">
+                                        J'ai vérifié que les données importantes ont été sauvegardées si nécessaire
+                                    </label>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="deleteReason" class="form-label">
+                                        Raison de la suppression <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" id="deleteReason" name="delete_reason" required>
+                                        <option value="">Sélectionnez une raison...</option>
+                                        <option value="fin_contrat">Fin de contrat</option>
+                                        <option value="demission">Démission</option>
+                                        <option value="licenciement">Licenciement</option>
+                                        <option value="mutation">Mutation vers autre service</option>
+                                        <option value="doublon">Compte en doublon</option>
+                                        <option value="test">Compte de test</option>
+                                        <option value="autre">Autre raison</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3" id="otherReasonDiv" style="display: none;">
+                                    <label for="otherReason" class="form-label">Précisez la raison :</label>
+                                    <textarea class="form-control" id="otherReason" name="other_reason" rows="2"></textarea>
+                                </div>
+
+
+
+                                <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
+                                    <a href="{% url 'collaborateurs:detail' collaborateur.pk %}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> Annuler
+                                    </a>
+                                    <a href="{% url 'collaborateurs:list' %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-list"></i> Retour à la liste
+                                    </a>
+                                    <button type="submit" class="btn btn-danger" id="deleteButton" disabled>
+                                        <i class="fas fa-trash"></i> Supprimer définitivement
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Alternatives à la suppression -->
+                    <div class="card border-info">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-lightbulb"></i> Alternatives recommandées
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-3">Avant de supprimer ce collaborateur, considérez ces alternatives :</p>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-user-slash text-warning me-2"></i>
+                                        <strong>Désactiver le compte :</strong>
+                                    </div>
+                                    <p class="text-muted ms-4 mb-3">
+                                        Empêche la connexion tout en conservant toutes les données historiques.
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-user-tag text-info me-2"></i>
+                                        <strong>Changer le rôle :</strong>
+                                    </div>
+                                    <p class="text-muted ms-4 mb-3">
+                                        Retirez tous les rôles pour limiter l'accès sans supprimer.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <a href="{% url 'collaborateurs:edit' collaborateur.pk %}" class="btn btn-outline-warning me-2">
+                                    <i class="fas fa-edit"></i> Désactiver le compte
+                                </a>
+                                <a href="{% url 'collaborateurs:edit' collaborateur.pk %}#user_role" class="btn btn-outline-info">
+                                    <i class="fas fa-user-cog"></i> Modifier les permissions
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+                
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Afficher/masquer le champ "Autre raison"
+            const deleteReasonSelect = document.getElementById('deleteReason');
+            if (deleteReasonSelect) {
+                deleteReasonSelect.addEventListener('change', function() {
+                    const otherDiv = document.getElementById('otherReasonDiv');
+                    const otherInput = document.getElementById('otherReason');
+                    
+                    if (this.value === 'autre') {
+                        otherDiv.style.display = 'block';
+                        otherInput.required = true;
+                    } else {
+                        otherDiv.style.display = 'none';
+                        otherInput.required = false;
+                        otherInput.value = '';
+                    }
+                    checkFormValidity();
+                });
+            }
+
+            // Vérifier la validité du formulaire
+            function checkFormValidity() {
+                const confirmDelete = document.getElementById('confirmDelete');
+                const confirmBackup = document.getElementById('confirmBackup');
+                const deleteReason = document.getElementById('deleteReason');
+                const otherReason = document.getElementById('otherReason');
+                const deleteButton = document.getElementById('deleteButton');
+                
+                if (!deleteButton) return; // Si le bouton n'existe pas, on sort
+                
+                const confirmDeleteChecked = confirmDelete ? confirmDelete.checked : false;
+                const confirmBackupChecked = confirmBackup ? confirmBackup.checked : false;
+                const deleteReasonValue = deleteReason ? deleteReason.value : '';
+                
+                // Vérifier si "autre raison" est remplie si nécessaire
+                let otherReasonOk = true;
+                if (deleteReason && deleteReason.value === 'autre') {
+                    otherReasonOk = otherReason ? otherReason.value.trim() !== '' : false;
+                }
+                
+                const isValid = confirmDeleteChecked && 
+                              confirmBackupChecked && 
+                              deleteReasonValue !== '' && 
+                              otherReasonOk;
+                
+                deleteButton.disabled = !isValid;
+            }
+
+            // Écouter les changements sur tous les champs requis
+            const fieldsToWatch = ['confirmDelete', 'confirmBackup', 'deleteReason', 'otherReason'];
+            
+            fieldsToWatch.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('change', checkFormValidity);
+                    element.addEventListener('input', checkFormValidity);
+                }
+            });
+
+            // Vérification initiale
+            checkFormValidity();
+
+            // Confirmation finale avant soumission
+            const deleteForm = document.getElementById('deleteForm');
+            if (deleteForm) {
+                deleteForm.addEventListener('submit', function(e) {
+                    if (!confirm('DERNIÈRE CONFIRMATION\n\nÊtes-vous absolument certain de vouloir supprimer ce collaborateur ?\n\nCette action ne peut pas être annulée !')) {
+                        e.preventDefault();
+                    }
+                });
+            }
+
+            // Form validation bootstrap
+            const forms = document.getElementsByClassName('needs-validation');
+            Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        });
+    </script>
+{% endblock %}

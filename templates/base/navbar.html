@@ -32,7 +32,7 @@
                     <ul class="dropdown-menu" aria-labelledby="donneesDropdown">
                         {% has_permission 'collaborateurs' 'read' as can_view_collaborateurs %}
                         {% if can_view_collaborateurs %}
-                        <li><a class="dropdown-item" href="#">
+                        <li><a class="dropdown-item" href="{% url 'collaborateurs:list' %}">
                             <i class="fas fa-users"></i> Collaborateurs
                         </a></li>
                         {% endif %}

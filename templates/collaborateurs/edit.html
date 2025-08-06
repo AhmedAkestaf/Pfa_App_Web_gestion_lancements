@@ -1,0 +1,458 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Importer des collaborateurs{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+    <!-- Main content -->
+    <main class="px-4">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-user-edit" style="margin-right: 18px;"></i> {{ title }}
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <a href="{% url 'collaborateurs:detail' collaborateur.pk %}" class="btn btn-outline-info">
+                            <i class="fas fa-eye"></i> Voir détails
+                        </a>
+                        <a href="{% url 'collaborateurs:list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Retour à la liste
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="row">
+                <!-- Informations actuelles -->
+                <div class="col-md-4">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-user-circle"></i> Informations actuelles
+                            </h5>
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="avatar bg-primary text-white rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                                {{ collaborateur.nom_collaborateur.0 }}{{ collaborateur.prenom_collaborateur.0 }}
+                            </div>
+                            <h5>{{ collaborateur.get_full_name }}</h5>
+                            <p class="text-muted mb-3">{{ collaborateur.email|default:"Email non renseigné" }}</p>
+                            
+                            <div class="text-start">
+                                <div class="mb-2">
+                                    <strong>Statut:</strong>
+                                    {% if collaborateur.is_active %}
+                                        <span class="badge bg-success ms-2">Actif</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary ms-2">Inactif</span>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Rôle actuel:</strong>
+                                    {% if collaborateur.user_role %}
+                                        <span class="badge bg-info ms-2">{{ collaborateur.user_role.name }}</span>
+                                    {% else %}
+                                        <span class="text-muted ms-2">Aucun rôle</span>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Membre depuis:</strong>
+                                    <span class="ms-2">{{ collaborateur.created_at|date:"d/m/Y" }}</span>
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Dernière modification:</strong>
+                                    <span class="ms-2">{{ collaborateur.updated_at|date:"d/m/Y H:i" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Alerte de sécurité -->
+                    <div class="alert alert-warning">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-exclamation-triangle"></i> Attention
+                        </h6>
+                        <ul class="mb-0">
+                            <li>Les modifications prendront effet immédiatement</li>
+                            <li>Le changement de rôle affectera les permissions d'accès</li>
+                            <li>La désactivation empêchera la connexion</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Formulaire de modification -->
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-edit"></i> Modifier les informations
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" novalidate>
+                                {% csrf_token %}
+                                
+                                <div class="row">
+                                    <!-- Nom -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="nom_collaborateur" class="form-label">
+                                            Nom <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="nom_collaborateur" 
+                                               name="nom_collaborateur" 
+                                               value="{{ collaborateur.nom_collaborateur }}"
+                                               required>
+                                    </div>
+
+                                    <!-- Prénom -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="prenom_collaborateur" class="form-label">
+                                            Prénom <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="prenom_collaborateur" 
+                                               name="prenom_collaborateur" 
+                                               value="{{ collaborateur.prenom_collaborateur }}"
+                                               required>
+                                    </div>
+                                </div>
+
+                                <!-- Email -->
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">
+                                        Email <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="email" 
+                                           class="form-control" 
+                                           id="email" 
+                                           name="email" 
+                                           value="{{ collaborateur.email }}"
+                                           required>
+                                    <div class="form-text">L'email sert d'identifiant de connexion</div>
+                                </div>
+
+                                <!-- Rôle -->
+                                <div class="mb-3">
+                                    <label for="user_role" class="form-label">
+                                        Rôle utilisateur
+                                    </label>
+                                    <select class="form-select" id="user_role" name="user_role">
+                                        <option value="">Aucun rôle assigné</option>
+                                        {% for role in roles %}
+                                            <option value="{{ role.id }}" 
+                                                    {% if collaborateur.user_role_id == role.id %}selected{% endif %}>
+                                                {{ role.name }}
+                                                {% if role.description %}
+                                                    - {{ role.description|truncatewords:10 }}
+                                                {% endif %}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">
+                                        {% if collaborateur.user_role %}
+                                            Rôle actuel: <strong>{{ collaborateur.user_role.name }}</strong>
+                                        {% else %}
+                                            Aucun rôle actuellement assigné
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Statut du compte -->
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               id="is_active" 
+                                               name="is_active"
+                                               {% if collaborateur.is_active %}checked{% endif %}>
+                                        <label class="form-check-label" for="is_active">
+                                            <strong>Compte actif</strong>
+                                        </label>
+                                    </div>
+                                    <div class="form-text">
+                                        Si décoché, le collaborateur ne pourra plus se connecter
+                                    </div>
+                                </div>
+
+                                <!-- Raison du changement -->
+                                <div class="mb-4">
+                                    <label for="change_reason" class="form-label">
+                                        Raison de la modification
+                                    </label>
+                                    <textarea class="form-control" 
+                                              id="change_reason" 
+                                              name="change_reason" 
+                                              rows="3"
+                                              placeholder="Décrivez brièvement la raison de cette modification (optionnel)..."></textarea>
+                                    <div class="form-text">
+                                        Cette information sera enregistrée dans l'historique des modifications
+                                    </div>
+                                </div>
+
+                                <!-- Section Mot de passe -->
+                                <div class="card bg-light mb-4">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            <i class="fas fa-key"></i> Gestion du mot de passe
+                                        </h6>
+                                        <p class="card-text text-muted">
+                                            Pour des raisons de sécurité, la modification du mot de passe doit être effectuée séparément.
+                                        </p>
+                                        <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#passwordModal">
+                                            <i class="fas fa-lock"></i> Réinitialiser le mot de passe
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Boutons d'action -->
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <a href="{% url 'collaborateurs:detail' collaborateur.pk %}" class="btn btn-secondary me-2">
+                                            <i class="fas fa-times"></i> Annuler
+                                        </a>
+                                        <a href="{% url 'collaborateurs:list' %}" class="btn btn-outline-secondary">
+                                            <i class="fas fa-list"></i> Retour à la liste
+                                        </a>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> Enregistrer les modifications
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Modal de réinitialisation du mot de passe -->
+<div class="modal fade" id="passwordModal" tabindex="-1" aria-labelledby="passwordModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="passwordModalLabel">
+                    <i class="fas fa-key"></i> Réinitialiser le mot de passe
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <h6 class="alert-heading">Information</h6>
+                    <p class="mb-0">
+                        La réinitialisation du mot de passe générera un nouveau mot de passe temporaire 
+                        qui devra être communiqué au collaborateur de manière sécurisée.
+                    </p>
+                </div>
+                <form id="passwordResetForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">
+                            Nouveau mot de passe <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <input type="password" 
+                                   class="form-control" 
+                                   id="new_password" 
+                                   name="new_password" 
+                                   minlength="8"
+                                   required>
+                            <button class="btn btn-outline-secondary" type="button" id="toggleNewPassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-info" type="button" id="generatePassword" title="Générer un mot de passe">
+                                <i class="fas fa-magic"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">
+                            Confirmer le mot de passe <span class="text-danger">*</span>
+                        </label>
+                        <input type="password" 
+                               class="form-control" 
+                               id="confirm_password" 
+                               name="confirm_password"
+                               minlength="8"
+                               required>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="force_password_change">
+                        <label class="form-check-label" for="force_password_change">
+                            Forcer le changement du mot de passe à la prochaine connexion
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-warning" id="confirmPasswordReset">
+                    <i class="fas fa-key"></i> Réinitialiser
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
+
+<script>
+    // Toggle password visibility
+    document.getElementById('toggleNewPassword').addEventListener('click', function() {
+        const password = document.getElementById('new_password');
+        const icon = this.querySelector('i');
+        
+        if (password.type === 'password') {
+            password.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            password.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    });
+
+    // Generate random password
+    document.getElementById('generatePassword').addEventListener('click', function() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+        let password = '';
+        for (let i = 0; i < 12; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        document.getElementById('new_password').value = password;
+        document.getElementById('confirm_password').value = password;
+    });
+
+    // Password confirmation validation
+    document.getElementById('confirm_password').addEventListener('input', function() {
+        const password = document.getElementById('new_password').value;
+        const confirmPassword = this.value;
+        
+        if (confirmPassword && password !== confirmPassword) {
+            this.setCustomValidity('Les mots de passe ne correspondent pas');
+            this.classList.add('is-invalid');
+        } else {
+            this.setCustomValidity('');
+            this.classList.remove('is-invalid');
+        }
+    });
+
+    // Form validation
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            const forms = document.getElementsByTagName('form');
+            Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+
+    // Fonction pour obtenir le CSRF token
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+
+    // Réinitialisation du mot de passe - VERSION CORRIGÉE
+    document.getElementById('confirmPasswordReset').addEventListener('click', function() {
+        const newPassword = document.getElementById('new_password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+        const forceChange = document.getElementById('force_password_change').checked;
+        
+        // Validation côté client
+        if (!newPassword || !confirmPassword) {
+            alert('Veuillez remplir tous les champs');
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            alert('Les mots de passe ne correspondent pas');
+            return;
+        }
+        
+        if (newPassword.length < 8) {
+            alert('Le mot de passe doit contenir au moins 8 caractères');
+            return;
+        }
+        
+        // Désactiver le bouton pendant la requête
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Traitement...';
+        
+        // Obtenir l'ID du collaborateur depuis l'URL actuelle
+        const collaborateurId = window.location.pathname.split('/').filter(Boolean).pop();
+        
+        // Requête AJAX
+        fetch(`/collaborateurs/collaborateur/${collaborateurId}/reset-password/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: JSON.stringify({
+                new_password: newPassword,
+                confirm_password: confirmPassword,
+                force_password_change: forceChange
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Succès
+                alert('Mot de passe réinitialisé avec succès!');
+                
+                // Fermer le modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('passwordModal'));
+                modal.hide();
+                
+                // Réinitialiser le formulaire
+                document.getElementById('passwordResetForm').reset();
+                
+                // Optionnel: recharger la page pour afficher les messages Django
+                window.location.reload();
+            } else {
+                // Erreur
+                alert('Erreur: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Une erreur est survenue lors de la réinitialisation du mot de passe.');
+        })
+        .finally(() => {
+            // Réactiver le bouton
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-key"></i> Réinitialiser';
+        });
+    });
+</script>
+{% endblock %}
