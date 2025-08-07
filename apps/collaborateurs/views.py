@@ -190,13 +190,57 @@ def collaborateur_create(request):
 
 @login_required
 def collaborateur_edit(request, pk):
-    """Vue pour modifier un collaborateur"""
+    """Vue pour modifier un collaborateur avec réinitialisation de mot de passe"""
     if not request.user.has_permission('collaborateurs', 'update'):
         messages.error(request, 'Vous n\'avez pas les permissions pour modifier un collaborateur.')
         return redirect('collaborateurs:list')
     
     collaborateur = get_object_or_404(Collaborateur, pk=pk)
     
+    # Gérer la réinitialisation du mot de passe via AJAX
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        try:
+            import json
+            data = json.loads(request.body)
+            
+            if 'reset_password' in data and data['reset_password']:
+                new_password = data.get('new_password')
+                confirm_password = data.get('confirm_password')
+                force_change = data.get('force_password_change', False)
+                
+                # Validation
+                if not new_password or not confirm_password:
+                    return JsonResponse({'success': False, 'error': 'Tous les champs sont requis'})
+                
+                if new_password != confirm_password:
+                    return JsonResponse({'success': False, 'error': 'Les mots de passe ne correspondent pas'})
+                
+                if len(new_password) < 8:
+                    return JsonResponse({'success': False, 'error': 'Le mot de passe doit contenir au moins 8 caractères'})
+                
+                # Réinitialiser le mot de passe
+                collaborateur.set_password(new_password)
+                
+                # Si force_change est activé et que votre modèle le supporte
+                if force_change and hasattr(collaborateur, 'must_change_password'):
+                    collaborateur.must_change_password = True
+                
+                collaborateur.save()
+                
+                # Log de l'action (optionnel - vous pouvez créer un modèle PasswordResetHistory)
+                messages.success(request, f'Mot de passe réinitialisé pour {collaborateur}')
+                
+                return JsonResponse({
+                    'success': True, 
+                    'message': f'Mot de passe réinitialisé avec succès pour {collaborateur}'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Données invalides'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'Erreur: {str(e)}'})
+    
+    # Traitement normal du formulaire d'édition
     if request.method == 'POST':
         # Récupérer les données du formulaire
         nom = request.POST.get('nom_collaborateur')
@@ -390,51 +434,3 @@ def check_permission_ajax(request):
         return JsonResponse({'has_permission': has_perm})
     
     return JsonResponse({'has_permission': False})
-@login_required
-@require_http_methods(["POST"])
-def reset_collaborateur_password(request, pk):
-    """Vue AJAX pour réinitialiser le mot de passe d'un collaborateur"""
-    if not request.user.has_permission('collaborateurs', 'update'):
-        return JsonResponse({'success': False, 'error': 'Permissions insuffisantes'})
-    
-    collaborateur = get_object_or_404(Collaborateur, pk=pk)
-    
-    try:
-        # Récupérer les données JSON
-        data = json.loads(request.body)
-        new_password = data.get('new_password')
-        confirm_password = data.get('confirm_password')
-        force_change = data.get('force_password_change', False)
-        
-        # Validation
-        if not new_password or not confirm_password:
-            return JsonResponse({'success': False, 'error': 'Tous les champs sont requis'})
-        
-        if new_password != confirm_password:
-            return JsonResponse({'success': False, 'error': 'Les mots de passe ne correspondent pas'})
-        
-        if len(new_password) < 8:
-            return JsonResponse({'success': False, 'error': 'Le mot de passe doit contenir au moins 8 caractères'})
-        
-        # Mettre à jour le mot de passe
-        collaborateur.set_password(new_password)
-        
-        # Si force_change est activé, vous pouvez ajouter un champ dans votre modèle
-        # pour forcer le changement à la prochaine connexion
-        if force_change and hasattr(collaborateur, 'must_change_password'):
-            collaborateur.must_change_password = True
-        
-        collaborateur.save()
-        
-        # Log de l'action (optionnel)
-        messages.success(request, f'Mot de passe réinitialisé pour {collaborateur}')
-        
-        return JsonResponse({
-            'success': True, 
-            'message': f'Mot de passe réinitialisé avec succès pour {collaborateur}'
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Données invalides'})
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': f'Erreur: {str(e)}'})

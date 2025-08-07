@@ -1,7 +1,7 @@
 {% extends 'base/base.html' %}
 {% load static %}
 
-{% block title %}Importer des collaborateurs{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
@@ -261,12 +261,14 @@
                 <div class="alert alert-info">
                     <h6 class="alert-heading">Information</h6>
                     <p class="mb-0">
-                        La réinitialisation du mot de passe générera un nouveau mot de passe temporaire 
+                        La réinitialisation du mot de passe générera un nouveau mot de passe 
                         qui devra être communiqué au collaborateur de manière sécurisée.
                     </p>
                 </div>
                 <form id="passwordResetForm">
                     {% csrf_token %}
+                    <input type="hidden" name="collaborateur_id" value="{{ collaborateur.pk }}">
+                    
                     <div class="mb-3">
                         <label for="new_password" class="form-label">
                             Nouveau mot de passe <span class="text-danger">*</span>
@@ -319,6 +321,11 @@
 <script src="{% static 'js/main.js' %}"></script>
 
 <script>
+    // Fonction pour obtenir le CSRF token
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+
     // Toggle password visibility
     document.getElementById('toggleNewPassword').addEventListener('click', function() {
         const password = document.getElementById('new_password');
@@ -377,12 +384,7 @@
         }, false);
     })();
 
-    // Fonction pour obtenir le CSRF token
-    function getCSRFToken() {
-        return document.querySelector('[name=csrfmiddlewaretoken]').value;
-    }
-
-    // Réinitialisation du mot de passe - VERSION CORRIGÉE
+    // Réinitialisation du mot de passe - VERSION CORRIGÉE POUR ÉVITER LE BLOCAGE
     document.getElementById('confirmPasswordReset').addEventListener('click', function() {
         const newPassword = document.getElementById('new_password').value;
         const confirmPassword = document.getElementById('confirm_password').value;
@@ -405,53 +407,54 @@
         }
         
         // Désactiver le bouton pendant la requête
-        this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Traitement...';
+        const button = this;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Traitement...';
         
-        // Obtenir l'ID du collaborateur depuis l'URL actuelle
-        const collaborateurId = window.location.pathname.split('/').filter(Boolean).pop();
+        // Utiliser l'URL actuelle (page d'édition)
+        const currentUrl = window.location.href;
         
-        // Requête AJAX
-        fetch(`/collaborateurs/collaborateur/${collaborateurId}/reset-password/`, {
+        // Requête AJAX vers la même URL que la page d'édition
+        fetch(currentUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRFToken': getCSRFToken(),
             },
             body: JSON.stringify({
+                reset_password: true,
                 new_password: newPassword,
                 confirm_password: confirmPassword,
                 force_password_change: forceChange
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                // Succès
+                // Afficher le message de succès
                 alert('Mot de passe réinitialisé avec succès!');
                 
-                // Fermer le modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('passwordModal'));
-                modal.hide();
-                
-                // Réinitialiser le formulaire
-                document.getElementById('passwordResetForm').reset();
-                
-                // Optionnel: recharger la page pour afficher les messages Django
+                // SOLUTION: Recharger automatiquement la page pour éviter le blocage
                 window.location.reload();
+                
             } else {
-                // Erreur
-                alert('Erreur: ' + data.error);
+                // En cas d'erreur, réactiver le bouton
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-key"></i> Réinitialiser';
+                alert('Erreur: ' + (data.error || 'Erreur inconnue'));
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
-            alert('Une erreur est survenue lors de la réinitialisation du mot de passe.');
-        })
-        .finally(() => {
-            // Réactiver le bouton
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-key"></i> Réinitialiser';
+            console.error('Erreur complète:', error);
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-key"></i> Réinitialiser';
+            alert('Une erreur est survenue: ' + error.message);
         });
     });
 </script>
