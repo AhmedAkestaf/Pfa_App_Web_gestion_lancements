@@ -39,7 +39,7 @@
                         
                         {% has_permission 'ateliers' 'read' as can_view_ateliers %}
                         {% if can_view_ateliers %}
-                        <li><a class="dropdown-item" href="#">
+                        <li><a class="dropdown-item" href="{% url 'ateliers:list' %}">
                             <i class="fas fa-industry"></i> Ateliers
                         </a></li>
                         {% endif %}

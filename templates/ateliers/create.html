@@ -1,0 +1,326 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Nouveau Atelier{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'ateliers:list' %}">Ateliers</a>
+    </li>
+    <li class="breadcrumb-item active">Nouveau</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-header {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 10px 10px 0 0;
+    margin-bottom: 0;
+}
+
+.form-card {
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.form-section {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.form-section-title {
+    color: #495057;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.required-field::after {
+    content: " *";
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+.btn-success-custom {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+}
+
+.btn-success-custom:hover {
+    background: linear-gradient(135deg, #218838 0%, #1ea087 100%);
+    transform: translateY(-1px);
+}
+
+.help-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+.icon-input {
+    position: relative;
+}
+
+.icon-input .fas {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    z-index: 10;
+}
+
+.icon-input .form-control, 
+.icon-input .form-select {
+    padding-left: 45px;
+}
+
+.preview-card {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border: 1px solid #2196f3;
+    border-radius: 8px;
+    padding: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card form-card">
+                <!-- En-tête du formulaire -->
+                <div class="form-header">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-plus-circle fa-2x" style="margin-right: 18px;"></i>
+                        </div>
+                        <div>
+                            <h2 class="mb-1">Créer un Nouvel Atelier</h2>
+                            <p class="mb-0 opacity-75">Ajoutez un nouvel atelier de production à votre système</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages d'erreur -->
+                {% if messages %}
+                    <div class="card-body pt-3 pb-0">
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Formulaire principal -->
+                <form method="POST" class="card-body">
+                    {% csrf_token %}
+                    
+                    <!-- Section: Informations de base -->
+                    <div class="form-section">
+                        <h5 class="form-section-title">
+                            <i class="fas fa-info-circle me-2"></i>Informations de Base
+                        </h5>
+                        
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="nom_atelier" class="form-label required-field">Nom de l'atelier</label>
+                                <div class="icon-input">
+                                    <i class="fas fa-industry"></i>
+                                    <input type="text" class="form-control" id="nom_atelier" name="nom_atelier" 
+                                           required maxlength="100" placeholder="Ex: Atelier Soudure A">
+                                </div>
+                                <div class="help-text">Nom unique et descriptif de l'atelier</div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="type_atelier" class="form-label required-field">Type d'atelier</label>
+                                <div class="icon-input">
+                                    <i class="fas fa-cogs"></i>
+                                    <select class="form-select" id="type_atelier" name="type_atelier" required>
+                                        <option value="">Sélectionnez le type</option>
+                                        {% for value, label in types_ateliers %}
+                                            <option value="{{ value }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="capacite_max" class="form-label required-field">Capacité maximale</label>
+                                <div class="icon-input">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                    <input type="number" class="form-control" id="capacite_max" name="capacite_max" 
+                                           required min="1" max="1000" placeholder="Ex: 50">
+                                </div>
+                                <div class="help-text">Nombre maximum de pièces/unités traitables simultanément</div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="responsable_atelier" class="form-label">Responsable de l'atelier</label>
+                                <div class="icon-input">
+                                    <i class="fas fa-user-tie"></i>
+                                    <select class="form-select" id="responsable_atelier" name="responsable_atelier">
+                                        <option value="">Aucun responsable</option>
+                                        {% for collaborateur in collaborateurs %}
+                                            <option value="{{ collaborateur.id }}">
+                                                {{ collaborateur.get_full_name }}
+                                                {% if collaborateur.user_role %} - {{ collaborateur.user_role.name }}{% endif %}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="help-text">Collaborateur responsable de la gestion de l'atelier (optionnel)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview en temps réel -->
+                    <div class="preview-card mb-4" id="atelier-preview" style="display: none;">
+                        <h6 class="mb-3">
+                            <i class="fas fa-eye me-2"></i>Aperçu de l'atelier
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong id="preview-nom">Nom de l'atelier</strong><br>
+                                <span class="badge bg-info" id="preview-type">Type</span>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    Capacité: <span id="preview-capacite">0</span><br>
+                                    Responsable: <span id="preview-responsable">Non défini</span>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Boutons d'action -->
+                    <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                        <a href="{% url 'ateliers:list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Annuler
+                        </a>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-primary" id="preview-btn">
+                                <i class="fas fa-eye me-2"></i>Aperçu
+                            </button>
+                            <button type="submit" class="btn btn-success-custom">
+                                <i class="fas fa-save me-2"></i>Créer l'atelier
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Éléments du formulaire
+    const nomInput = document.getElementById('nom_atelier');
+    const typeSelect = document.getElementById('type_atelier');
+    const capaciteInput = document.getElementById('capacite_max');
+    const responsableSelect = document.getElementById('responsable_atelier');
+    
+    // Éléments de l'aperçu
+    const previewCard = document.getElementById('atelier-preview');
+    const previewNom = document.getElementById('preview-nom');
+    const previewType = document.getElementById('preview-type');
+    const previewCapacite = document.getElementById('preview-capacite');
+    const previewResponsable = document.getElementById('preview-responsable');
+    const previewBtn = document.getElementById('preview-btn');
+
+    // Types d'ateliers avec leurs badges
+    const typesBadges = {
+        'fabrication': 'bg-info',
+        'assemblage': 'bg-success', 
+        'finition': 'bg-warning text-dark',
+        'controle': 'bg-secondary',
+        'debitage': 'bg-danger'
+    };
+
+    // Fonction pour mettre à jour l'aperçu
+    function updatePreview() {
+        const nom = nomInput.value.trim();
+        const type = typeSelect.value;
+        const capacite = capaciteInput.value;
+        const responsableText = responsableSelect.options[responsableSelect.selectedIndex].text;
+
+        if (nom || type || capacite) {
+            previewCard.style.display = 'block';
+            
+            previewNom.textContent = nom || 'Nom de l\'atelier';
+            
+            if (type) {
+                const typeLabel = typeSelect.options[typeSelect.selectedIndex].text;
+                previewType.textContent = typeLabel;
+                previewType.className = `badge ${typesBadges[type] || 'bg-info'}`;
+            } else {
+                previewType.textContent = 'Type';
+                previewType.className = 'badge bg-secondary';
+            }
+            
+            previewCapacite.textContent = capacite || '0';
+            previewResponsable.textContent = responsableSelect.value ? responsableText : 'Non défini';
+        } else {
+            previewCard.style.display = 'none';
+        }
+    }
+
+    // Écouteurs d'événements
+    nomInput.addEventListener('input', updatePreview);
+    typeSelect.addEventListener('change', updatePreview);
+    capaciteInput.addEventListener('input', updatePreview);
+    responsableSelect.addEventListener('change', updatePreview);
+
+    // Bouton d'aperçu
+    previewBtn.addEventListener('click', function() {
+        if (previewCard.style.display === 'none') {
+            updatePreview();
+            this.innerHTML = '<i class="fas fa-eye-slash me-2"></i>Masquer';
+        } else {
+            previewCard.style.display = 'none';
+            this.innerHTML = '<i class="fas fa-eye me-2"></i>Aperçu';
+        }
+    });
+
+    // Validation du formulaire
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const nom = nomInput.value.trim();
+        const type = typeSelect.value;
+        const capacite = parseInt(capaciteInput.value);
+
+        if (!nom || !type || !capacite || capacite < 1) {
+            e.preventDefault();
+            alert('Veuillez remplir tous les champs obligatoires correctement.');
+            return false;
+        }
+    });
+
+    // Auto-focus sur le premier champ
+    nomInput.focus();
+});
+</script>
+{% endblock %}

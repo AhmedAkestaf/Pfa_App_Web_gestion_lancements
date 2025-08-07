@@ -14,6 +14,7 @@ class Atelier(models.Model):
         ('assemblage', 'Assemblage'),
         ('finition', 'Finition'),
         ('controle', 'Contrôle qualité'),
+        ('debitage', 'Débitage'),
     ], verbose_name="Type d'atelier")
     
     # Responsable de l'atelier (relation avec Collaborateur)

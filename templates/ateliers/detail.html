@@ -1,0 +1,364 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{{ atelier.nom_atelier }} - Détail Atelier{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'ateliers:list' %}">Ateliers</a>
+    </li>
+    <li class="breadcrumb-item active">{{ atelier.nom_atelier }}</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.atelier-header {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
+}
+
+.info-card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.info-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.info-card .card-header {
+    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+}
+
+.stat-item {
+    padding: 1rem;
+    text-align: center;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    margin-bottom: 1rem;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0d6efd;
+    display: block;
+}
+
+.type-badge {
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+}
+
+.collaborateur-item {
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    transition: all 0.3s ease;
+}
+
+.collaborateur-item:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 4px 15px rgba(13, 110, 253, 0.1);
+}
+
+.categorie-item {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border: 1px solid #2196f3;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.progress-custom {
+    height: 8px;
+    border-radius: 4px;
+}
+
+.avatar {
+    width: 50px;
+    height: 50px;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.action-buttons {
+    position: sticky;
+    top: 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête de l'atelier -->
+    <div class="atelier-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="d-flex align-items-center">
+                    <div class="me-4">
+                        <i class="fas fa-industry fa-3x" style ="margin-right: 18px;"></i>
+                    </div>
+                    <div>
+                        <h1 class="h2 mb-2">{{ atelier.nom_atelier }}</h1>
+                        <p class="mb-0 opacity-75">
+                            <span class="badge type-badge 
+                                {% if atelier.type_atelier == 'fabrication' %}bg-info
+                                {% elif atelier.type_atelier == 'assemblage' %}bg-success
+                                {% elif atelier.type_atelier == 'finition' %}bg-warning text-dark
+                                {% else %}bg-secondary{% endif %} me-3">
+                                {{ atelier.get_type_atelier_display }}
+                            </span>
+                            Créé le {{ atelier.created_at|date:"d/m/Y à H:i" }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                {% if can_update or can_delete %}
+                <div class="action-buttons">
+                    {% if can_update %}
+                        <a href="{% url 'ateliers:edit' atelier.pk %}" class="btn btn-light me-2">
+                            <i class="fas fa-edit"></i> Modifier
+                        </a>
+                    {% endif %}
+                    {% if can_delete %}
+                        <a href="{% url 'ateliers:delete' atelier.pk %}" class="btn btn-outline-light">
+                            <i class="fas fa-trash"></i> Supprimer
+                        </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <!-- Informations principales -->
+        <div class="col-lg-4 mb-4">
+            <div class="card info-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Informations Générales
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="stat-item">
+                        <span class="stat-number">{{ atelier.capacite_max }}</span>
+                        <small class="text-muted">Capacité Maximale</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Type d'atelier :</label>
+                        <div>
+                            <span class="badge type-badge 
+                                {% if atelier.type_atelier == 'fabrication' %}bg-info
+                                {% elif atelier.type_atelier == 'assemblage' %}bg-success
+                                {% elif atelier.type_atelier == 'finition' %}bg-warning text-dark
+                                {% else %}bg-secondary{% endif %}">
+                                {{ atelier.get_type_atelier_display }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Responsable :</label>
+                        <div>
+                            {% if atelier.responsable_atelier %}
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center">
+                                        {{ atelier.responsable_atelier.nom_collaborateur.0 }}{{ atelier.responsable_atelier.prenom_collaborateur.0 }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">{{ atelier.responsable_atelier.get_full_name }}</div>
+                                        {% if atelier.responsable_atelier.user_role %}
+                                            <small class="text-muted">{{ atelier.responsable_atelier.user_role.name }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <span class="text-muted">Aucun responsable assigné</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label fw-bold">Date de création :</label>
+                        <div>{{ atelier.created_at|date:"d/m/Y à H:i" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Collaborateurs affectés -->
+        <div class="col-lg-4 mb-4">
+            <div class="card info-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users " style="margin-right: 15px;"></i>Collaborateurs Affectés
+                    </h5>
+                    <span class="badge bg-primary">{{ collaborateurs_affectes.count }}</span>
+                </div>
+                <div class="card-body">
+                    {% if collaborateurs_affectes %}
+                        {% for affectation in collaborateurs_affectes %}
+                            <div class="collaborateur-item">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar bg-success text-white rounded-circle me-3 d-flex align-items-center justify-content-center">
+                                        {{ affectation.collaborateur.nom_collaborateur.0 }}{{ affectation.collaborateur.prenom_collaborateur.0 }}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold">{{ affectation.collaborateur.get_full_name }}</div>
+                                        <small class="text-muted">
+                                            {{ affectation.get_role_dans_atelier_display }} • 
+                                            Depuis le {{ affectation.date_affectation|date:"d/m/Y" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-user-slash fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">Aucun collaborateur affecté</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Catégories traitées -->
+        <div class="col-lg-4 mb-4">
+            <div class="card info-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tags me-2"></i>Catégories Traitées
+                    </h5>
+                    <span class="badge bg-primary">{{ atelier_categories.count }}</span>
+                </div>
+                <div class="card-body">
+                    {% if atelier_categories %}
+                        {% for atelier_cat in atelier_categories %}
+                            <div class="categorie-item">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="mb-0">{{ atelier_cat.categorie.nom_categorie }}</h6>
+                                    <span class="badge bg-primary">{{ atelier_cat.capacite_categorie }}</span>
+                                </div>
+                                {% if atelier_cat.categorie.description %}
+                                    <p class="small text-muted mb-2">{{ atelier_cat.categorie.description|truncatewords:10 }}</p>
+                                {% endif %}
+                                {% if atelier_cat.temps_moyen_traitement %}
+                                    <div class="small">
+                                        <i class="fas fa-clock me-1"></i>
+                                        Temps moyen : {{ atelier_cat.temps_moyen_traitement }}h
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-tags fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">Aucune catégorie configurée</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques et graphiques -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card info-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Statistiques de Production
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <span class="stat-number">{{ collaborateurs_affectes.count }}</span>
+                                <small class="text-muted">Collaborateurs Actifs</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <span class="stat-number">{{ atelier_categories.count }}</span>
+                                <small class="text-muted">Catégories Traitées</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <span class="stat-number">0</span>
+                                <small class="text-muted">Lancements en Cours</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <span class="stat-number">{{ atelier.capacite_max }}</span>
+                                <small class="text-muted">Capacité Totale</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h6>Taux d'Utilisation</h6>
+                        <div class="progress progress-custom">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 65%;">
+                                65%
+                            </div>
+                        </div>
+                        <small class="text-muted">Utilisation actuelle de l'atelier</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Boutons d'action en bas -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="d-flex gap-2">
+                <a href="{% url 'ateliers:list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Retour à la liste
+                </a>
+                {% if can_update %}
+                    <a href="{% url 'ateliers:edit' atelier.pk %}" class="btn btn-primary">
+                        <i class="fas fa-edit"></i> Modifier l'atelier
+                    </a>
+                {% endif %}
+                <!-- Futurs liens vers les associations -->
+                <button type="button" class="btn btn-outline-info" disabled>
+                    <i class="fas fa-users-cog"></i> Gérer les affectations
+                </button>
+                <button type="button" class="btn btn-outline-success" disabled>
+                    <i class="fas fa-tags"></i> Gérer les catégories
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
