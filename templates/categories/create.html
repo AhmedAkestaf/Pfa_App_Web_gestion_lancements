@@ -1,0 +1,230 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Créer une Catégorie{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Main content -->
+        <main class="col-12 px-md-4">
+            <!-- Header -->
+            <div class="form-header mb-4">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'ateliers:categorie_list' %}">Catégories</a></li>
+                        <li class="breadcrumb-item active">Nouvelle catégorie</li>
+                    </ol>
+                </nav>
+                <h1 class="h2">
+                    <i class="fas fa-plus text-success me-2"></i>
+                    Créer une nouvelle catégorie
+                </h1>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Formulaire -->
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-tag me-2"></i>Informations de la catégorie
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" novalidate>
+                                {% csrf_token %}
+                                
+                                <div class="row">
+                                    <!-- Nom de la catégorie -->
+                                    <div class="col-md-12 mb-3">
+                                        <label for="nom_categorie" class="form-label">
+                                            Nom de la catégorie <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control {% if form.nom_categorie.errors %}is-invalid{% endif %}" 
+                                               id="nom_categorie" 
+                                               name="nom_categorie" 
+                                               value="{{ form.nom_categorie.value|default:'' }}"
+                                               required
+                                               maxlength="100"
+                                               placeholder="Ex: Soudure, Usinage, Assemblage...">
+                                        {% if form.nom_categorie.errors %}
+                                            <div class="invalid-feedback">
+                                                {{ form.nom_categorie.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">
+                                            Le nom doit être unique et explicite (maximum 100 caractères)
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Description -->
+                                <div class="row">
+                                    <div class="col-12 mb-3">
+                                        <label for="description" class="form-label">Description</label>
+                                        <textarea class="form-control {% if form.description.errors %}is-invalid{% endif %}" 
+                                                  id="description" 
+                                                  name="description" 
+                                                  rows="4"
+                                                  placeholder="Décrivez les types de travaux réalisés dans cette catégorie...">{{ form.description.value|default:'' }}</textarea>
+                                        {% if form.description.errors %}
+                                            <div class="invalid-feedback">
+                                                {{ form.description.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">
+                                            Description détaillée de la catégorie (optionnel)
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Boutons -->
+                                <div class="row">
+                                    <div class="col-12">
+                                        <hr>
+                                        <div class="d-flex justify-content-between">
+                                            <a href="{% url 'ateliers:categorie_list' %}" class="btn btn-outline-secondary">
+                                                <i class="fas fa-arrow-left me-2"></i>Retour à la liste
+                                            </a>
+                                            <div>
+                                                <button type="reset" class="btn btn-outline-warning me-2">
+                                                    <i class="fas fa-undo me-2"></i>Réinitialiser
+                                                </button>
+                                                <button type="submit" class="btn btn-success">
+                                                    <i class="fas fa-save me-2"></i>Créer la catégorie
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aide contextuelle -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Aide
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <h6>Qu'est-ce qu'une catégorie ?</h6>
+                            <p class="small text-muted mb-3">
+                                Les catégories permettent de classifier les différents types de travaux 
+                                réalisés dans vos ateliers (soudure, usinage, assemblage, etc.).
+                            </p>
+
+                            <h6>Conseils :</h6>
+                            <ul class="small text-muted">
+                                <li>Choisissez un nom clair et explicite</li>
+                                <li>Évitez les doublons</li>
+                                <li>Décrivez précisément les types d'activités</li>
+                                <li>Une bonne catégorisation facilite la planification</li>
+                            </ul>
+
+                            <div class="alert alert-info mt-3">
+                                <small>
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    <strong>Astuce :</strong> Les catégories seront utilisées pour associer 
+                                    les collaborateurs aux compétences et les ateliers aux capacités.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Exemples de catégories -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-list me-2"></i>Exemples de catégories
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap gap-1">
+                                <span class="badge bg-light text-dark">Soudure TIG</span>
+                                <span class="badge bg-light text-dark">Soudure MIG</span>
+                                <span class="badge bg-light text-dark">Usinage CNC</span>
+                                <span class="badge bg-light text-dark">Fraisage</span>
+                                <span class="badge bg-light text-dark">Tournage</span>
+                                <span class="badge bg-light text-dark">Assemblage</span>
+                                <span class="badge bg-light text-dark">Peinture</span>
+                                <span class="badge bg-light text-dark">Contrôle qualité</span>
+                                <span class="badge bg-light text-dark">Découpe laser</span>
+                                <span class="badge bg-light text-dark">Pliage</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
+
+<script>
+// Validation côté client
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const nomInput = document.getElementById('nom_categorie');
+    
+    // Validation en temps réel
+    nomInput.addEventListener('input', function() {
+        const value = this.value.trim();
+        const feedback = this.parentNode.querySelector('.invalid-feedback');
+        
+        if (value.length === 0) {
+            this.classList.add('is-invalid');
+            this.classList.remove('is-valid');
+        } else if (value.length > 100) {
+            this.classList.add('is-invalid');
+            this.classList.remove('is-valid');
+        } else {
+            this.classList.remove('is-invalid');
+            this.classList.add('is-valid');
+        }
+    });
+    
+    // Validation avant soumission
+    form.addEventListener('submit', function(e) {
+        const nomValue = nomInput.value.trim();
+        
+        if (!nomValue) {
+            e.preventDefault();
+            nomInput.classList.add('is-invalid');
+            nomInput.focus();
+            
+            // Ajouter un message d'erreur dynamique
+            let feedback = nomInput.parentNode.querySelector('.invalid-feedback');
+            if (!feedback) {
+                feedback = document.createElement('div');
+                feedback.className = 'invalid-feedback';
+                nomInput.parentNode.appendChild(feedback);
+            }
+            feedback.textContent = 'Le nom de la catégorie est requis.';
+        }
+    });
+});
+</script>
+{% endblock %}

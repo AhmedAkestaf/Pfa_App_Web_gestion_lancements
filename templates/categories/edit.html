@@ -1,0 +1,235 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Modifier {{ categorie.nom_categorie }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Main content -->
+        <main class="col-12 px-md-4">
+            <!-- Header -->
+            <div class="form-header mb-4">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'ateliers:categorie_list' %}">Catégories</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'ateliers:categorie_detail' categorie.pk %}">{{ categorie.nom_categorie }}</a></li>
+                        <li class="breadcrumb-item active">Modifier</li>
+                    </ol>
+                </nav>
+                <h1 class="h2">
+                    <i class="fas fa-edit text-warning me-2"></i>
+                    Modifier la catégorie : {{ categorie.nom_categorie }}
+                </h1>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Formulaire -->
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-tag me-2"></i>Informations de la catégorie
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" novalidate>
+                                {% csrf_token %}
+                                
+                                <div class="row">
+                                    <!-- Nom de la catégorie -->
+                                    <div class="col-md-12 mb-3">
+                                        <label for="nom_categorie" class="form-label">
+                                            Nom de la catégorie <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="nom_categorie" 
+                                               name="nom_categorie" 
+                                               value="{{ categorie.nom_categorie }}"
+                                               required
+                                               maxlength="100"
+                                               placeholder="Ex: Soudure, Usinage, Assemblage...">
+                                        <div class="form-text">
+                                            Le nom doit être unique et explicite (maximum 100 caractères)
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Description -->
+                                <div class="row">
+                                    <div class="col-12 mb-3">
+                                        <label for="description" class="form-label">Description</label>
+                                        <textarea class="form-control" 
+                                                  id="description" 
+                                                  name="description" 
+                                                  rows="4"
+                                                  placeholder="Décrivez les types de travaux réalisés dans cette catégorie...">{{ categorie.description|default:'' }}</textarea>
+                                        <div class="form-text">
+                                            Description détaillée de la catégorie (optionnel)
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Boutons -->
+                                <div class="row">
+                                    <div class="col-12">
+                                        <hr>
+                                        <div class="d-flex justify-content-between">
+                                            <a href="{% url 'ateliers:categorie_detail' categorie.pk %}" class="btn btn-outline-secondary">
+                                                <i class="fas fa-arrow-left me-2"></i>Annuler
+                                            </a>
+                                            <div>
+                                                <button type="reset" class="btn btn-outline-warning me-2">
+                                                    <i class="fas fa-undo me-2"></i>Réinitialiser
+                                                </button>
+                                                <button type="submit" class="btn btn-warning">
+                                                    <i class="fas fa-save me-2"></i>Sauvegarder les modifications
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informations contextuelles -->
+                <div class="col-lg-4">
+                    <!-- Statistiques actuelles -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-chart-bar me-2"></i>Utilisation actuelle
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <h4 class="text-info">{{ ateliers_count }}</h4>
+                                    <small class="text-muted">Atelier{{ ateliers_count|pluralize }}</small>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-warning">{{ collaborateurs_count }}</h4>
+                                    <small class="text-muted">Collaborateur{{ collaborateurs_count|pluralize }}</small>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row text-center">
+                                <div class="col-12">
+                                    <h4 class="text-success">{{ lancements_count }}</h4>
+                                    <small class="text-muted">Lancement{{ lancements_count|pluralize }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Avertissement -->
+                    {% if ateliers_count > 0 or collaborateurs_count > 0 or lancements_count > 0 %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Attention :</strong> Cette catégorie est utilisée par 
+                        {{ ateliers_count }} atelier{{ ateliers_count|pluralize }}, 
+                        {{ collaborateurs_count }} collaborateur{{ collaborateurs_count|pluralize }} et 
+                        {{ lancements_count }} lancement{{ lancements_count|pluralize }}.
+                        <br><small>Modifiez avec précaution.</small>
+                    </div>
+                    {% endif %}
+
+                    <!-- Aide -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Informations
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row small">
+                                <dt class="col-5">Créé le :</dt>
+                                <dd class="col-7">{{ categorie.created_at|date:"d/m/Y à H:i" }}</dd>
+                                
+                                <dt class="col-5">ID :</dt>
+                                <dd class="col-7">#{{ categorie.pk }}</dd>
+                            </dl>
+                            
+                            <div class="alert alert-info mt-3">
+                                <small>
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    <strong>Conseil :</strong> Évitez de changer le nom si cette catégorie 
+                                    est largement utilisée dans vos processus.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
+
+<script>
+// Validation côté client
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const nomInput = document.getElementById('nom_categorie');
+    const originalNom = nomInput.value; // Sauvegarder la valeur originale
+    
+    // Validation en temps réel
+    nomInput.addEventListener('input', function() {
+        const value = this.value.trim();
+        
+        if (value.length === 0) {
+            this.classList.add('is-invalid');
+            this.classList.remove('is-valid');
+        } else if (value.length > 100) {
+            this.classList.add('is-invalid');
+            this.classList.remove('is-valid');
+        } else {
+            this.classList.remove('is-invalid');
+            this.classList.add('is-valid');
+        }
+    });
+    
+    // Validation avant soumission
+    form.addEventListener('submit', function(e) {
+        const nomValue = nomInput.value.trim();
+        
+        if (!nomValue) {
+            e.preventDefault();
+            nomInput.classList.add('is-invalid');
+            nomInput.focus();
+        }
+    });
+    
+    // Bouton reset personnalisé
+    const resetBtn = document.querySelector('button[type="reset"]');
+    resetBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        nomInput.value = originalNom;
+        document.getElementById('description').value = '{{ categorie.description|default:""|escapejs }}';
+        
+        // Supprimer les classes de validation
+        nomInput.classList.remove('is-valid', 'is-invalid');
+    });
+});
+</script>
+{% endblock %}

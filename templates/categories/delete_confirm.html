@@ -1,0 +1,348 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Supprimer {{ categorie.nom_categorie }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Main content -->
+        <main class="col-12 px-md-4">
+            <!-- Header -->
+            <div class="form-header mb-4">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'ateliers:categorie_list' %}">Catégories</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'ateliers:categorie_detail' categorie.pk %}">{{ categorie.nom_categorie }}</a></li>
+                        <li class="breadcrumb-item active">Supprimer</li>
+                    </ol>
+                </nav>
+                <h1 class="h2">
+                    <i class="fas fa-trash text-danger me-2"></i>
+                    Supprimer la catégorie
+                </h1>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <!-- Avertissement principal -->
+                    <div class="card border-danger">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Confirmer la suppression
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-danger d-flex align-items-center">
+                                <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                                <div>
+                                    <strong>Attention !</strong> Vous êtes sur le point de supprimer définitivement 
+                                    la catégorie <strong>"{{ categorie.nom_categorie }}"</strong>.
+                                    <br>
+                                    <small>Cette action est irréversible.</small>
+                                </div>
+                            </div>
+
+                            <!-- Informations sur la catégorie -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h6>Informations de la catégorie :</h6>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <th width="30%">Nom :</th>
+                                            <td><strong>{{ categorie.nom_categorie }}</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Description :</th>
+                                            <td>
+                                                {% if categorie.description %}
+                                                    {{ categorie.description|truncatewords:20 }}
+                                                {% else %}
+                                                    <em class="text-muted">Aucune description</em>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>Créé le :</th>
+                                            <td>{{ categorie.created_at|date:"d/m/Y à H:i" }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Vérification des dépendances -->
+                            {% if not can_delete %}
+                                <div class="alert alert-warning">
+                                    <h6 class="alert-heading">
+                                        <i class="fas fa-ban me-2"></i>Suppression impossible
+                                    </h6>
+                                    <p class="mb-0">
+                                        Cette catégorie ne peut pas être supprimée car elle est utilisée par d'autres éléments :
+                                    </p>
+                                    <ul class="mt-2 mb-0">
+                                        {% if has_ateliers %}
+                                        <li><strong>{{ stats.ateliers_count }}</strong> atelier{{ stats.ateliers_count|pluralize }} {{ stats.ateliers_count|pluralize:"est,sont" }} associé{{ stats.ateliers_count|pluralize }} à cette catégorie</li>
+                                        {% endif %}
+                                        {% if has_collaborateurs %}
+                                        <li><strong>{{ stats.collaborateurs_count }}</strong> collaborateur{{ stats.collaborateurs_count|pluralize }} {{ stats.collaborateurs_count|pluralize:"a,ont" }} des compétences dans cette catégorie</li>
+                                        {% endif %}
+                                        {% if has_lancements %}
+                                        <li><strong>{{ stats.lancements_count }}</strong> lancement{{ stats.lancements_count|pluralize }} {{ stats.lancements_count|pluralize:"utilise,utilisent" }} cette catégorie</li>
+                                        {% endif %}
+                                    </ul>
+                                </div>
+
+                                <!-- Actions pour les blocages -->
+                                <div class="alert alert-info">
+                                    <h6><i class="fas fa-lightbulb me-2"></i>Que faire ?</h6>
+                                    <p class="mb-2">Pour pouvoir supprimer cette catégorie, vous devez d'abord :</p>
+                                    <ul class="mb-0">
+                                        {% if has_ateliers %}
+                                        <li>Dissocier cette catégorie des ateliers concernés</li>
+                                        {% endif %}
+                                        {% if has_collaborateurs %}
+                                        <li>Retirer les compétences des collaborateurs dans cette catégorie</li>
+                                        {% endif %}
+                                        {% if has_lancements %}
+                                        <li>Attendre la fin des lancements ou les réassigner</li>
+                                        {% endif %}
+                                    </ul>
+                                </div>
+                            {% else %}
+                                <!-- Formulaire de suppression -->
+                                <form method="POST" id="deleteForm">
+                                    {% csrf_token %}
+                                    
+                                    <!-- Raison de la suppression -->
+                                    <div class="mb-3">
+                                        <label for="delete_reason" class="form-label">
+                                            Raison de la suppression <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select" id="delete_reason" name="delete_reason" required>
+                                            <option value="">Sélectionnez une raison</option>
+                                            <option value="obsolete">Catégorie obsolète</option>
+                                            <option value="doublon">Doublon avec une autre catégorie</option>
+                                            <option value="erreur">Créée par erreur</option>
+                                            <option value="reorganisation">Réorganisation des catégories</option>
+                                            <option value="autre">Autre raison</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Champ pour "autre raison" -->
+                                    <div class="mb-3" id="other_reason_field" style="display: none;">
+                                        <label for="other_reason" class="form-label">
+                                            Précisez la raison <span class="text-danger">*</span>
+                                        </label>
+                                        <textarea class="form-control" id="other_reason" name="other_reason" rows="3" 
+                                                  placeholder="Décrivez la raison de la suppression..."></textarea>
+                                    </div>
+
+                                    <!-- Confirmation -->
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="confirm_delete" name="confirm_delete" required>
+                                            <label class="form-check-label" for="confirm_delete">
+                                                Je confirme vouloir supprimer définitivement cette catégorie
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Boutons -->
+                                    <div class="d-flex justify-content-between">
+                                        <a href="{% url 'ateliers:categorie_detail' categorie.pk %}" class="btn btn-outline-secondary">
+                                            <i class="fas fa-arrow-left me-2"></i>Annuler
+                                        </a>
+                                        <button type="submit" class="btn btn-danger" id="deleteButton" disabled>
+                                            <i class="fas fa-trash me-2"></i>Supprimer définitivement
+                                        </button>
+                                    </div>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistiques dans la sidebar -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-chart-bar me-2"></i>Impact de la suppression
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center mb-3">
+                                <div class="col-6">
+                                    <h3 class="{% if has_ateliers %}text-danger{% else %}text-muted{% endif %}">
+                                        {{ stats.ateliers_count }}
+                                    </h3>
+                                    <small class="text-muted">Atelier{{ stats.ateliers_count|pluralize }}</small>
+                                </div>
+                                <div class="col-6">
+                                    <h3 class="{% if has_collaborateurs %}text-danger{% else %}text-muted{% endif %}">
+                                        {{ stats.collaborateurs_count }}
+                                    </h3>
+                                    <small class="text-muted">Collaborateur{{ stats.collaborateurs_count|pluralize }}</small>
+                                </div>
+                            </div>
+                            <div class="row text-center">
+                                <div class="col-12">
+                                    <h3 class="{% if has_lancements %}text-danger{% else %}text-muted{% endif %}">
+                                        {{ stats.lancements_count }}
+                                    </h3>
+                                    <small class="text-muted">Lancement{{ stats.lancements_count|pluralize }}</small>
+                                </div>
+                            </div>
+
+                            {% if can_delete %}
+                            <div class="alert alert-success mt-3">
+                                <small>
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    Cette catégorie peut être supprimée en toute sécurité.
+                                </small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Informations de la catégorie -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-tag me-2"></i>{{ categorie.nom_categorie }}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if categorie.description %}
+                            <p class="small text-muted">{{ categorie.description }}</p>
+                            {% else %}
+                            <p class="small text-muted fst-italic">Aucune description</p>
+                            {% endif %}
+                            
+                            <hr>
+                            
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i>
+                                Créé le {{ categorie.created_at|date:"d/m/Y à H:i" }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteReasonSelect = document.getElementById('delete_reason');
+    const otherReasonField = document.getElementById('other_reason_field');
+    const otherReasonTextarea = document.getElementById('other_reason');
+    const confirmCheckbox = document.getElementById('confirm_delete');
+    const deleteButton = document.getElementById('deleteButton');
+    const deleteForm = document.getElementById('deleteForm');
+
+    // Gestion de l'affichage du champ "autre raison"
+    if (deleteReasonSelect) {
+        deleteReasonSelect.addEventListener('change', function() {
+            if (this.value === 'autre') {
+                otherReasonField.style.display = 'block';
+                otherReasonTextarea.required = true;
+            } else {
+                otherReasonField.style.display = 'none';
+                otherReasonTextarea.required = false;
+                otherReasonTextarea.value = '';
+            }
+            checkFormValidity();
+        });
+    }
+
+    // Gestion de la validation du formulaire
+    if (confirmCheckbox) {
+        confirmCheckbox.addEventListener('change', checkFormValidity);
+    }
+    
+    if (deleteReasonSelect) {
+        deleteReasonSelect.addEventListener('change', checkFormValidity);
+    }
+    
+    if (otherReasonTextarea) {
+        otherReasonTextarea.addEventListener('input', checkFormValidity);
+    }
+
+    function checkFormValidity() {
+        let isValid = true;
+        
+        // Vérifier la raison
+        if (!deleteReasonSelect || !deleteReasonSelect.value) {
+            isValid = false;
+        }
+        
+        // Si "autre" est sélectionné, vérifier le texte
+        if (deleteReasonSelect && deleteReasonSelect.value === 'autre') {
+            if (!otherReasonTextarea || !otherReasonTextarea.value.trim()) {
+                isValid = false;
+            }
+        }
+        
+        // Vérifier la confirmation
+        if (!confirmCheckbox || !confirmCheckbox.checked) {
+            isValid = false;
+        }
+        
+        // Activer/désactiver le bouton
+        if (deleteButton) {
+            deleteButton.disabled = !isValid;
+        }
+    }
+
+    // Validation finale avant soumission
+    if (deleteForm) {
+        deleteForm.addEventListener('submit', function(e) {
+            if (!confirmCheckbox.checked) {
+                e.preventDefault();
+                alert('Veuillez confirmer la suppression.');
+                return false;
+            }
+
+            if (!deleteReasonSelect.value) {
+                e.preventDefault();
+                alert('Veuillez sélectionner une raison pour la suppression.');
+                return false;
+            }
+
+            if (deleteReasonSelect.value === 'autre' && !otherReasonTextarea.value.trim()) {
+                e.preventDefault();
+                alert('Veuillez préciser la raison de la suppression.');
+                return false;
+            }
+
+            // Demande de confirmation finale
+            if (!confirm(`Êtes-vous absolument certain(e) de vouloir supprimer la catégorie "${categorie.nom_categorie}" ?\n\nCette action est irréversible.`)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

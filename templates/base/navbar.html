@@ -46,7 +46,7 @@
                         
                         {% has_permission 'categories' 'read' as can_view_categories %}
                         {% if can_view_categories %}
-                        <li><a class="dropdown-item" href="#">
+                        <li><a class="dropdown-item" href="{% url 'ateliers:categorie_list' %}">
                             <i class="fas fa-tags"></i> Catégories
                         </a></li>
                         {% endif %}

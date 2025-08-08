@@ -1,0 +1,295 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{{ categorie.nom_categorie }} - Détails{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Main content -->
+        <main class="col-12 px-md-4">
+            <!-- Header avec boutons d'action -->
+            <div class="detail-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center mb-4">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'ateliers:categorie_list' %}">Catégories</a></li>
+                            <li class="breadcrumb-item active">{{ categorie.nom_categorie }}</li>
+                        </ol>
+                    </nav>
+                    <h1 class="h2">
+                        <i class="fas fa-tag text-success me-2"></i>
+                        {{ categorie.nom_categorie }}
+                    </h1>
+                </div>
+                <div class="btn-toolbar">
+                    {% if can_update %}
+                        <a href="{% url 'ateliers:categorie_edit' categorie.pk %}" class="btn btn-warning me-2">
+                            <i class="fas fa-edit"></i> Modifier
+                        </a>
+                    {% endif %}
+                    {% if can_delete %}
+                        <a href="{% url 'ateliers:categorie_delete' categorie.pk %}" class="btn btn-outline-danger">
+                            <i class="fas fa-trash"></i> Supprimer
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="row">
+                <!-- Informations générales -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Informations Générales
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-4">Nom :</dt>
+                                <dd class="col-sm-8">{{ categorie.nom_categorie }}</dd>
+
+                                <dt class="col-sm-4">Description :</dt>
+                                <dd class="col-sm-8">
+                                    {% if categorie.description %}
+                                        {{ categorie.description|linebreaks }}
+                                    {% else %}
+                                        <span class="text-muted">Aucune description</span>
+                                    {% endif %}
+                                </dd>
+
+                                <dt class="col-sm-4">Date de création :</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge bg-secondary">{{ categorie.created_at|date:"d/m/Y à H:i" }}</span>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistiques -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-chart-bar me-2"></i>Statistiques
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="stat-box">
+                                        <h3 class="text-info">{{ ateliers_associes|length }}</h3>
+                                        <p class="text-muted">Atelier{{ ateliers_associes|length|pluralize }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="stat-box">
+                                        <h3 class="text-warning">{{ collaborateurs_competents|length }}</h3>
+                                        <p class="text-muted">Collaborateur{{ collaborateurs_competents|length|pluralize }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="stat-box">
+                                        <h3 class="text-success">{{ lancements_count }}</h3>
+                                        <p class="text-muted">Lancement{{ lancements_count|pluralize }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Ateliers associés -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-industry me-2"></i>Ateliers Associés
+                            </h5>
+                            <span class="badge bg-info">{{ ateliers_associes|length }}</span>
+                        </div>
+                        <div class="card-body">
+                            {% if ateliers_associes %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Atelier</th>
+                                                <th>Capacité</th>
+                                                <th>Temps moyen</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for association in ateliers_associes %}
+                                                <tr>
+                                                    <td>
+                                                        <strong>{{ association.atelier.nom_atelier }}</strong>
+                                                        <br>
+                                                        <small class="text-muted">{{ association.atelier.get_type_atelier_display }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info">{{ association.capacite_categorie }}</span>
+                                                    </td>
+                                                    <td>
+                                                        {% if association.temps_moyen_traitement %}
+                                                            <span class="badge bg-warning text-dark">{{ association.temps_moyen_traitement }}h</span>
+                                                        {% else %}
+                                                            <span class="text-muted">-</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-industry fa-2x mb-2"></i>
+                                    <p>Aucun atelier associé à cette catégorie</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Collaborateurs compétents -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-users me-2"></i>Collaborateurs Compétents
+                            </h5>
+                            <span class="badge bg-warning text-dark">{{ collaborateurs_competents|length }}</span>
+                        </div>
+                        <div class="card-body">
+                            {% if collaborateurs_competents %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Collaborateur</th>
+                                                <th>Niveau</th>
+                                                <th>Certifié depuis</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for competence in collaborateurs_competents %}
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="avatar bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 30px; height: 30px; font-size: 0.8rem;">
+                                                                {{ competence.collaborateur.nom_collaborateur.0 }}{{ competence.collaborateur.prenom_collaborateur.0 }}
+                                                            </div>
+                                                            <div>
+                                                                <strong>{{ competence.collaborateur.get_full_name }}</strong>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        {% if competence.niveau_competence == 'expert' %}
+                                                            <span class="badge bg-danger">{{ competence.get_niveau_competence_display }}</span>
+                                                        {% elif competence.niveau_competence == 'avance' %}
+                                                            <span class="badge bg-warning">{{ competence.get_niveau_competence_display }}</span>
+                                                        {% elif competence.niveau_competence == 'intermediaire' %}
+                                                            <span class="badge bg-info">{{ competence.get_niveau_competence_display }}</span>
+                                                        {% else %}
+                                                            <span class="badge bg-secondary">{{ competence.get_niveau_competence_display }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <small class="text-muted">{{ competence.date_certification|date:"d/m/Y" }}</small>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-users fa-2x mb-2"></i>
+                                    <p>Aucun collaborateur compétent dans cette catégorie</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lancements récents -->
+            {% if lancements_recents %}
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-rocket me-2"></i>Lancements Récents
+                            </h5>
+                            <span class="badge bg-success">{{ lancements_recents|length }}</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>N° Lancement</th>
+                                            <th>Affaire</th>
+                                            <th>Atelier</th>
+                                            <th>Collaborateur</th>
+                                            <th>Date Lancement</th>
+                                            <th>Statut</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for lancement in lancements_recents %}
+                                            <tr>
+                                                <td><strong>{{ lancement.num_lanc }}</strong></td>
+                                                <td>{{ lancement.affaire.code_affaire }}</td>
+                                                <td>{{ lancement.atelier.nom_atelier }}</td>
+                                                <td>{{ lancement.collaborateur.get_full_name }}</td>
+                                                <td>{{ lancement.date_lancement|date:"d/m/Y" }}</td>
+                                                <td>
+                                                    {% if lancement.statut == 'en_cours' %}
+                                                        <span class="badge bg-info">{{ lancement.get_statut_display }}</span>
+                                                    {% elif lancement.statut == 'termine' %}
+                                                        <span class="badge bg-success">{{ lancement.get_statut_display }}</span>
+                                                    {% elif lancement.statut == 'lance' %}
+                                                        <span class="badge bg-warning text-dark">{{ lancement.get_statut_display }}</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">{{ lancement.get_statut_display }}</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </main>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
+{% endblock %}
