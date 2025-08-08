@@ -6,14 +6,11 @@ from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import Q
 from .models import Collaborateur, RoleHistory
+from apps.lancements.models import Lancement
 from apps.core.models import Role
-from apps.ateliers.models import Atelier, CollaborateurAtelier , CollaborateurCategorie
-from apps.lancements.models import Categorie
-from django.contrib.auth.hashers import make_password
+from apps.ateliers.models import CollaborateurAtelier , CollaborateurCategorie
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-import json
+
 
 def login_view(request):
     if request.method == 'POST':
@@ -114,12 +111,16 @@ def collaborateur_detail(request, pk):
         collaborateur=collaborateur
     ).select_related('old_role', 'new_role', 'changed_by').order_by('-changed_at')
     
-
+    # Récupérer les lancements du collaborateur
+    lancements = Lancement.objects.filter(
+        collaborateur=collaborateur
+    ).select_related('affaire', 'atelier').order_by('-date_lancement')[:10]  
     
     context = {
         'collaborateur': collaborateur,
         'affectations_ateliers': affectations_ateliers,
         'competences': competences,
+        'lancements': lancements, 
         'historique_roles': historique_roles,
         'can_update': request.user.has_permission('collaborateurs', 'update'),
         'can_delete': request.user.has_permission('collaborateurs', 'delete'),
