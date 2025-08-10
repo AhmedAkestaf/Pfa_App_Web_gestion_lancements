@@ -1,0 +1,636 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Planning des Lancements{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item"><a href="{% url 'lancements:list' %}">Lancements</a></li>
+    <li class="breadcrumb-item active">Planning</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.planning-header {
+    background: linear-gradient(135deg, #17a2b8, #007bff);
+    color: white;
+    padding: 2rem;
+    border-radius: 15px;
+    margin-bottom: 2rem;
+}
+
+.calendar-card {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: none;
+    border-radius: 15px;
+}
+
+.calendar-controls {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
+
+.calendar-nav {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    padding: 0.5rem;
+}
+
+.calendar-table {
+    width: 100%;
+    height: 600px;
+}
+
+.calendar-table th,
+.calendar-table td {
+    border: 1px solid #dee2e6;
+    vertical-align: top;
+    padding: 0.5rem;
+    height: 80px;
+}
+
+.calendar-table th {
+    background: #f8f9fa;
+    text-align: center;
+    font-weight: 600;
+    height: 40px;
+}
+
+.calendar-day {
+    position: relative;
+    height: 100%;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.calendar-day:hover {
+    background-color: #f0f8ff;
+}
+
+.calendar-day.today {
+    background-color: #e3f2fd;
+    border: 2px solid #2196f3;
+}
+
+.calendar-day.other-month {
+    opacity: 0.3;
+}
+
+.day-number {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.lancement-item {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.3rem;
+    margin: 0.1rem 0;
+    border-radius: 3px;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lancement-planifie {
+    background-color: #6c757d;
+    color: white;
+}
+
+.lancement-en_cours {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.lancement-termine {
+    background-color: #28a745;
+    color: white;
+}
+
+.lancement-en_attente {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.legend-card {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin: 0.25rem 0;
+}
+
+.legend-color {
+    width: 20px;
+    height: 15px;
+    border-radius: 3px;
+    margin-right: 0.5rem;
+}
+
+.stats-card {
+    border-left: 4px solid #17a2b8;
+}
+
+.view-toggle {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    padding: 0.25rem;
+}
+
+.view-toggle button {
+    border: none;
+    background: transparent;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.view-toggle button.active {
+    background: #007bff;
+    color: white;
+}
+
+.month-navigation {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.quick-actions {
+    position: sticky;
+    top: 20px;
+}
+
+/* Modal styles */
+.lancement-modal .modal-content {
+    border-radius: 15px;
+}
+
+.lancement-modal .modal-header {
+    background: linear-gradient(135deg, #e83e8c, #fd7e14);
+    color: white;
+    border-radius: 15px 15px 0 0;
+}
+</style>
+
+<!-- FullCalendar CSS -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="planning-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-2">
+                    <i class="fas fa-calendar-alt me-3"></i>
+                    Planning des Lancements
+                </h1>
+                <p class="mb-0">Vue d'ensemble des lancements par date de lancement prévue</p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <div class="view-toggle">
+                    <button type="button" class="active" data-view="month">
+                        <i class="fas fa-calendar"></i> Mois
+                    </button>
+                    <button type="button" data-view="week">
+                        <i class="fas fa-calendar-week"></i> Semaine
+                    </button>
+                    <button type="button" data-view="day">
+                        <i class="fas fa-calendar-day"></i> Jour
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-9">
+            <!-- Contrôles du calendrier -->
+            <div class="calendar-controls">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="month-navigation">
+                            <button class="btn btn-outline-primary" id="prevMonth">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <h4 class="mb-0" id="currentMonth">{{ current_month|date:"F Y" }}</h4>
+                            <button class="btn btn-outline-primary" id="nextMonth">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <div class="btn-group">
+                            <button class="btn btn-outline-info" id="todayBtn">
+                                <i class="fas fa-crosshairs"></i> Aujourd'hui
+                            </button>
+                            {% if can_create %}
+                            <a href="{% url 'lancements:create' %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Nouveau Lancement
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendrier principal -->
+            <div class="card calendar-card">
+                <div class="card-body p-0">
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar droite -->
+        <div class="col-lg-3">
+            <div class="quick-actions">
+                <!-- Légende -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>Légende
+                        </h5>
+                    </div>
+                    <div class="card-body legend-card">
+                        <div class="legend-item">
+                            <div class="legend-color lancement-planifie"></div>
+                            <span>Planifié</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color lancement-en_cours"></div>
+                            <span>En cours</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color lancement-termine"></div>
+                            <span>Terminé</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color lancement-en_attente"></div>
+                            <span>En attente</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistiques rapides -->
+                <div class="card stats-card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>Statistiques du mois
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6 mb-3">
+                                <h4 class="text-primary">{{ stats.total_month|default:0 }}</h4>
+                                <small class="text-muted">Total</small>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <h4 class="text-warning">{{ stats.en_cours_month|default:0 }}</h4>
+                                <small class="text-muted">En cours</small>
+                            </div>
+                            <div class="col-6">
+                                <h4 class="text-success">{{ stats.termines_month|default:0 }}</h4>
+                                <small class="text-muted">Terminés</small>
+                            </div>
+                            <div class="col-6">
+                                <h4 class="text-info">{{ stats.planifies_month|default:0 }}</h4>
+                                <small class="text-muted">Planifiés</small>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="text-center">
+                            <strong class="text-info">{{ stats.poids_total_month|floatformat:1|default:0 }} kg</strong>
+                            <br><small class="text-muted">Poids total du mois</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtres -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-filter me-2"></i>Filtres
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="filterForm">
+                            <div class="mb-3">
+                                <label class="form-label">Atelier</label>
+                                <select class="form-select form-select-sm" id="filterAtelier">
+                                    <option value="">Tous les ateliers</option>
+                                    {% for atelier in ateliers %}
+                                        <option value="{{ atelier.id }}" data-name="{{ atelier.nom_atelier }}">{{ atelier.nom_atelier }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Statut</label>
+                                <select class="form-select form-select-sm" id="filterStatut">
+                                    <option value="">Tous les statuts</option>
+                                    <option value="planifie">Planifié</option>
+                                    <option value="en_cours">En cours</option>
+                                    <option value="termine">Terminé</option>
+                                    <option value="en_attente">En attente</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Collaborateur</label>
+                                <select class="form-select form-select-sm" id="filterCollaborateur">
+                                    <option value="">Tous</option>
+                                    {% for collaborateur in collaborateurs %}
+                                        <option value="{{ collaborateur.id }}" data-name="{{ collaborateur.get_full_name }}">{{ collaborateur.get_full_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <button type="button" class="btn btn-outline-primary btn-sm w-100" id="applyFilters">
+                                <i class="fas fa-search"></i> Appliquer
+                            </button>
+                            
+                            <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-2" id="clearFilters">
+                                <i class="fas fa-times"></i> Effacer
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Actions rapides -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-bolt me-2"></i>Actions Rapides
+                        </h5>
+                    </div>
+                    <div class="card-body d-grid gap-2">
+                        <a href="{% url 'lancements:list' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-list"></i> Liste des lancements
+                        </a>
+                        
+                        {% if can_create %}
+                        <a href="{% url 'lancements:create' %}" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-plus"></i> Nouveau lancement
+                        </a>
+                        {% endif %}
+                        
+                        <button class="btn btn-outline-info btn-sm" onclick="window.print()">
+                            <i class="fas fa-print"></i> Imprimer planning
+                        </button>
+                        
+                        <button class="btn btn-outline-warning btn-sm" id="exportPdf">
+                            <i class="fas fa-file-pdf"></i> Exporter PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour les détails du lancement -->
+<div class="modal fade lancement-modal" id="lancementModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-rocket me-2"></i>
+                    <span id="modalTitle">Détails du Lancement</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalContent">
+                <!-- Contenu chargé dynamiquement -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <a href="#" class="btn btn-primary" id="viewDetailsBtn">Voir tous les détails</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template data -->
+{{ lancements_json|json_script:"lancements-data" }}
+{{ ateliers_json|json_script:"ateliers-data" }}
+{{ collaborateurs_json|json_script:"collaborateurs-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/locales/fr.global.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get data from Django template
+    const lancements = JSON.parse(document.getElementById('lancements-data').textContent);
+    const ateliers = JSON.parse(document.getElementById('ateliers-data').textContent);
+    const collaborateurs = JSON.parse(document.getElementById('collaborateurs-data').textContent);
+
+    // Transform lancements data for FullCalendar
+    const calendarEvents = lancements.map(lancement => ({
+        id: lancement.id.toString(),
+        title: lancement.num_lanc,
+        start: lancement.date_lancement,
+        extendedProps: {
+            num_lanc: lancement.num_lanc,
+            affaire: lancement.affaire_code,
+            client: lancement.client,
+            atelier: lancement.atelier_nom,
+            atelier_id: lancement.atelier_id,
+            collaborateur: lancement.collaborateur_nom,
+            collaborateur_id: lancement.collaborateur_id,
+            statut: lancement.statut,
+            statut_display: lancement.statut_display,
+            poids_total: lancement.poids_total,
+            sous_livrable: lancement.sous_livrable
+        },
+        className: 'lancement-' + lancement.statut
+    }));
+
+    // Initialisation du calendrier FullCalendar
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'fr',
+        height: 600,
+        events: calendarEvents,
+        headerToolbar: false, // On utilise nos propres contrôles
+        
+        eventClick: function(info) {
+            showLancementDetails(info.event);
+        },
+        
+        eventContent: function(arg) {
+            const props = arg.event.extendedProps;
+            return {
+                html: `
+                    <div class="lancement-item lancement-${props.statut}" title="${props.sous_livrable}">
+                        <strong>${props.num_lanc}</strong><br>
+                        <small>${props.atelier}</small>
+                    </div>
+                `
+            };
+        }
+    });
+    
+    calendar.render();
+
+    // Navigation du calendrier
+    document.getElementById('prevMonth').addEventListener('click', function() {
+        calendar.prev();
+        updateMonthDisplay();
+    });
+
+    document.getElementById('nextMonth').addEventListener('click', function() {
+        calendar.next();
+        updateMonthDisplay();
+    });
+
+    document.getElementById('todayBtn').addEventListener('click', function() {
+        calendar.today();
+        updateMonthDisplay();
+    });
+
+    // Changement de vue
+    document.querySelectorAll('[data-view]').forEach(button => {
+        button.addEventListener('click', function() {
+            const view = this.dataset.view;
+            
+            // Retirer la classe active des autres boutons
+            document.querySelectorAll('[data-view]').forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Changer la vue du calendrier
+            let fullCalendarView = 'dayGridMonth';
+            if (view === 'week') fullCalendarView = 'timeGridWeek';
+            if (view === 'day') fullCalendarView = 'timeGridDay';
+            
+            calendar.changeView(fullCalendarView);
+        });
+    });
+
+    // Mise à jour de l'affichage du mois
+    function updateMonthDisplay() {
+        const currentDate = calendar.getDate();
+        const monthNames = [
+            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        ];
+        const monthDisplay = monthNames[currentDate.getMonth()] + ' ' + currentDate.getFullYear();
+        document.getElementById('currentMonth').textContent = monthDisplay;
+    }
+
+    // Filtres
+    document.getElementById('applyFilters').addEventListener('click', function() {
+        applyFilters();
+    });
+
+    document.getElementById('clearFilters').addEventListener('click', function() {
+        document.getElementById('filterForm').reset();
+        applyFilters();
+    });
+
+    function applyFilters() {
+        const atelierId = document.getElementById('filterAtelier').value;
+        const statut = document.getElementById('filterStatut').value;
+        const collaborateurId = document.getElementById('filterCollaborateur').value;
+
+        // Filtrer les événements
+        const filteredEvents = calendarEvents.filter(event => {
+            let show = true;
+            
+            if (atelierId && event.extendedProps.atelier_id.toString() !== atelierId) {
+                show = false;
+            }
+            
+            if (statut && event.extendedProps.statut !== statut) {
+                show = false;
+            }
+            
+            if (collaborateurId && event.extendedProps.collaborateur_id.toString() !== collaborateurId) {
+                show = false;
+            }
+            
+            return show;
+        });
+
+        // Mettre à jour le calendrier avec les événements filtrés
+        calendar.removeAllEvents();
+        calendar.addEventSource(filteredEvents);
+    }
+
+    // Fonction pour afficher les détails d'un lancement
+    function showLancementDetails(event) {
+        const props = event.extendedProps;
+        const modal = new bootstrap.Modal(document.getElementById('lancementModal'));
+        
+        document.getElementById('modalTitle').textContent = `Lancement ${props.num_lanc}`;
+        document.getElementById('viewDetailsBtn').href = `/lancements/${event.id}/`;
+        
+        const content = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6><i class="fas fa-briefcase me-2"></i>Affaire</h6>
+                    <p><strong>${props.affaire}</strong><br><small class="text-muted">${props.client}</small></p>
+                    
+                    <h6><i class="fas fa-industry me-2"></i>Atelier</h6>
+                    <p>${props.atelier}</p>
+                    
+                    <h6><i class="fas fa-user me-2"></i>Collaborateur</h6>
+                    <p>${props.collaborateur}</p>
+                </div>
+                <div class="col-md-6">
+                    <h6><i class="fas fa-flag me-2"></i>Statut</h6>
+                    <p><span class="badge bg-${getStatusColor(props.statut)}">${props.statut_display}</span></p>
+                    
+                    <h6><i class="fas fa-weight me-2"></i>Poids Total</h6>
+                    <p><strong>${props.poids_total} kg</strong></p>
+                    
+                    <h6><i class="fas fa-calendar me-2"></i>Date de lancement</h6>
+                    <p>${event.start.toLocaleDateString('fr-FR')}</p>
+                </div>
+            </div>
+            
+            <hr>
+            
+            <h6><i class="fas fa-clipboard me-2"></i>Description</h6>
+            <p>${props.sous_livrable}</p>
+        `;
+        
+        document.getElementById('modalContent').innerHTML = content;
+        modal.show();
+    }
+
+    function getStatusColor(status) {
+        switch(status) {
+            case 'planifie': return 'secondary';
+            case 'en_cours': return 'warning';
+            case 'termine': return 'success';
+            case 'en_attente': return 'info';
+            default: return 'secondary';
+        }
+    }
+
+    // Export PDF (placeholder)
+    document.getElementById('exportPdf').addEventListener('click', function() {
+        alert('Fonctionnalité d\'export PDF à implémenter');
+        // Ici, vous pourriez intégrer une bibliothèque comme jsPDF
+    });
+});
+</script>
+{% endblock %}

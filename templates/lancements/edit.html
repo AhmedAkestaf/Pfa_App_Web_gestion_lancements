@@ -1,0 +1,512 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Modifier le Lancement {{ lancement.num_lanc }}{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item"><a href="{% url 'lancements:list' %}">Lancements</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'lancements:detail' lancement.pk %}">{{ lancement.num_lanc }}</a></li>
+    <li class="breadcrumb-item active">Modifier</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.edit-header {
+    background: linear-gradient(135deg, #ffc107, #fd7e14);
+    color: white;
+    padding: 2rem;
+    border-radius: 15px;
+    margin-bottom: 2rem;
+}
+
+.form-card {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: none;
+    border-radius: 15px;
+}
+
+.form-section {
+    border-left: 4px solid #ffc107;
+    padding-left: 1rem;
+    margin-bottom: 2rem;
+}
+
+.form-section h5 {
+    color: #ffc107;
+    margin-bottom: 1rem;
+}
+
+.required-field label::after {
+    content: ' *';
+    color: #dc3545;
+}
+
+.weight-calculator {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 10px;
+    border-left: 4px solid #17a2b8;
+}
+
+.total-weight {
+    background: linear-gradient(135deg, #fd7e14, #e83e8c);
+    color: white;
+    padding: 1rem;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.sticky-actions {
+    position: sticky;
+    top: 20px;
+}
+
+.help-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+.readonly-info {
+    background: #e9ecef;
+    padding: 0.5rem;
+    border-radius: 5px;
+    border-left: 4px solid #6c757d;
+}
+
+.change-indicator {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    padding: 0.5rem;
+    border-radius: 5px;
+    margin-top: 0.5rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-9">
+            <!-- En-tête -->
+            <div class="edit-header">
+                <h1 class="mb-2">
+                    <i class="fas fa-edit me-3"></i>
+                    Modifier le Lancement {{ lancement.num_lanc }}
+                </h1>
+                <p class="mb-0">Modifiez les informations du lancement</p>
+                <small class="opacity-75">
+                    Créé le {{ lancement.created_at|date:"d/m/Y à H:i" }}
+                    {% if lancement.updated_at != lancement.created_at %}
+                        • Modifié le {{ lancement.updated_at|date:"d/m/Y à H:i" }}
+                    {% endif %}
+                </small>
+            </div>
+
+            <!-- Formulaire de modification -->
+            <form method="post" id="editLancementForm">
+                {% csrf_token %}
+                
+                <div class="card form-card mb-4">
+                    <div class="card-body">
+                        <!-- Section 1: Informations de base -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-info-circle me-2"></i>Informations de base</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="id_num_lanc" class="form-label">Numéro de lancement</label>
+                                    <div class="readonly-info">
+                                        <strong>{{ lancement.num_lanc }}</strong>
+                                        <br><small class="text-muted">Le numéro de lancement ne peut pas être modifié</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 required-field">
+                                    <label for="id_affaire" class="form-label">Affaire</label>
+                                    {{ form.affaire }}
+                                    {% if form.affaire.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.affaire.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-3">
+                                <div class="col-md-12 required-field">
+                                    <label for="id_sous_livrable" class="form-label">Description du sous-livrable</label>
+                                    {{ form.sous_livrable }}
+                                    <div class="help-text">Décrivez précisément ce qui doit être réalisé</div>
+                                    {% if form.sous_livrable.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.sous_livrable.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Dates -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-calendar me-2"></i>Planning</h5>
+                            <div class="row">
+                                <div class="col-md-6 required-field">
+                                    <label for="id_date_reception" class="form-label">Date de réception</label>
+                                    {{ form.date_reception }}
+                                    {% if form.date_reception.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.date_reception.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 required-field">
+                                    <label for="id_date_lancement" class="form-label">Date de lancement</label>
+                                    {{ form.date_lancement }}
+                                    {% if form.date_lancement.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.date_lancement.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 3: Affectation -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-users-cog me-2"></i>Affectation</h5>
+                            <div class="row">
+                                <div class="col-md-4 required-field">
+                                    <label for="id_atelier" class="form-label">Atelier</label>
+                                    {{ form.atelier }}
+                                    {% if form.atelier.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.atelier.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 required-field">
+                                    <label for="id_categorie" class="form-label">Catégorie</label>
+                                    {{ form.categorie }}
+                                    {% if form.categorie.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.categorie.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 required-field">
+                                    <label for="id_collaborateur" class="form-label">Collaborateur responsable</label>
+                                    {{ form.collaborateur }}
+                                    {% if form.collaborateur.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.collaborateur.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 4: Production -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-weight me-2"></i>Données de Production</h5>
+                            
+                            <div class="weight-calculator mb-3">
+                                <h6><i class="fas fa-calculator me-2"></i>Calculateur de poids</h6>
+                                <div class="row">
+                                    <div class="col-md-5 required-field">
+                                        <label for="id_poids_debitage" class="form-label">Poids débitage (kg)</label>
+                                        {{ form.poids_debitage }}
+                                        {% if form.poids_debitage.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.poids_debitage.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-5 required-field">
+                                        <label for="id_poids_assemblage" class="form-label">Poids assemblage (kg)</label>
+                                        {{ form.poids_assemblage }}
+                                        {% if form.poids_assemblage.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.poids_assemblage.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        <div class="total-weight w-100">
+                                            <strong id="poids-total">{{ lancement.get_poids_total|floatformat:2 }} kg</strong>
+                                            <br><small>Total</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 5: Statut -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-flag me-2"></i>Statut</h5>
+                            <div class="row">
+                                <div class="col-md-6 required-field">
+                                    <label for="id_statut" class="form-label">Statut du lancement</label>
+                                    {{ form.statut }}
+                                    {% if form.statut.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.statut.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="change-indicator" id="statut-change" style="display: none;">
+                                        <small><i class="fas fa-info-circle me-1"></i>Le statut a été modifié</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 6: Observations -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-sticky-note me-2"></i>Observations</h5>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label for="id_observations" class="form-label">Observations et remarques</label>
+                                    {{ form.observations }}
+                                    <div class="help-text">Notes particulières, instructions spéciales, contraintes...</div>
+                                    {% if form.observations.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.observations.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sidebar droite -->
+        <div class="col-lg-3">
+            <div class="sticky-actions">
+                <!-- Actions -->
+                <div class="card form-card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-tools me-2"></i>
+                            Actions
+                        </h5>
+                    </div>
+                    <div class="card-body d-grid gap-2">
+                        <button type="submit" form="editLancementForm" class="btn btn-warning btn-lg">
+                            <i class="fas fa-save"></i> Enregistrer les modifications
+                        </button>
+                        
+                        <a href="{% url 'lancements:detail' lancement.pk %}" class="btn btn-outline-info">
+                            <i class="fas fa-eye"></i> Voir les détails
+                        </a>
+                        
+                        <a href="{% url 'lancements:list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Retour à la liste
+                        </a>
+                        
+                        <button type="button" class="btn btn-outline-info" onclick="resetForm()">
+                            <i class="fas fa-undo"></i> Annuler les modifications
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Informations de modification -->
+                <div class="card form-card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-history me-2"></i>
+                            Historique
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline-item">
+                            <strong>Création</strong>
+                            <br><small class="text-muted">{{ lancement.created_at|date:"d/m/Y à H:i" }}</small>
+                        </div>
+                        {% if lancement.updated_at != lancement.created_at %}
+                        <div class="timeline-item">
+                            <strong>Dernière modification</strong>
+                            <br><small class="text-muted">{{ lancement.updated_at|date:"d/m/Y à H:i" }}</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Aide -->
+                <div class="card form-card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-question-circle me-2"></i>
+                            Aide
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Important</h6>
+                            <ul class="mb-0 small">
+                                <li>Le numéro de lancement ne peut pas être modifié</li>
+                                <li>Vérifiez la cohérence des dates</li>
+                                <li>Un changement de statut peut affecter le planning</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-lightbulb me-2"></i>Conseil</h6>
+                            <p class="mb-0 small">
+                                Si vous changez l'atelier, vérifiez que le collaborateur est disponible dans ce nouvel atelier.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Variables pour stocker les valeurs originales
+const originalValues = {
+    affaire: '{{ lancement.affaire.pk }}',
+    atelier: '{{ lancement.atelier.pk }}',
+    categorie: '{{ lancement.categorie.pk }}',
+    collaborateur: '{{ lancement.collaborateur.pk }}',
+    statut: '{{ lancement.statut }}',
+    date_reception: '{{ lancement.date_reception|date:"Y-m-d" }}',
+    date_lancement: '{{ lancement.date_lancement|date:"Y-m-d" }}',
+    poids_debitage: '{{ lancement.poids_debitage }}',
+    poids_assemblage: '{{ lancement.poids_assemblage }}',
+    observations: '{{ lancement.observations|default:""|escapejs }}'
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Calculateur de poids automatique
+    function updateTotalWeight() {
+        const poidsDebitage = parseFloat(document.getElementById('id_poids_debitage').value) || 0;
+        const poidsAssemblage = parseFloat(document.getElementById('id_poids_assemblage').value) || 0;
+        const total = poidsDebitage + poidsAssemblage;
+        
+        document.getElementById('poids-total').textContent = total.toFixed(2) + ' kg';
+        
+        // Mise à jour de la couleur selon le poids
+        const totalElement = document.querySelector('.total-weight');
+        if (total > 100) {
+            totalElement.style.background = 'linear-gradient(135deg, #dc3545, #e83e8c)';
+        } else if (total > 50) {
+            totalElement.style.background = 'linear-gradient(135deg, #ffc107, #fd7e14)';
+        } else {
+            totalElement.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+        }
+    }
+
+    // Écouteurs pour les champs de poids
+    document.getElementById('id_poids_debitage').addEventListener('input', updateTotalWeight);
+    document.getElementById('id_poids_assemblage').addEventListener('input', updateTotalWeight);
+
+    // Détection des changements de statut
+    const statutField = document.getElementById('id_statut');
+    const statutChange = document.getElementById('statut-change');
+    
+    statutField.addEventListener('change', function() {
+        if (this.value !== originalValues.statut) {
+            statutChange.style.display = 'block';
+        } else {
+            statutChange.style.display = 'none';
+        }
+    });
+
+    // Validation des dates
+    function validateDates() {
+        const dateReception = new Date(document.getElementById('id_date_reception').value);
+        const dateLancement = new Date(document.getElementById('id_date_lancement').value);
+        
+        if (dateReception && dateLancement && dateLancement < dateReception) {
+            document.getElementById('id_date_lancement').setCustomValidity('La date de lancement doit être postérieure à la date de réception');
+        } else {
+            document.getElementById('id_date_lancement').setCustomValidity('');
+        }
+    }
+
+    document.getElementById('id_date_reception').addEventListener('change', validateDates);
+    document.getElementById('id_date_lancement').addEventListener('change', validateDates);
+
+    // Calcul initial du poids
+    updateTotalWeight();
+
+    // Détection des changements dans le formulaire
+    let formChanged = false;
+    const formInputs = document.querySelectorAll('#editLancementForm input, #editLancementForm select, #editLancementForm textarea');
+    
+    formInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            formChanged = true;
+        });
+    });
+
+    // Avertissement avant de quitter si des modifications non sauvegardées
+    window.addEventListener('beforeunload', function(e) {
+        if (formChanged) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    // Réinitialiser le flag lors de la soumission
+    document.getElementById('editLancementForm').addEventListener('submit', function() {
+        formChanged = false;
+    });
+});
+
+// Fonction pour réinitialiser le formulaire aux valeurs originales
+function resetForm() {
+    if (confirm('Êtes-vous sûr de vouloir annuler toutes les modifications ?')) {
+        // Restaurer les valeurs originales
+        document.getElementById('id_affaire').value = originalValues.affaire;
+        document.getElementById('id_atelier').value = originalValues.atelier;
+        document.getElementById('id_categorie').value = originalValues.categorie;
+        document.getElementById('id_collaborateur').value = originalValues.collaborateur;
+        document.getElementById('id_statut').value = originalValues.statut;
+        document.getElementById('id_date_reception').value = originalValues.date_reception;
+        document.getElementById('id_date_lancement').value = originalValues.date_lancement;
+        document.getElementById('id_poids_debitage').value = originalValues.poids_debitage;
+        document.getElementById('id_poids_assemblage').value = originalValues.poids_assemblage;
+        document.getElementById('id_observations').value = originalValues.observations;
+        
+        // Recalculer le poids total
+        const event = new Event('input');
+        document.getElementById('id_poids_debitage').dispatchEvent(event);
+        
+        // Masquer l'indicateur de changement de statut
+        document.getElementById('statut-change').style.display = 'none';
+        
+        formChanged = false;
+    }
+}
+
+// Validation avant soumission
+document.getElementById('editLancementForm').addEventListener('submit', function(e) {
+    const requiredFields = document.querySelectorAll('[required]');
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            isValid = false;
+            field.classList.add('is-invalid');
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    });
+    
+    if (!isValid) {
+        e.preventDefault();
+        alert('Veuillez remplir tous les champs obligatoires (marqués d\'un *)');
+        return false;
+    }
+    
+    // Animation de soumission
+    const submitBtn = document.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement en cours...';
+    submitBtn.disabled = true;
+});
+</script>
+{% endblock %}

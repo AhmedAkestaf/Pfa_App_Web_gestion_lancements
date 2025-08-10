@@ -14,7 +14,7 @@ class Lancement(models.Model):
     Cette table contient aussi les informations de production (poids, dates, etc.).
     """
     # Identifiant unique du lancement
-    num_lanc = models.CharField(max_length=50, unique=True, verbose_name="Numéro de lancement")
+    num_lanc = models.CharField(max_length=50, unique=False, verbose_name="Numéro de lancement")
     
     # Dates importantes du processus
     date_reception = models.DateField(verbose_name="Date de réception")

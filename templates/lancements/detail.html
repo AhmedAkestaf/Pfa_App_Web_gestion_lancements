@@ -1,0 +1,421 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Détails du Lancement {{ lancement.num_lanc }}{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item"><a href="{% url 'lancements:list' %}">Lancements</a></li>
+    <li class="breadcrumb-item active">{{ lancement.num_lanc }}</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.lancement-header {
+    background: linear-gradient(135deg, #e83e8c, #fd7e14);
+    color: white;
+    padding: 2rem;
+    border-radius: 15px;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.lancement-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    transform: translate(30px, -30px);
+}
+
+.detail-card {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: none;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.status-card {
+    border-left: 5px solid;
+}
+
+.status-planifie { border-left-color: #6c757d; }
+.status-en_cours { border-left-color: #ffc107; }
+.status-termine { border-left-color: #28a745; }
+.status-en_attente { border-left-color: #17a2b8; }
+
+.info-row {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.info-value {
+    color: #212529;
+    font-size: 1rem;
+}
+
+.weight-display {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 1rem;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.timeline-item {
+    border-left: 3px solid #e83e8c;
+    padding-left: 1rem;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 0.5rem;
+    width: 12px;
+    height: 12px;
+    background: #e83e8c;
+    border-radius: 50%;
+}
+
+.action-buttons {
+    position: sticky;
+    top: 20px;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Définir les largeurs des barres de progression
+    const debitageBar = document.getElementById('debitage-bar');
+    const assemblageBar = document.getElementById('assemblage-bar');
+    
+    if (debitageBar && assemblageBar) {
+        const debitageWidth = debitageBar.getAttribute('data-width');
+        const assemblageWidth = assemblageBar.getAttribute('data-width');
+        
+        debitageBar.style.width = debitageWidth + '%';
+        assemblageBar.style.width = assemblageWidth + '%';
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- En-tête du lancement -->
+            <div class="lancement-header">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="mb-2">
+                            <i class="fas fa-rocket me-3"></i>
+                            Lancement {{ lancement.num_lanc }}
+                        </h1>
+                        <p class="mb-0 fs-5">{{ lancement.sous_livrable }}</p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <span class="badge fs-6 px-3 py-2
+                            {% if lancement.statut == 'planifie' %}bg-secondary
+                            {% elif lancement.statut == 'en_cours' %}bg-warning text-dark
+                            {% elif lancement.statut == 'termine' %}bg-success
+                            {% elif lancement.statut == 'en_attente' %}bg-info
+                            {% else %}bg-secondary{% endif %}">
+                            {{ lancement.get_statut_display }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informations principales -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card detail-card status-card status-{{ lancement.statut }}">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Informations générales
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="info-row">
+                                <div class="info-label">Affaire</div>
+                                <div class="info-value">
+                                    <strong>{{ lancement.affaire.code_affaire }}</strong>
+                                    <br><small class="text-muted">{{ lancement.affaire.client }}</small>
+                                </div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Catégorie</div>
+                                <div class="info-value">{{ lancement.categorie.nom_categorie }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Date de réception</div>
+                                <div class="info-value">{{ lancement.date_reception|date:"d/m/Y" }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Date de lancement</div>
+                                <div class="info-value">{{ lancement.date_lancement|date:"d/m/Y" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card detail-card">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="fas fa-industry me-2"></i>
+                                Atelier et Production
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="info-row">
+                                <div class="info-label">Atelier</div>
+                                <div class="info-value">
+                                    <strong>{{ lancement.atelier.nom_atelier }}</strong>
+                                    <br><small class="text-muted">{{ lancement.atelier.get_type_atelier_display }}</small>
+                                </div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Collaborateur responsable</div>
+                                <div class="info-value">{{ lancement.collaborateur.get_full_name }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Capacité atelier</div>
+                                <div class="info-value">{{ lancement.atelier.capacite_max }} unités</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Données de production -->
+            <div class="card detail-card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-weight me-2"></i>
+                        Données de Production
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="weight-display">
+                                <h4 class="mb-1">{{ lancement.poids_debitage|floatformat:2 }} kg</h4>
+                                <small>Poids Débitage</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="weight-display">
+                                <h4 class="mb-1">{{ lancement.poids_assemblage|floatformat:2 }} kg</h4>
+                                <small>Poids Assemblage</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="weight-display" style="background: linear-gradient(135deg, #fd7e14, #e83e8c);">
+                                <h4 class="mb-1">{{ lancement.get_poids_total|floatformat:2 }} kg</h4>
+                                <small>Poids Total</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Observations -->
+            {% if lancement.observations %}
+            <div class="card detail-card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-sticky-note me-2"></i>
+                        Observations
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-0">
+                        {{ lancement.observations|linebreaks }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Timeline -->
+            <div class="card detail-card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Historique
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline-item">
+                        <strong>Création du lancement</strong>
+                        <br><small class="text-muted">{{ lancement.created_at|date:"d/m/Y à H:i" }}</small>
+                    </div>
+                    {% if lancement.updated_at != lancement.created_at %}
+                    <div class="timeline-item">
+                        <strong>Dernière modification</strong>
+                        <br><small class="text-muted">{{ lancement.updated_at|date:"d/m/Y à H:i" }}</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar droite -->
+        <div class="col-lg-4">
+            <div class="action-buttons">
+                <!-- Actions -->
+                <div class="card detail-card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-tools me-2"></i>
+                            Actions
+                        </h5>
+                    </div>
+                    <div class="card-body d-grid gap-2">
+                        {% if can_update %}
+                            <a href="{% url 'lancements:edit' lancement.pk %}" class="btn btn-warning">
+                                <i class="fas fa-edit"></i> Modifier
+                            </a>
+                        {% endif %}
+                        
+                        {% if can_delete %}
+                            <a href="{% url 'lancements:delete' lancement.pk %}" class="btn btn-outline-danger">
+                                <i class="fas fa-trash"></i> Supprimer
+                            </a>
+                        {% endif %}
+                        
+                        <a href="{% url 'lancements:list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Retour à la liste
+                        </a>
+                        
+                        <button type="button" class="btn btn-outline-info" onclick="window.print()">
+                            <i class="fas fa-print"></i> Imprimer
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Informations liées -->
+                <div class="card detail-card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-link me-2"></i>
+                            Éléments liés
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Lien vers l'affaire -->
+                        <div class="d-flex align-items-center mb-3 p-2 bg-light rounded">
+                            <i class="fas fa-briefcase text-primary me-3"></i>
+                            <div>
+                                <strong>Affaire: {{ lancement.affaire.code_affaire }}</strong>
+                                <br><small class="text-muted">{{ lancement.affaire.client }}</small>
+                                <br><a href="{% url 'core:affaire_detail' lancement.affaire.pk %}" class="btn btn-sm btn-outline-primary mt-1">
+                                    Voir l'affaire
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Lien vers l'atelier -->
+                        <div class="d-flex align-items-center mb-3 p-2 bg-light rounded">
+                            <i class="fas fa-industry text-info me-3"></i>
+                            <div>
+                                <strong>{{ lancement.atelier.nom_atelier }}</strong>
+                                <br><small class="text-muted">{{ lancement.atelier.get_type_atelier_display }}</small>
+                                <br><a href="{% url 'ateliers:detail' lancement.atelier.pk %}" class="btn btn-sm btn-outline-info mt-1">
+                                    Voir l'atelier
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Lien vers le collaborateur -->
+                        <div class="d-flex align-items-center p-2 bg-light rounded">
+                            <i class="fas fa-user text-success me-3"></i>
+                            <div>
+                                <strong>{{ lancement.collaborateur.get_full_name }}</strong>
+                                <br><small class="text-muted">Responsable du lancement</small>
+                                <br><a href="{% url 'collaborateurs:detail' lancement.collaborateur.pk %}" class="btn btn-sm btn-outline-success mt-1">
+                                    Voir le profil
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Métriques rapides -->
+                <div class="card detail-card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            Métriques
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="border-end">
+                                    <h4 class="text-primary">{{ lancement.date_lancement|timesince }}</h4>
+                                    <small class="text-muted">Depuis le lancement</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <h4 class="text-info">{{ lancement.get_poids_total|floatformat:1 }}kg</h4>
+                                <small class="text-muted">Poids total</small>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <!-- Répartition des poids -->
+                        <div class="mb-3">
+                            <label class="form-label small">Répartition des poids</label>
+                            <div class="progress" style="height: 25px;" id="weight-progress">
+                                {% with total=lancement.get_poids_total %}
+                                {% if total > 0 %}
+                                    <div class="progress-bar bg-success" 
+                                         id="debitage-bar"
+                                         data-width="{% widthratio lancement.poids_debitage total 100 %}"
+                                         title="Débitage {{ lancement.poids_debitage|floatformat:1 }}kg">
+                                        Débitage {{ lancement.poids_debitage|floatformat:1 }}kg
+                                    </div>
+                                    <div class="progress-bar bg-info" 
+                                         id="assemblage-bar"
+                                         data-width="{% widthratio lancement.poids_assemblage total 100 %}"
+                                         title="Assemblage {{ lancement.poids_assemblage|floatformat:1 }}kg">
+                                        Assemblage {{ lancement.poids_assemblage|floatformat:1 }}kg
+                                    </div>
+                                {% else %}
+                                    <div class="progress-bar bg-secondary" style="width: 100%">
+                                        Aucun poids défini
+                                    </div>
+                                {% endif %}
+                                {% endwith %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

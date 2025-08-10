@@ -1,0 +1,439 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Nouveau Lancement{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item"><a href="{% url 'lancements:list' %}">Lancements</a></li>
+    <li class="breadcrumb-item active">Nouveau lancement</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.create-header {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 2rem;
+    border-radius: 15px;
+    margin-bottom: 2rem;
+}
+
+.form-card {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: none;
+    border-radius: 15px;
+}
+
+.form-section {
+    border-left: 4px solid #28a745;
+    padding-left: 1rem;
+    margin-bottom: 2rem;
+}
+
+.form-section h5 {
+    color: #28a745;
+    margin-bottom: 1rem;
+}
+
+.required-field label::after {
+    content: ' *';
+    color: #dc3545;
+}
+
+.weight-calculator {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 10px;
+    border-left: 4px solid #17a2b8;
+}
+
+.total-weight {
+    background: linear-gradient(135deg, #fd7e14, #e83e8c);
+    color: white;
+    padding: 1rem;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.sticky-actions {
+    position: sticky;
+    top: 20px;
+}
+
+.help-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+.select2-container {
+    width: 100% !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-9">
+            <!-- En-tête -->
+            <div class="create-header">
+                <h1 class="mb-2">
+                    <i class="fas fa-plus-circle me-3"></i>
+                    Créer un Nouveau Lancement
+                </h1>
+                <p class="mb-0">Remplissez les informations pour créer un nouveau lancement de production</p>
+            </div>
+
+            <!-- Formulaire principal -->
+            <form method="post" id="lancementForm">
+                {% csrf_token %}
+                
+                <div class="card form-card mb-4">
+                    <div class="card-body">
+                        <!-- Section 1: Informations de base -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-info-circle me-2"></i>Informations de base</h5>
+                            <div class="row">
+                                <div class="col-md-6 required-field">
+                                    <label for="id_num_lanc" class="form-label">Numéro de lancement</label>
+                                    {{ form.num_lanc }}
+                                    <div class="help-text">Format suggéré: LC-YYYY-XXX</div>
+                                    {% if form.num_lanc.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.num_lanc.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 required-field">
+                                    <label for="id_affaire" class="form-label">Affaire</label>
+                                    {{ form.affaire }}
+                                    {% if form.affaire.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.affaire.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-3">
+                                <div class="col-md-12 required-field">
+                                    <label for="id_sous_livrable" class="form-label">Description du sous-livrable</label>
+                                    {{ form.sous_livrable }}
+                                    <div class="help-text">Décrivez précisément ce qui doit être réalisé</div>
+                                    {% if form.sous_livrable.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.sous_livrable.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Dates -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-calendar me-2"></i>Planning</h5>
+                            <div class="row">
+                                <div class="col-md-6 required-field">
+                                    <label for="id_date_reception" class="form-label">Date de réception</label>
+                                    {{ form.date_reception }}
+                                    {% if form.date_reception.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.date_reception.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 required-field">
+                                    <label for="id_date_lancement" class="form-label">Date de lancement prévue</label>
+                                    {{ form.date_lancement }}
+                                    {% if form.date_lancement.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.date_lancement.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 3: Affectation -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-users-cog me-2"></i>Affectation</h5>
+                            <div class="row">
+                                <div class="col-md-4 required-field">
+                                    <label for="id_atelier" class="form-label">Atelier</label>
+                                    {{ form.atelier }}
+                                    {% if form.atelier.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.atelier.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 required-field">
+                                    <label for="id_categorie" class="form-label">Catégorie</label>
+                                    {{ form.categorie }}
+                                    {% if form.categorie.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.categorie.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 required-field">
+                                    <label for="id_collaborateur" class="form-label">Collaborateur responsable</label>
+                                    {{ form.collaborateur }}
+                                    {% if form.collaborateur.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.collaborateur.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 4: Production -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-weight me-2"></i>Données de Production</h5>
+                            
+                            <div class="weight-calculator mb-3">
+                                <h6><i class="fas fa-calculator me-2"></i>Calculateur de poids</h6>
+                                <div class="row">
+                                    <div class="col-md-5 required-field">
+                                        <label for="id_poids_debitage" class="form-label">Poids débitage (kg)</label>
+                                        {{ form.poids_debitage }}
+                                        {% if form.poids_debitage.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.poids_debitage.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-5 required-field">
+                                        <label for="id_poids_assemblage" class="form-label">Poids assemblage (kg)</label>
+                                        {{ form.poids_assemblage }}
+                                        {% if form.poids_assemblage.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.poids_assemblage.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        <div class="total-weight w-100">
+                                            <strong id="poids-total">0.00 kg</strong>
+                                            <br><small>Total</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 5: Observations -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-sticky-note me-2"></i>Observations (optionnel)</h5>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label for="id_observations" class="form-label">Observations et remarques</label>
+                                    {{ form.observations }}
+                                    <div class="help-text">Notes particulières, instructions spéciales, contraintes...</div>
+                                    {% if form.observations.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.observations.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 6: Statut -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-flag me-2"></i>Statut Initial</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="id_statut" class="form-label">Statut</label>
+                                    {{ form.statut }}
+                                    {% if form.statut.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.statut.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sidebar droite -->
+        <div class="col-lg-3">
+            <div class="sticky-actions">
+                <!-- Actions -->
+                <div class="card form-card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-tools me-2"></i>
+                            Actions
+                        </h5>
+                    </div>
+                    <div class="card-body d-grid gap-2">
+                        <button type="submit" form="lancementForm" class="btn btn-success btn-lg">
+                            <i class="fas fa-save"></i> Créer le lancement
+                        </button>
+                        
+                        <a href="{% url 'lancements:list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Annuler
+                        </a>
+                        
+                        <button type="button" class="btn btn-outline-info" onclick="resetForm()">
+                            <i class="fas fa-undo"></i> Réinitialiser
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Aide -->
+                <div class="card form-card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-question-circle me-2"></i>
+                            Aide
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-lightbulb me-2"></i>Conseils</h6>
+                            <ul class="mb-0 small">
+                                <li>Vérifiez que l'affaire sélectionnée est active</li>
+                                <li>Assurez-vous que l'atelier a la capacité disponible</li>
+                                <li>Le collaborateur doit être qualifié pour la catégorie</li>
+                                <li>Les poids doivent être en kilogrammes</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Attention</h6>
+                            <p class="mb-0 small">
+                                Une fois créé, le numéro de lancement ne peut plus être modifié.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Calculateur de poids automatique
+    function updateTotalWeight() {
+        const poidsDebitage = parseFloat(document.getElementById('id_poids_debitage').value) || 0;
+        const poidsAssemblage = parseFloat(document.getElementById('id_poids_assemblage').value) || 0;
+        const total = poidsDebitage + poidsAssemblage;
+        
+        document.getElementById('poids-total').textContent = total.toFixed(2) + ' kg';
+        
+        // Mise à jour de la couleur selon le poids
+        const totalElement = document.querySelector('.total-weight');
+        if (total > 100) {
+            totalElement.style.background = 'linear-gradient(135deg, #dc3545, #e83e8c)';
+        } else if (total > 50) {
+            totalElement.style.background = 'linear-gradient(135deg, #ffc107, #fd7e14)';
+        } else {
+            totalElement.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+        }
+    }
+
+    // Écouteurs pour les champs de poids
+    document.getElementById('id_poids_debitage').addEventListener('input', updateTotalWeight);
+    document.getElementById('id_poids_assemblage').addEventListener('input', updateTotalWeight);
+
+    // Génération automatique du numéro de lancement
+    function generateLancementNumber() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const random = Math.floor(Math.random() * 999) + 1;
+        const numLanc = `LC-${year}${month}-${String(random).padStart(3, '0')}`;
+        
+        document.getElementById('id_num_lanc').value = numLanc;
+    }
+
+    // Bouton pour générer un numéro automatique
+    const numLancField = document.getElementById('id_num_lanc');
+    if (numLancField && !numLancField.value) {
+        const generateBtn = document.createElement('button');
+        generateBtn.type = 'button';
+        generateBtn.className = 'btn btn-outline-secondary btn-sm mt-1';
+        generateBtn.innerHTML = '<i class="fas fa-magic"></i> Générer automatiquement';
+        generateBtn.onclick = generateLancementNumber;
+        numLancField.parentNode.appendChild(generateBtn);
+    }
+
+    // Validation en temps réel
+    function validateDates() {
+        const dateReception = new Date(document.getElementById('id_date_reception').value);
+        const dateLancement = new Date(document.getElementById('id_date_lancement').value);
+        
+        if (dateReception && dateLancement && dateLancement < dateReception) {
+            document.getElementById('id_date_lancement').setCustomValidity('La date de lancement doit être postérieure à la date de réception');
+        } else {
+            document.getElementById('id_date_lancement').setCustomValidity('');
+        }
+    }
+
+    document.getElementById('id_date_reception').addEventListener('change', validateDates);
+    document.getElementById('id_date_lancement').addEventListener('change', validateDates);
+
+    // Filtrage des collaborateurs selon l'atelier sélectionné
+    document.getElementById('id_atelier').addEventListener('change', function() {
+        const atelierId = this.value;
+        const collaborateurSelect = document.getElementById('id_collaborateur');
+        
+        if (atelierId) {
+            // Ici, vous pourriez faire un appel AJAX pour filtrer les collaborateurs
+            // selon l'atelier sélectionné (optionnel)
+        }
+    });
+
+    // Calcul initial du poids
+    updateTotalWeight();
+});
+
+// Fonction pour réinitialiser le formulaire
+function resetForm() {
+    if (confirm('Êtes-vous sûr de vouloir réinitialiser le formulaire ?')) {
+        document.getElementById('lancementForm').reset();
+        document.getElementById('poids-total').textContent = '0.00 kg';
+        
+        // Réinitialiser la couleur du poids total
+        const totalElement = document.querySelector('.total-weight');
+        totalElement.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+    }
+}
+
+// Validation avant soumission
+document.getElementById('lancementForm').addEventListener('submit', function(e) {
+    const requiredFields = document.querySelectorAll('[required]');
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            isValid = false;
+            field.classList.add('is-invalid');
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    });
+    
+    if (!isValid) {
+        e.preventDefault();
+        alert('Veuillez remplir tous les champs obligatoires (marqués d\'un *)');
+        return false;
+    }
+    
+    // Animation de soumission
+    const submitBtn = document.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création en cours...';
+    submitBtn.disabled = true;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,390 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Liste des Lancements{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item active">Lancements</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.filters-card {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border: none;
+}
+
+.lancements-header {
+    padding: 1.5rem 0;
+    border-bottom: 3px solid #e83e8c;
+    margin-bottom: 2rem;
+}
+
+.lancements-table {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: none;
+}
+
+.lancement-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid #e83e8c;
+}
+
+.lancement-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.status-badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 50px;
+}
+
+.weight-indicator {
+    background: linear-gradient(90deg, #28a745, #17a2b8);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.empty-state {
+    padding: 4rem 2rem;
+}
+
+.priority-high {
+    border-left-color: #dc3545 !important;
+}
+
+.priority-medium {
+    border-left-color: #ffc107 !important;
+}
+
+.priority-low {
+    border-left-color: #28a745 !important;
+}
+
+.lancement-num {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 0.9rem;
+    background: #f8f9fa;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Main content -->
+        <main class="col-12 px-md-4">
+            <div class="lancements-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center">
+                <h1 class="h2">
+                    <i class="fas fa-rocket" style="margin-right: 18px; color: #e83e8c;"></i>
+                    <span>Liste des Lancements</span>
+                </h1>
+                {% if can_create %}
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <a href="{% url 'lancements:create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Nouveau Lancement
+                        </a>
+                        <a href="{% url 'lancements:planning' %}" class="btn btn-outline-info">
+                            <i class="fas fa-calendar"></i> Planning
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Statistiques rapides -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-center bg-primary text-white">
+                        <div class="card-body">
+                            <i class="fas fa-rocket fa-2x mb-2"></i>
+                            <h4>{{ stats.total_lancements|default:0 }}</h4>
+                            <small>Total Lancements</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center bg-warning text-white">
+                        <div class="card-body">
+                            <i class="fas fa-clock fa-2x mb-2"></i>
+                            <h4>{{ stats.en_cours|default:0 }}</h4>
+                            <small>En Cours</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center bg-success text-white">
+                        <div class="card-body">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            <h4>{{ stats.termines|default:0 }}</h4>
+                            <small>Terminés</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center bg-info text-white">
+                        <div class="card-body">
+                            <i class="fas fa-weight fa-2x mb-2"></i>
+                            <h4>{{ stats.poids_total|floatformat:1|default:0 }}kg</h4>
+                            <small>Poids Total</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtres et recherche -->
+            <div class="card filters-card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="search" class="form-label">Recherche</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ search_query }}" placeholder="Numéro, sous-livrable...">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="statut" class="form-label">Statut</label>
+                            <select class="form-select" id="statut" name="statut">
+                                <option value="">Tous</option>
+                                <option value="planifie" {% if statut_filter == 'planifie' %}selected{% endif %}>Planifié</option>
+                                <option value="en_cours" {% if statut_filter == 'en_cours' %}selected{% endif %}>En cours</option>
+                                <option value="termine" {% if statut_filter == 'termine' %}selected{% endif %}>Terminé</option>
+                                <option value="en_attente" {% if statut_filter == 'en_attente' %}selected{% endif %}>En attente</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="atelier" class="form-label">Atelier</label>
+                            <select class="form-select" id="atelier" name="atelier">
+                                <option value="">Tous</option>
+                                {% for atelier in ateliers %}
+                                    <option value="{{ atelier.id }}" {% if atelier_filter == atelier.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ atelier.nom_atelier }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="affaire" class="form-label">Affaire</label>
+                            <select class="form-select" id="affaire" name="affaire">
+                                <option value="">Toutes</option>
+                                {% for affaire in affaires %}
+                                    <option value="{{ affaire.id }}" {% if affaire_filter == affaire.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ affaire.code_affaire }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_from" class="form-label">Date début</label>
+                            <input type="date" class="form-control" id="date_from" name="date_from" value="{{ date_from }}">
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="submit" class="btn btn-outline-primary me-2">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="{% url 'lancements:list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i>
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tableau des lancements -->
+            <div class="card lancements-table">
+                <div class="card-body">
+                    {% if page_obj %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Numéro</th>
+                                        <th>Affaire</th>
+                                        <th>Sous-livrable</th>
+                                        <th>Atelier</th>
+                                        <th>Collaborateur</th>
+                                        <th>Poids Total</th>
+                                        <th>Date Lancement</th>
+                                        <th>Statut</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for lancement in page_obj %}
+                                        <tr class="lancement-card">
+                                            <td>
+                                                <span class="lancement-num">{{ lancement.num_lanc }}</span>
+                                            </td>
+                                            <td>
+                                                <div>
+                                                    <strong>{{ lancement.affaire.code_affaire }}</strong><br>
+                                                    <small class="text-muted">{{ lancement.affaire.client|truncatechars:20 }}</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div style="max-width: 200px;">
+                                                    {{ lancement.sous_livrable|truncatechars:50 }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="icon-container bg-info text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 35px; height: 35px; font-size: 0.8rem;">
+                                                        <i class="fas fa-industry"></i>
+                                                    </div>
+                                                    <div>
+                                                        <strong>{{ lancement.atelier.nom_atelier }}</strong><br>
+                                                        <small class="text-muted">{{ lancement.atelier.get_type_atelier_display }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center">
+                                                        {{ lancement.collaborateur.nom_collaborateur.0 }}{{ lancement.collaborateur.prenom_collaborateur.0 }}
+                                                    </div>
+                                                    <span>{{ lancement.collaborateur.get_full_name }}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="weight-indicator">
+                                                    {{ lancement.get_poids_total|floatformat:1 }} kg
+                                                </div>
+                                                <small class="text-muted d-block mt-1">
+                                                    D: {{ lancement.poids_debitage|floatformat:1 }}kg | 
+                                                    A: {{ lancement.poids_assemblage|floatformat:1 }}kg
+                                                </small>
+                                            </td>
+                                            <td>
+                                                <div>
+                                                    <strong>{{ lancement.date_lancement|date:"d/m/Y" }}</strong><br>
+                                                    <small class="text-muted">Reçu: {{ lancement.date_reception|date:"d/m/Y" }}</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge status-badge 
+                                                    {% if lancement.statut == 'planifie' %}bg-secondary
+                                                    {% elif lancement.statut == 'en_cours' %}bg-warning
+                                                    {% elif lancement.statut == 'termine' %}bg-success
+                                                    {% elif lancement.statut == 'en_attente' %}bg-info
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    {{ lancement.get_statut_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <a href="{% url 'lancements:detail' lancement.pk %}" 
+                                                       class="btn btn-sm btn-outline-info" title="Voir détails">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    {% if can_update %}
+                                                        <a href="{% url 'lancements:edit' lancement.pk %}" 
+                                                           class="btn btn-sm btn-outline-warning" title="Modifier">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                    {% if can_delete %}
+                                                        <a href="{% url 'lancements:delete' lancement.pk %}" 
+                                                           class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if page_obj.has_other_pages %}
+                            <nav aria-label="Navigation pagination">
+                                <ul class="pagination justify-content-center">
+                                    {% if page_obj.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if statut_filter %}&statut={{ statut_filter }}{% endif %}{% if atelier_filter %}&atelier={{ atelier_filter }}{% endif %}{% if affaire_filter %}&affaire={{ affaire_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}">
+                                                &laquo; Première
+                                            </a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if statut_filter %}&statut={{ statut_filter }}{% endif %}{% if atelier_filter %}&atelier={{ atelier_filter }}{% endif %}{% if affaire_filter %}&affaire={{ affaire_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}">
+                                                Précédente
+                                            </a>
+                                        </li>
+                                    {% endif %}
+
+                                    <li class="page-item active">
+                                        <span class="page-link">
+                                            Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
+                                        </span>
+                                    </li>
+
+                                    {% if page_obj.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if statut_filter %}&statut={{ statut_filter }}{% endif %}{% if atelier_filter %}&atelier={{ atelier_filter }}{% endif %}{% if affaire_filter %}&affaire={{ affaire_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}">
+                                                Suivante
+                                            </a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if statut_filter %}&statut={{ statut_filter }}{% endif %}{% if atelier_filter %}&atelier={{ atelier_filter }}{% endif %}{% if affaire_filter %}&affaire={{ affaire_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}">
+                                                Dernière &raquo;
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+
+                        <div class="text-muted mt-3">
+                            Affichage de {{ page_obj.start_index }} à {{ page_obj.end_index }} 
+                            sur {{ page_obj.paginator.count }} lancements
+                        </div>
+                    {% else %}
+                        <div class="empty-state text-center py-5">
+                            <i class="fas fa-rocket fa-3x text-muted mb-3"></i>
+                            <h4>Aucun lancement trouvé</h4>
+                            <p class="text-muted">
+                                {% if search_query or statut_filter or atelier_filter or affaire_filter %}
+                                    Aucun lancement ne correspond aux critères de recherche.
+                                {% else %}
+                                    Il n'y a aucun lancement enregistré.
+                                {% endif %}
+                            </p>
+                            {% if can_create %}
+                                <a href="{% url 'lancements:create' %}" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Créer le premier lancement
+                                </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
