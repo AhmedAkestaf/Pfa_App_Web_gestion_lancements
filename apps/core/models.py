@@ -10,7 +10,7 @@ class Affaire(models.Model):
     Elle représente l'engagement commercial avec un client.
     """
     # Identifiant unique de l'affaire
-    code_affaire = models.CharField(max_length=50, unique=True, verbose_name="Code affaire")
+    code_affaire = models.CharField(max_length=50, unique=False, verbose_name="Code affaire")
     
     # Informations sur le livrable et le client
     livrable = models.TextField(verbose_name="Description du livrable")

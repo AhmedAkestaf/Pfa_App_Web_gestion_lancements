@@ -1,0 +1,423 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Supprimer l'affaire {{ affaire.code_affaire }}{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item"><a href="{% url 'core:affaires_list' %}">Affaires</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'core:affaire_detail' affaire.id %}">{{ affaire.code_affaire }}</a></li>
+    <li class="breadcrumb-item active">Supprimer</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.delete-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+}
+
+.warning-card {
+    border: 2px solid #dc3545;
+    border-radius: 10px;
+    background: #f8f9fa;
+}
+
+.warning-icon {
+    width: 80px;
+    height: 80px;
+    background: #dc3545;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: white;
+    margin: 0 auto 1rem;
+}
+
+.info-card {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.blocking-warning {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.btn-danger-custom {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border: none;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-danger-custom:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
+}
+
+.btn-cancel {
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-cancel:hover {
+    transform: translateY(-2px);
+}
+
+.consequence-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 5px;
+    border-left: 3px solid #dc3545;
+}
+
+.consequence-icon {
+    width: 24px;
+    height: 24px;
+    background: #dc3545;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.75rem;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+}
+
+.safety-checklist {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.checklist-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.checklist-item input[type="checkbox"] {
+    margin-right: 0.5rem;
+    transform: scale(1.2);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête de suppression -->
+    <div class="delete-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-2">
+                    <i class="fas fa-trash-alt me-3"></i>
+                    Supprimer l'affaire
+                </h1>
+                <h3 class="mb-0 opacity-90">{{ affaire.code_affaire }} - {{ affaire.client }}</h3>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <a href="{% url 'core:affaire_detail' affaire.id %}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left"></i> Retour aux détails
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Avertissement principal -->
+            <div class="card warning-card">
+                <div class="card-body text-center">
+                    <div class="warning-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h4 class="text-danger mb-3">Attention : Suppression définitive</h4>
+                    <p class="lead">
+                        Vous êtes sur le point de supprimer définitivement l'affaire 
+                        <strong>{{ affaire.code_affaire }}</strong> du client <strong>{{ affaire.client }}</strong>.
+                    </p>
+                    <p class="text-muted">
+                        Cette action est <strong>irréversible</strong> et entraînera la perte de toutes les données associées.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Informations sur l'affaire -->
+            <div class="info-card">
+                <h6><i class="fas fa-info-circle me-2"></i>Informations sur l'affaire</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Code:</strong> {{ affaire.code_affaire }}<br>
+                        <strong>Client:</strong> {{ affaire.client }}<br>
+                        <strong>Statut:</strong> 
+                        <span class="badge 
+                            {% if affaire.statut == 'en_cours' %}bg-primary
+                            {% elif affaire.statut == 'terminee' %}bg-success
+                            {% elif affaire.statut == 'suspendue' %}bg-warning
+                            {% elif affaire.statut == 'annulee' %}bg-danger
+                            {% else %}bg-secondary{% endif %}">
+                            {{ affaire.get_statut_display }}
+                        </span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Date début:</strong> {{ affaire.date_debut|date:"d/m/Y" }}<br>
+                        <strong>Date fin prévue:</strong> {{ affaire.date_fin_prevue|date:"d/m/Y" }}<br>
+                        <strong>Responsable:</strong> 
+                        {% if affaire.responsable_affaire %}
+                            {{ affaire.responsable_affaire.get_full_name }}
+                        {% else %}
+                            <em>Non assigné</em>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vérification des blocages -->
+            {% if not can_delete %}
+                <div class="blocking-warning">
+                    <h6 class="text-warning">
+                        <i class="fas fa-lock me-2"></i>Suppression impossible
+                    </h6>
+                    <p class="mb-2">
+                        Cette affaire ne peut pas être supprimée car elle contient 
+                        <strong>{{ nb_lancements }} lancement{{ nb_lancements|pluralize }}</strong> associé{{ nb_lancements|pluralize }}.
+                    </p>
+                    <p class="mb-0">
+                        <strong>Action requise :</strong> Supprimez d'abord tous les lancements associés à cette affaire 
+                        avant de pouvoir la supprimer.
+                    </p>
+                </div>
+
+                <div class="text-center">
+                    <a href="{% url 'core:affaire_detail' affaire.id %}" class="btn btn-primary btn-cancel">
+                        <i class="fas fa-arrow-left me-2"></i>Retour aux détails
+                    </a>
+                </div>
+            {% else %}
+                <!-- Conséquences de la suppression -->
+                <div class="card mb-4">
+                    <div class="card-header bg-danger text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-list me-2"></i>Conséquences de cette suppression
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="consequence-item">
+                            <div class="consequence-icon">
+                                <i class="fas fa-times"></i>
+                            </div>
+                            <div>
+                                <strong>Perte des données de l'affaire</strong><br>
+                                <small class="text-muted">
+                                    Code affaire, informations client, livrable, dates et responsable
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="consequence-item">
+                            <div class="consequence-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div>
+                                <strong>Impact sur les statistiques</strong><br>
+                                <small class="text-muted">
+                                    Les rapports et tableaux de bord ne prendront plus en compte cette affaire
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="consequence-item">
+                            <div class="consequence-icon">
+                                <i class="fas fa-history"></i>
+                            </div>
+                            <div>
+                                <strong>Perte de l'historique</strong><br>
+                                <small class="text-muted">
+                                    Aucune trace de cette affaire ne subsistera dans le système
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Liste de vérification de sécurité -->
+                <div class="safety-checklist mb-4">
+                    <h6><i class="fas fa-shield-alt me-2"></i>Liste de vérification de sécurité</h6>
+                    <p class="text-muted mb-3">
+                        Veuillez confirmer que vous avez vérifié les points suivants :
+                    </p>
+                    
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check1" required>
+                        <label for="check1">
+                            J'ai vérifié qu'aucun lancement n'est associé à cette affaire
+                        </label>
+                    </div>
+                    
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check2" required>
+                        <label for="check2">
+                            J'ai sauvegardé toutes les informations importantes si nécessaire
+                        </label>
+                    </div>
+                    
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check3" required>
+                        <label for="check3">
+                            Je comprends que cette action est irréversible
+                        </label>
+                    </div>
+                    
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check4" required>
+                        <label for="check4">
+                            J'ai l'autorisation de supprimer cette affaire
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Formulaire de confirmation -->
+                <form method="post" id="deleteForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label for="confirmation" class="form-label">
+                            <strong>Pour confirmer, tapez exactement :</strong> 
+                            <code>{{ affaire.code_affaire }}</code>
+                        </label>
+                        <input type="text" class="form-control form-control-lg" 
+                               id="confirmation" name="confirmation" 
+                               placeholder="Tapez le code de l'affaire ici"
+                               autocomplete="off" required>
+                        <div class="form-text">
+                            Cette vérification permet d'éviter les suppressions accidentelles.
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-3">
+                        <a href="{% url 'core:affaire_detail' affaire.id %}" class="btn btn-outline-secondary btn-cancel">
+                            <i class="fas fa-times me-2"></i>Annuler
+                        </a>
+                        <button type="submit" class="btn btn-danger btn-danger-custom" id="deleteButton" disabled>
+                            <i class="fas fa-trash-alt me-2"></i>Supprimer définitivement
+                        </button>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+    const confirmationInput = document.getElementById('confirmation');
+    const deleteButton = document.getElementById('deleteButton');
+    const deleteForm = document.getElementById('deleteForm');
+    const expectedCode = '{{ affaire.code_affaire }}';
+
+    function updateDeleteButton() {
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        const codeMatches = confirmationInput && confirmationInput.value === expectedCode;
+        
+        if (deleteButton) {
+            deleteButton.disabled = !(allChecked && codeMatches);
+            
+            if (deleteButton.disabled) {
+                deleteButton.classList.remove('btn-danger-custom');
+                deleteButton.classList.add('btn-outline-danger');
+            } else {
+                deleteButton.classList.add('btn-danger-custom');
+                deleteButton.classList.remove('btn-outline-danger');
+            }
+        }
+    }
+
+    // Écouteurs pour les checkboxes
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateDeleteButton);
+    });
+
+    // Écouteur pour le champ de confirmation
+    if (confirmationInput) {
+        confirmationInput.addEventListener('input', function() {
+            updateDeleteButton();
+            
+            // Feedback visuel en temps réel
+            if (this.value === expectedCode) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            } else if (this.value.length > 0) {
+                this.classList.remove('is-valid');
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-valid', 'is-invalid');
+            }
+        });
+    }
+
+    // Validation finale du formulaire
+    if (deleteForm) {
+        deleteForm.addEventListener('submit', function(e) {
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            const codeMatches = confirmationInput.value === expectedCode;
+            
+            if (!allChecked) {
+                e.preventDefault();
+                alert('Veuillez cocher toutes les cases de vérification.');
+                return false;
+            }
+            
+            if (!codeMatches) {
+                e.preventDefault();
+                alert('Le code de confirmation ne correspond pas.');
+                confirmationInput.focus();
+                return false;
+            }
+            
+            // Dernière confirmation
+            const finalConfirm = confirm(
+                `Êtes-vous absolument certain de vouloir supprimer l'affaire ${expectedCode} ?\n\n` +
+                'Cette action est IRRÉVERSIBLE et supprimera définitivement toutes les données associées.'
+            );
+            
+            if (!finalConfirm) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+
+    // Initial state
+    updateDeleteButton();
+});
+</script>
+{% endblock %}

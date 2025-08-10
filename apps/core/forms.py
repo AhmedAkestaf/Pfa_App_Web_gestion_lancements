@@ -1,6 +1,8 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from .models import Role, Permission
+from .models import Affaire
+from apps.collaborateurs.models import Collaborateur
 
 class RoleForm(forms.ModelForm):
     """Formulaire pour créer/modifier un rôle"""
@@ -242,3 +244,120 @@ class PermissionForm(forms.ModelForm):
                 raise ValidationError('Une permission pour cette combinaison module/action existe déjà.')
         
         return cleaned_data
+
+class AffaireForm(forms.ModelForm):
+    """Formulaire pour créer/modifier une affaire"""
+    
+    class Meta:
+        model = Affaire
+        fields = ['code_affaire', 'client', 'livrable', 'responsable_affaire', 
+                 'date_debut', 'date_fin_prevue', 'statut']
+        widgets = {
+            'code_affaire': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: AFF-2024-001',
+                'maxlength': 50
+            }),
+            'client': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nom du client',
+                'maxlength': 100
+            }),
+            'livrable': forms.Textarea(attrs={
+                'class': 'form-control',
+                'placeholder': 'Description détaillée du livrable',
+                'rows': 4
+            }),
+            'responsable_affaire': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'date_debut': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'date_fin_prevue': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'statut': forms.Select(attrs={
+                'class': 'form-select'
+            })
+        }
+        labels = {
+            'code_affaire': 'Code de l\'affaire',
+            'client': 'Client',
+            'livrable': 'Description du livrable',
+            'responsable_affaire': 'Responsable de l\'affaire',
+            'date_debut': 'Date de début',
+            'date_fin_prevue': 'Date de fin prévue',
+            'statut': 'Statut'
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Filtrer les collaborateurs pour ne montrer que ceux qui peuvent être responsables d'affaires
+        self.fields['responsable_affaire'].queryset = Collaborateur.objects.filter(
+            is_active=True
+        ).order_by('nom_collaborateur', 'prenom_collaborateur')
+        
+        # Ajouter un choix vide
+        self.fields['responsable_affaire'].empty_label = "Sélectionner un responsable"
+    
+
+    
+    def clean(self):
+        """Validation globale du formulaire"""
+        cleaned_data = super().clean()
+        date_debut = cleaned_data.get('date_debut')
+        date_fin_prevue = cleaned_data.get('date_fin_prevue')
+        
+        if date_debut and date_fin_prevue:
+            if date_fin_prevue <= date_debut:
+                raise ValidationError('La date de fin prévue doit être postérieure à la date de début.')
+        
+        return cleaned_data
+
+
+class AffaireSearchForm(forms.Form):
+    """Formulaire de recherche et filtrage des affaires"""
+    
+    search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Rechercher par code, client ou livrable...',
+            'id': 'search-input'
+        }),
+        label='Recherche'
+    )
+    
+    statut = forms.ChoiceField(
+        required=False,
+        widget=forms.Select(attrs={
+            'class': 'form-select'
+        }),
+        label='Statut'
+    )
+    
+    responsable = forms.ModelChoiceField(
+        queryset=Collaborateur.objects.none(),
+        required=False,
+        widget=forms.Select(attrs={
+            'class': 'form-select'
+        }),
+        label='Responsable',
+        empty_label="Tous les responsables"
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Définir les choix de statut
+        statut_choices = [('', 'Tous les statuts')] + list(Affaire._meta.get_field('statut').choices)
+        self.fields['statut'].choices = statut_choices
+        
+        # Définir les choix de responsables
+        self.fields['responsable'].queryset = Collaborateur.objects.filter(
+            affaires_responsable__isnull=False
+        ).distinct().order_by('nom_collaborateur', 'prenom_collaborateur')

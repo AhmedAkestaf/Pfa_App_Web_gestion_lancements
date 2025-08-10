@@ -1,0 +1,459 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{{ action }} une affaire{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item"><a href="{% url 'core:affaires_list' %}">Affaires</a></li>
+    {% if affaire %}
+        <li class="breadcrumb-item"><a href="{% url 'core:affaire_detail' affaire.id %}">{{ affaire.code_affaire }}</a></li>
+        <li class="breadcrumb-item active">Modifier</li>
+    {% else %}
+        <li class="breadcrumb-item active">Nouvelle affaire</li>
+    {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+}
+
+.form-card {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: none;
+    border-radius: 10px;
+}
+
+.form-section {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid #0d6efd;
+}
+
+.form-section h6 {
+    color: #0d6efd;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.required-field label::after {
+    content: " *";
+    color: #dc3545;
+}
+
+.form-floating {
+    margin-bottom: 1rem;
+}
+
+.btn-action {
+    min-width: 120px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.help-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+.character-counter {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-align: right;
+    margin-top: 0.25rem;
+}
+
+.form-errors {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 5px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.field-error {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.preview-section {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.date-warning {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 5px;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête du formulaire -->
+    <div class="form-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-2">
+                    <i class="fas fa-briefcase me-3"></i>
+                    {{ action }} une affaire
+                </h1>
+                <p class="mb-0 opacity-75">
+                    {% if affaire %}
+                        Modification de l'affaire {{ affaire.code_affaire }}
+                    {% else %}
+                        Création d'une nouvelle affaire client
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <div class="d-flex justify-content-md-end gap-2">
+                    {% if cancel_url_args %}
+                        <a href="{% url cancel_url cancel_url_args.0 %}" class="btn btn-outline-light">
+                            <i class="fas fa-times"></i> Annuler
+                        </a>
+                    {% else %}
+                        <a href="{% url cancel_url %}" class="btn btn-outline-light">
+                            <i class="fas fa-times"></i> Annuler
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages d'erreur globaux -->
+    {% if form.non_field_errors %}
+        <div class="form-errors">
+            <h6><i class="fas fa-exclamation-triangle me-2"></i>Erreurs de validation</h6>
+            {% for error in form.non_field_errors %}
+                <div>{{ error }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Formulaire principal -->
+    <div class="card form-card">
+        <div class="card-body p-4">
+            <form method="post" id="affaireForm" novalidate>
+                {% csrf_token %}
+                
+                <!-- Section Identification -->
+                <div class="form-section">
+                    <h6><i class="fas fa-id-card me-2"></i>Identification de l'affaire</h6>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-floating required-field">
+                                {{ form.code_affaire }}
+                                <label for="{{ form.code_affaire.id_for_label }}">{{ form.code_affaire.label }}</label>
+                                {% if form.code_affaire.errors %}
+                                    <div class="field-error">{{ form.code_affaire.errors.0 }}</div>
+                                {% endif %}
+                                <div class="help-text">Code de l'affaire</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating required-field">
+                                {{ form.client }}
+                                <label for="{{ form.client.id_for_label }}">{{ form.client.label }}</label>
+                                {% if form.client.errors %}
+                                    <div class="field-error">{{ form.client.errors.0 }}</div>
+                                {% endif %}
+                                <div class="character-counter">
+                                    <span id="client-count">0</span>/100 caractères
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Description -->
+                <div class="form-section">
+                    <h6><i class="fas fa-clipboard-list me-2"></i>Description du projet</h6>
+                    
+                    <div class="form-floating required-field">
+                        {{ form.livrable }}
+                        <label for="{{ form.livrable.id_for_label }}">{{ form.livrable.label }}</label>
+                        {% if form.livrable.errors %}
+                            <div class="field-error">{{ form.livrable.errors.0 }}</div>
+                        {% endif %}
+                        <div class="help-text">Décrivez précisément le livrable attendu par le client</div>
+                        <div class="character-counter">
+                            <span id="livrable-count">0</span> caractères
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Responsabilité -->
+                <div class="form-section">
+                    <h6><i class="fas fa-user-tie me-2"></i>Responsabilité</h6>
+                    
+                    <div class="form-floating">
+                        {{ form.responsable_affaire }}
+                        <label for="{{ form.responsable_affaire.id_for_label }}">{{ form.responsable_affaire.label }}</label>
+                        {% if form.responsable_affaire.errors %}
+                            <div class="field-error">{{ form.responsable_affaire.errors.0 }}</div>
+                        {% endif %}
+                        <div class="help-text">Collaborateur responsable du suivi commercial de cette affaire</div>
+                    </div>
+                </div>
+
+                <!-- Section Planification -->
+                <div class="form-section">
+                    <h6><i class="fas fa-calendar-alt me-2"></i>Planification</h6>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-floating required-field">
+                                {{ form.date_debut }}
+                                <label for="{{ form.date_debut.id_for_label }}">{{ form.date_debut.label }}</label>
+                                {% if form.date_debut.errors %}
+                                    <div class="field-error">{{ form.date_debut.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-floating required-field">
+                                {{ form.date_fin_prevue }}
+                                <label for="{{ form.date_fin_prevue.id_for_label }}">{{ form.date_fin_prevue.label }}</label>
+                                {% if form.date_fin_prevue.errors %}
+                                    <div class="field-error">{{ form.date_fin_prevue.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-floating">
+                                {{ form.statut }}
+                                <label for="{{ form.statut.id_for_label }}">{{ form.statut.label }}</label>
+                                {% if form.statut.errors %}
+                                    <div class="field-error">{{ form.statut.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Indicateur de durée -->
+                    <div class="preview-section" id="duree-preview" style="display: none;">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <strong>Durée prévue: <span id="duree-jours">0</span> jours</strong>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="progress">
+                                    <div class="progress-bar bg-info" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Avertissement dates -->
+                    <div class="date-warning" id="date-warning" style="display: none;">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span id="warning-text"></span>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="d-flex justify-content-end gap-3 mt-4">
+                    {% if cancel_url_args %}
+                        <a href="{% url cancel_url cancel_url_args.0 %}" class="btn btn-outline-secondary btn-action">
+                            <i class="fas fa-times me-2"></i>Annuler
+                        </a>
+                    {% else %}
+                        <a href="{% url cancel_url %}" class="btn btn-outline-secondary btn-action">
+                            <i class="fas fa-times me-2"></i>Annuler
+                        </a>
+                    {% endif %}
+                    
+                    <button type="submit" class="btn btn-primary btn-action">
+                        <i class="fas fa-save me-2"></i>{{ submit_text }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Références aux éléments
+    const codeAffaireInput = document.getElementById('{{ form.code_affaire.id_for_label }}');
+    const clientInput = document.getElementById('{{ form.client.id_for_label }}');
+    const livrableInput = document.getElementById('{{ form.livrable.id_for_label }}');
+    const dateDebutInput = document.getElementById('{{ form.date_debut.id_for_label }}');
+    const dateFinInput = document.getElementById('{{ form.date_fin_prevue.id_for_label }}');
+    const dureePreview = document.getElementById('duree-preview');
+    const dureeJours = document.getElementById('duree-jours');
+    const dateWarning = document.getElementById('date-warning');
+    const warningText = document.getElementById('warning-text');
+
+    // Compteurs de caractères
+    function updateCharacterCount(input, counterId) {
+        const counter = document.getElementById(counterId);
+        if (input && counter) {
+            const updateCount = () => {
+                counter.textContent = input.value.length;
+            };
+            input.addEventListener('input', updateCount);
+            updateCount(); // Initial count
+        }
+    }
+
+    updateCharacterCount(clientInput, 'client-count');
+    updateCharacterCount(livrableInput, 'livrable-count');
+
+    // Auto-génération du code affaire si vide
+    if (codeAffaireInput && !codeAffaireInput.value) {
+        clientInput.addEventListener('blur', function() {
+            if (!codeAffaireInput.value && this.value) {
+                const year = new Date().getFullYear();
+                const clientCode = this.value.substring(0, 3).toUpperCase();
+                const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+                codeAffaireInput.value = `AFF-${year}-${clientCode}${randomNum}`;
+            }
+        });
+    }
+
+    // Calcul de la durée et validation des dates
+    function calculateDuration() {
+        if (dateDebutInput.value && dateFinInput.value) {
+            const debut = new Date(dateDebutInput.value);
+            const fin = new Date(dateFinInput.value);
+            const today = new Date();
+            
+            if (fin <= debut) {
+                dateWarning.style.display = 'block';
+                warningText.textContent = 'La date de fin doit être postérieure à la date de début.';
+                dureePreview.style.display = 'none';
+                return;
+            }
+            
+            const diffTime = Math.abs(fin - debut);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            dureeJours.textContent = diffDays;
+            dureePreview.style.display = 'block';
+            
+            // Vérifications supplémentaires
+            if (debut < today) {
+                dateWarning.style.display = 'block';
+                warningText.textContent = 'La date de début est dans le passé.';
+            } else if (diffDays > 365) {
+                dateWarning.style.display = 'block';
+                warningText.textContent = 'Cette affaire a une durée très longue (plus d\'un an).';
+            } else {
+                dateWarning.style.display = 'none';
+            }
+        } else {
+            dureePreview.style.display = 'none';
+            dateWarning.style.display = 'none';
+        }
+    }
+
+    // Écouteurs pour les dates
+    if (dateDebutInput && dateFinInput) {
+        dateDebutInput.addEventListener('change', calculateDuration);
+        dateFinInput.addEventListener('change', calculateDuration);
+        calculateDuration(); // Initial calculation
+    }
+
+    // Validation en temps réel
+    const form = document.getElementById('affaireForm');
+    const inputs = form.querySelectorAll('input, select, textarea');
+    
+    inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            validateField(this);
+        });
+    });
+
+    function validateField(field) {
+        // Retirer les classes d'erreur précédentes
+        field.classList.remove('is-invalid', 'is-valid');
+        
+        // Validation simple
+        if (field.hasAttribute('required') && !field.value.trim()) {
+            field.classList.add('is-invalid');
+        } else if (field.value.trim()) {
+            field.classList.add('is-valid');
+        }
+    }
+
+    // Soumission du formulaire avec validation
+    form.addEventListener('submit', function(e) {
+        let isValid = true;
+        
+        // Validation finale
+        inputs.forEach(input => {
+            if (input.hasAttribute('required') && !input.value.trim()) {
+                input.classList.add('is-invalid');
+                isValid = false;
+            }
+        });
+        
+        // Validation des dates
+        if (dateDebutInput.value && dateFinInput.value) {
+            const debut = new Date(dateDebutInput.value);
+            const fin = new Date(dateFinInput.value);
+            
+            if (fin <= debut) {
+                dateFinInput.classList.add('is-invalid');
+                isValid = false;
+            }
+        }
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('Veuillez corriger les erreurs dans le formulaire.');
+            // Scroll vers la première erreur
+            const firstError = form.querySelector('.is-invalid');
+            if (firstError) {
+                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstError.focus();
+            }
+        }
+    });
+
+    // Auto-resize du textarea
+    if (livrableInput) {
+        livrableInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.max(this.scrollHeight, 120) + 'px';
+        });
+    }
+});
+</script>
+{% endblock %}

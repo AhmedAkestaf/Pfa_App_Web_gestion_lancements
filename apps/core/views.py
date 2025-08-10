@@ -3,12 +3,13 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
-from .models import Role, Permission
-from .forms import RoleForm, RolePermissionForm
+from .models import Role, Permission , Affaire
+from apps.collaborateurs.models import Collaborateur
+from .forms import RoleForm, AffaireForm
 from .utils.permissions import permission_required, get_permission_matrix
 import json
 from django.http import JsonResponse
-from django.db import transaction
+from django.db import transaction , models
 
 
 def dashboard(request):
@@ -452,3 +453,260 @@ def import_role_config(request):
             messages.error(request, f'Erreur lors de l\'import : {str(e)}')
     
     return render(request, 'core/roles/import.html')
+
+# ========== VUES POUR LA GESTION DES AFFAIRES ==========
+
+@permission_required('affaires', 'read')
+def affaires_list(request):
+    """Vue liste des affaires avec filtres et recherche"""
+    
+    # Récupération des paramètres de recherche et filtrage
+    search = request.GET.get('search', '')
+    statut_filter = request.GET.get('statut', '')
+    responsable_filter = request.GET.get('responsable', '')
+    
+    # Construction de la requête
+    affaires = Affaire.objects.select_related('responsable_affaire').annotate(
+        nb_lancements=Count('lancements')
+    ).order_by('-date_debut')
+    
+    # Filtrage par recherche
+    if search:
+        affaires = affaires.filter(
+            Q(code_affaire__icontains=search) | 
+            Q(client__icontains=search) |
+            Q(livrable__icontains=search)
+        )
+    
+    # Filtrage par statut
+    if statut_filter:
+        affaires = affaires.filter(statut=statut_filter)
+    
+    # Filtrage par responsable
+    if responsable_filter:
+        affaires = affaires.filter(responsable_affaire_id=responsable_filter)
+    
+    # Pagination
+    paginator = Paginator(affaires, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Données pour les filtres
+    statuts_choices = Affaire._meta.get_field('statut').choices
+    responsables = Collaborateur.objects.filter(
+        affaires_responsable__isnull=False
+    ).distinct().order_by('nom_collaborateur', 'prenom_collaborateur')
+    
+    context = {
+        'page_obj': page_obj,
+        'search_query': search,
+        'statut_filter': statut_filter,
+        'responsable_filter': int(responsable_filter) if responsable_filter.isdigit() else '',
+        'statuts_choices': statuts_choices,
+        'responsables': responsables,
+        'total_affaires': affaires.count(),
+        'can_create': request.user.has_perm('affaires.create'),
+        'can_update': request.user.has_perm('affaires.update'),
+        'can_delete': request.user.has_perm('affaires.delete'),
+    }
+    
+    return render(request, 'affaires/list.html', context)
+
+
+@permission_required('affaires', 'read')
+def affaire_detail(request, affaire_id):
+    """Vue détail d'une affaire"""
+    
+    affaire = get_object_or_404(Affaire, id=affaire_id)
+    
+    # Récupérer les lancements liés à cette affaire
+    lancements = affaire.lancements.select_related(
+        'atelier', 'categorie', 'collaborateur'
+    ).order_by('-date_lancement')
+    
+    # Statistiques de l'affaire
+    lancements_stats = {
+        'total': lancements.count(),
+        'en_cours': lancements.filter(statut='en_cours').count(),
+        'termines': lancements.filter(statut='termine').count(),
+        'suspendus': lancements.filter(statut='suspendu').count(),
+    }
+    
+    # Calcul du poids total
+    poids_total = lancements.aggregate(
+        debitage=models.Sum('poids_debitage'),
+        assemblage=models.Sum('poids_assemblage')
+    )
+    
+    # Durée prévue vs réalisée
+    from datetime import date
+    duree_prevue = (affaire.date_fin_prevue - affaire.date_debut).days
+    duree_ecoulee = (date.today() - affaire.date_debut).days if affaire.date_debut <= date.today() else 0
+    
+    context = {
+        'affaire': affaire,
+        'lancements': lancements[:10],  # Derniers 10 lancements
+        'lancements_stats': lancements_stats,
+        'poids_total': poids_total,
+        'duree_prevue': duree_prevue,
+        'duree_ecoulee': duree_ecoulee,
+        'progression': min(100, (duree_ecoulee / duree_prevue * 100)) if duree_prevue > 0 else 0,
+        'can_update': request.user.has_perm('affaires.update'),
+        'can_delete': request.user.has_perm('affaires.delete'),
+    }
+    
+    return render(request, 'affaires/detail.html', context)
+
+
+@permission_required('affaires', 'create')
+def affaire_create(request):
+    """Vue création d'une nouvelle affaire"""
+    
+    if request.method == 'POST':
+        form = AffaireForm(request.POST)
+        if form.is_valid():
+            affaire = form.save()
+            messages.success(request, f'Affaire "{affaire.code_affaire}" créée avec succès.')
+            return redirect('core:affaire_detail', affaire_id=affaire.id)
+    else:
+        form = AffaireForm()
+    
+    context = {
+        'form': form,
+        'action': 'Créer',
+        'submit_text': 'Créer l\'affaire',
+        'cancel_url': 'core:affaires_list'
+    }
+    
+    return render(request, 'affaires/form.html', context)
+
+
+@permission_required('affaires', 'update')
+def affaire_edit(request, affaire_id):
+    """Vue modification d'une affaire"""
+    
+    affaire = get_object_or_404(Affaire, id=affaire_id)
+    
+    if request.method == 'POST':
+        form = AffaireForm(request.POST, instance=affaire)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Affaire "{affaire.code_affaire}" modifiée avec succès.')
+            return redirect('core:affaire_detail', affaire_id=affaire.id)
+    else:
+        form = AffaireForm(instance=affaire)
+    
+    context = {
+        'form': form,
+        'affaire': affaire,
+        'action': 'Modifier',
+        'submit_text': 'Sauvegarder les modifications',
+        'cancel_url': 'core:affaire_detail',
+        'cancel_url_args': [affaire.id]
+    }
+    
+    return render(request, 'affaires/form.html', context)
+
+
+@permission_required('affaires', 'delete')
+def affaire_delete(request, affaire_id):
+    """Vue suppression d'une affaire"""
+    
+    affaire = get_object_or_404(Affaire, id=affaire_id)
+    
+    # Vérifier s'il y a des lancements liés
+    nb_lancements = affaire.lancements.count()
+    
+    if request.method == 'POST':
+        if nb_lancements > 0:
+            messages.error(request, 
+                f'Impossible de supprimer l\'affaire "{affaire.code_affaire}" : '
+                f'{nb_lancements} lancement(s) y sont associés.')
+            return redirect('core:affaire_detail', affaire_id=affaire.id)
+        
+        code_affaire = affaire.code_affaire
+        affaire.delete()
+        messages.success(request, f'Affaire "{code_affaire}" supprimée avec succès.')
+        return redirect('core:affaires_list')
+    
+    context = {
+        'affaire': affaire,
+        'nb_lancements': nb_lancements,
+        'can_delete': nb_lancements == 0,
+    }
+    
+    return render(request, 'affaires/delete_confirm.html', context)
+
+
+@permission_required('affaires', 'update')
+def affaire_toggle_statut(request, affaire_id):
+    """Changer rapidement le statut d'une affaire (AJAX)"""
+    
+    if request.method == 'POST':
+        affaire = get_object_or_404(Affaire, id=affaire_id)
+        nouveau_statut = request.POST.get('statut')
+        
+        # Vérifier que le statut est valide
+        statuts_valides = [choice[0] for choice in affaire._meta.get_field('statut').choices]
+        
+        if nouveau_statut in statuts_valides:
+            ancien_statut = affaire.get_statut_display()
+            affaire.statut = nouveau_statut
+            affaire.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Statut changé de "{ancien_statut}" vers "{affaire.get_statut_display()}"',
+                'nouveau_statut': nouveau_statut,
+                'nouveau_statut_display': affaire.get_statut_display()
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': 'Statut invalide'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'})
+
+
+@permission_required('affaires', 'read')
+def affaires_export(request):
+    """Export des affaires en CSV/Excel"""
+    import csv
+    from django.http import HttpResponse
+    from datetime import datetime
+    
+    # Filtres optionnels
+    statut_filter = request.GET.get('statut', '')
+    responsable_filter = request.GET.get('responsable', '')
+    
+    affaires = Affaire.objects.select_related('responsable_affaire')
+    
+    if statut_filter:
+        affaires = affaires.filter(statut=statut_filter)
+    if responsable_filter:
+        affaires = affaires.filter(responsable_affaire_id=responsable_filter)
+    
+    # Créer la réponse CSV
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="affaires_{datetime.now().strftime("%Y%m%d_%H%M")}.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow([
+        'Code Affaire', 'Client', 'Livrable', 'Responsable', 
+        'Date Début', 'Date Fin Prévue', 'Statut', 'Nb Lancements'
+    ])
+    
+    for affaire in affaires:
+        writer.writerow([
+            affaire.code_affaire,
+            affaire.client,
+            affaire.livrable,
+            affaire.responsable_affaire.get_full_name() if affaire.responsable_affaire else '',
+            affaire.date_debut.strftime('%d/%m/%Y'),
+            affaire.date_fin_prevue.strftime('%d/%m/%Y'),
+            affaire.get_statut_display(),
+            affaire.lancements.count()
+        ])
+    
+    return response

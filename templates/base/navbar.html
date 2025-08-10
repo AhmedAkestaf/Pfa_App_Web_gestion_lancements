@@ -57,7 +57,7 @@
                         
                         {% has_permission 'affaires' 'read' as can_view_affaires %}
                         {% if can_view_affaires %}
-                        <li><a class="dropdown-item" href="#">
+                        <li><a class="dropdown-item" href="{% url 'core:affaires_list' %}">
                             <i class="fas fa-briefcase"></i> Affaires
                         </a></li>
                         {% endif %}

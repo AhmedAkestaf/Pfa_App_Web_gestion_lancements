@@ -24,4 +24,13 @@ urlpatterns = [
     path('roles/templates/', views.role_templates, name='role_templates'),
     path('roles/<int:role_id>/export/', views.export_role_config, name='export_role_config'),
     path('roles/import/', views.import_role_config, name='import_role_config'),
+
+        # ========== GESTION DES AFFAIRES ==========
+    path('affaires/', views.affaires_list, name='affaires_list'),
+    path('affaires/create/', views.affaire_create, name='affaire_create'),
+    path('affaires/<int:affaire_id>/', views.affaire_detail, name='affaire_detail'),
+    path('affaires/<int:affaire_id>/edit/', views.affaire_edit, name='affaire_edit'),
+    path('affaires/<int:affaire_id>/delete/', views.affaire_delete, name='affaire_delete'),
+    path('affaires/<int:affaire_id>/toggle-statut/', views.affaire_toggle_statut, name='affaire_toggle_statut'),
+    path('affaires/export/', views.affaires_export, name='affaires_export')
 ]
