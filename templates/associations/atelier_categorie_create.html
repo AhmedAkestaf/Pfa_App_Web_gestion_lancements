@@ -1,0 +1,331 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item">
+    <a href="{% url 'associations:atelier_categorie_list' %}">Associations Atelier-Catégorie</a>
+</li>
+<li class="breadcrumb-item active">Nouvelle association</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-cogs me-2"></i>
+                    Nouvelle association Atelier-Catégorie
+                </h5>
+            </div>
+            
+            <form method="post" id="capaciteForm">
+                {% csrf_token %}
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Sélection de l'atelier -->
+                        <div class="col-md-6 mb-4">
+                            <label for="atelier" class="form-label required">
+                                <i class="fas fa-industry me-1"></i>Atelier
+                            </label>
+                            <select class="form-select" id="atelier" name="atelier" required>
+                                <option value="">Sélectionner un atelier</option>
+                                {% for atelier in ateliers %}
+                                <option value="{{ atelier.id }}" 
+                                        data-type="{{ atelier.get_type_atelier_display }}"
+                                        data-responsable="{{ atelier.responsable_atelier.get_full_name|default:'Aucun' }}">
+                                    {{ atelier.nom_atelier }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                <small id="atelier-info" class="text-muted"></small>
+                            </div>
+                        </div>
+                        
+                        <!-- Sélection de la catégorie -->
+                        <div class="col-md-6 mb-4">
+                            <label for="categorie" class="form-label required">
+                                <i class="fas fa-tags me-1"></i>Catégorie
+                            </label>
+                            <select class="form-select" id="categorie" name="categorie" required>
+                                <option value="">Sélectionner une catégorie</option>
+                                {% for categorie in categories %}
+                                <option value="{{ categorie.id }}" 
+                                        data-description="{{ categorie.description|default:'Aucune description' }}">
+                                    {{ categorie.nom_categorie }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                <small id="categorie-info" class="text-muted"></small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Vérification des conflits -->
+                    <div id="conflict-warning" class="alert alert-warning d-none">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Attention :</strong> <span id="conflict-message"></span>
+                    </div>
+                    
+                    <!-- Informations sur l'association -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-info-circle me-1"></i>Résumé de l'association
+                                    </h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="text-center p-3 border-end">
+                                                <i class="fas fa-industry fa-3x text-primary mb-3"></i>
+                                                <h6>Atelier sélectionné</h6>
+                                                <div id="selected-atelier" class="text-muted">
+                                                    Aucun atelier sélectionné
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="text-center p-3">
+                                                <i class="fas fa-tags fa-3x text-info mb-3"></i>
+                                                <h6>Catégorie sélectionnée</h6>
+                                                <div id="selected-categorie" class="text-muted">
+                                                    Aucune catégorie sélectionnée
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mt-3">
+                                        <div class="col-12">
+                                            <div id="association-description" class="alert alert-light d-none">
+                                                <h6><i class="fas fa-lightbulb me-2"></i>Description de l'association</h6>
+                                                <p id="association-text" class="mb-0"></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'associations:atelier_categorie_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Retour à la liste
+                        </a>
+                        <div>
+                            <button type="button" class="btn btn-outline-warning me-2" id="previewBtn" disabled>
+                                <i class="fas fa-eye me-1"></i>Prévisualiser
+                            </button>
+                            <button type="submit" class="btn btn-warning" id="submitBtn" disabled>
+                                <i class="fas fa-save me-1"></i>Créer l'association
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de prévisualisation -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Prévisualisation de l'association</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="previewContent">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-warning" id="confirmCreate">
+                    <i class="fas fa-check me-1"></i>Confirmer et créer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const atelierSelect = document.getElementById('atelier');
+    const categorieSelect = document.getElementById('categorie');
+    const submitBtn = document.getElementById('submitBtn');
+    const previewBtn = document.getElementById('previewBtn');
+    const conflictWarning = document.getElementById('conflict-warning');
+    const conflictMessage = document.getElementById('conflict-message');
+    
+    function updateAtelierInfo() {
+        const selectedOption = atelierSelect.options[atelierSelect.selectedIndex];
+        const infoElement = document.getElementById('atelier-info');
+        const selectedAtelierDiv = document.getElementById('selected-atelier');
+        
+        if (selectedOption.value) {
+            const type = selectedOption.dataset.type;
+            const responsable = selectedOption.dataset.responsable;
+            
+            infoElement.innerHTML = `Type: ${type} | Responsable: ${responsable}`;
+            selectedAtelierDiv.innerHTML = `<strong>${selectedOption.text}</strong><br><small class="text-muted">${type}</small>`;
+        } else {
+            infoElement.innerHTML = '';
+            selectedAtelierDiv.innerHTML = 'Aucun atelier sélectionné';
+        }
+        updateAssociationDescription();
+    }
+    
+    function updateCategorieInfo() {
+        const selectedOption = categorieSelect.options[categorieSelect.selectedIndex];
+        const infoElement = document.getElementById('categorie-info');
+        const selectedCategorieDiv = document.getElementById('selected-categorie');
+        
+        if (selectedOption.value) {
+            const description = selectedOption.dataset.description;
+            infoElement.innerHTML = `Description: ${description}`;
+            selectedCategorieDiv.innerHTML = `<strong>${selectedOption.text}</strong><br><small class="text-muted">${description}</small>`;
+        } else {
+            infoElement.innerHTML = '';
+            selectedCategorieDiv.innerHTML = 'Aucune catégorie sélectionnée';
+        }
+        updateAssociationDescription();
+    }
+    
+    function updateAssociationDescription() {
+        const atelierOption = atelierSelect.options[atelierSelect.selectedIndex];
+        const categorieOption = categorieSelect.options[categorieSelect.selectedIndex];
+        const descriptionDiv = document.getElementById('association-description');
+        const textElement = document.getElementById('association-text');
+        
+        if (atelierOption.value && categorieOption.value) {
+            const description = `L'atelier "${atelierOption.text}" sera autorisé à traiter les produits de la catégorie "${categorieOption.text}". Cette association permettra d'organiser la production en fonction des spécialités de chaque atelier.`;
+            textElement.textContent = description;
+            descriptionDiv.classList.remove('d-none');
+        } else {
+            descriptionDiv.classList.add('d-none');
+        }
+    }
+    
+    function checkForConflicts() {
+        const atelier = atelierSelect.value;
+        const categorie = categorieSelect.value;
+        
+        if (atelier && categorie) {
+            fetch('/associations/check-atelier-categorie-conflict/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    'atelier_id': atelier,
+                    'categorie_id': categorie
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.has_conflict) {
+                    conflictMessage.textContent = data.message;
+                    conflictWarning.classList.remove('d-none');
+                    submitBtn.disabled = true;
+                    previewBtn.disabled = true;
+                } else {
+                    conflictWarning.classList.add('d-none');
+                    submitBtn.disabled = false;
+                    previewBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+            });
+        }
+    }
+    
+    function validateForm() {
+        const atelier = atelierSelect.value;
+        const categorie = categorieSelect.value;
+        
+        if (atelier && categorie) {
+            checkForConflicts();
+        } else {
+            submitBtn.disabled = true;
+            previewBtn.disabled = true;
+            conflictWarning.classList.add('d-none');
+        }
+    }
+    
+    // Event listeners
+    atelierSelect.addEventListener('change', function() {
+        updateAtelierInfo();
+        validateForm();
+    });
+    
+    categorieSelect.addEventListener('change', function() {
+        updateCategorieInfo();
+        validateForm();
+    });
+    
+    // Preview functionality
+    previewBtn.addEventListener('click', function() {
+        const atelier = atelierSelect.options[atelierSelect.selectedIndex];
+        const categorie = categorieSelect.options[categorieSelect.selectedIndex];
+        
+        document.getElementById('previewContent').innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6><i class="fas fa-industry me-2"></i>Atelier</h6>
+                    <div class="card">
+                        <div class="card-body">
+                            <strong>${atelier.text}</strong><br>
+                            <small class="text-muted">Type: ${atelier.dataset.type}</small><br>
+                            <small class="text-muted">Responsable: ${atelier.dataset.responsable}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6><i class="fas fa-tags me-2"></i>Catégorie</h6>
+                    <div class="card">
+                        <div class="card-body">
+                            <strong>${categorie.text}</strong><br>
+                            <small class="text-muted">${categorie.dataset.description}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle me-2"></i>Résultat de l'association</h6>
+                        <p class="mb-0">
+                            L'atelier <strong>${atelier.text}</strong> sera autorisé à traiter les produits 
+                            de la catégorie <strong>${categorie.text}</strong>. Cette association facilitera 
+                            l'organisation de la production en fonction des capacités et spécialités de l'atelier.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        new bootstrap.Modal(document.getElementById('previewModal')).show();
+    });
+    
+    document.getElementById('confirmCreate').addEventListener('click', function() {
+        document.getElementById('capaciteForm').submit();
+    });
+    
+    // Initial validation
+    validateForm();
+});
+</script>
+{% endblock %}

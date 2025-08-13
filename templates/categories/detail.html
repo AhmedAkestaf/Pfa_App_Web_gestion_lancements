@@ -133,8 +133,8 @@
                                         <thead>
                                             <tr>
                                                 <th>Atelier</th>
-                                                <th>Capacité</th>
-                                                <th>Temps moyen</th>
+                                                <th>Type</th>
+                                                <th>Responsable</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -142,17 +142,15 @@
                                                 <tr>
                                                     <td>
                                                         <strong>{{ association.atelier.nom_atelier }}</strong>
-                                                        <br>
-                                                        <small class="text-muted">{{ association.atelier.get_type_atelier_display }}</small>
                                                     </td>
                                                     <td>
-                                                        <span class="badge bg-info">{{ association.capacite_categorie }}</span>
+                                                        <span class="badge bg-info">{{ association.atelier.get_type_atelier_display }}</span>
                                                     </td>
                                                     <td>
-                                                        {% if association.temps_moyen_traitement %}
-                                                            <span class="badge bg-warning text-dark">{{ association.temps_moyen_traitement }}h</span>
+                                                        {% if association.atelier.responsable_atelier %}
+                                                            {{ association.atelier.responsable_atelier.get_full_name }}
                                                         {% else %}
-                                                            <span class="text-muted">-</span>
+                                                            <span class="text-muted">Non assigné</span>
                                                         {% endif %}
                                                     </td>
                                                 </tr>
@@ -186,8 +184,7 @@
                                         <thead>
                                             <tr>
                                                 <th>Collaborateur</th>
-                                                <th>Niveau</th>
-                                                <th>Certifié depuis</th>
+                                                <th>Statut</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -204,18 +201,11 @@
                                                         </div>
                                                     </td>
                                                     <td>
-                                                        {% if competence.niveau_competence == 'expert' %}
-                                                            <span class="badge bg-danger">{{ competence.get_niveau_competence_display }}</span>
-                                                        {% elif competence.niveau_competence == 'avance' %}
-                                                            <span class="badge bg-warning">{{ competence.get_niveau_competence_display }}</span>
-                                                        {% elif competence.niveau_competence == 'intermediaire' %}
-                                                            <span class="badge bg-info">{{ competence.get_niveau_competence_display }}</span>
+                                                        {% if competence.collaborateur.is_active %}
+                                                            <span class="badge bg-success">Actif</span>
                                                         {% else %}
-                                                            <span class="badge bg-secondary">{{ competence.get_niveau_competence_display }}</span>
+                                                            <span class="badge bg-secondary">Inactif</span>
                                                         {% endif %}
-                                                    </td>
-                                                    <td>
-                                                        <small class="text-muted">{{ competence.date_certification|date:"d/m/Y" }}</small>
                                                     </td>
                                                 </tr>
                                             {% endfor %}

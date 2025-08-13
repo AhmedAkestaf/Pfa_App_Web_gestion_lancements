@@ -30,32 +30,47 @@ class CategorieAdmin(admin.ModelAdmin):
 @admin.register(CollaborateurAtelier)
 class CollaborateurAtelierAdmin(admin.ModelAdmin):
     """
-    Configuration pour les affectations Collaborateur-Atelier.
+    Configuration simplifiée pour les affectations Collaborateur-Atelier.
+    Relation many-to-many simple entre collaborateurs et ateliers.
     """
-    list_display = ('collaborateur', 'atelier', 'role_dans_atelier', 'date_affectation', 'date_fin_affectation')
-    list_filter = ('role_dans_atelier', 'date_affectation', 'atelier')
+    list_display = ('collaborateur', 'atelier')
+    list_filter = ('atelier',)
     search_fields = ('collaborateur__nom_collaborateur', 'atelier__nom_atelier')
-    ordering = ('-date_affectation',)
+    ordering = ('collaborateur', 'atelier')
     autocomplete_fields = ['collaborateur', 'atelier']
+    
+    class Meta:
+        verbose_name = "Affectation Collaborateur-Atelier"
+        verbose_name_plural = "Affectations Collaborateur-Atelier"
 
 @admin.register(CollaborateurCategorie)
 class CollaborateurCategorieAdmin(admin.ModelAdmin):
     """
-    Configuration pour les spécialisations Collaborateur-Catégorie.
+    Configuration simplifiée pour les spécialisations Collaborateur-Catégorie.
+    Relation many-to-many simple entre collaborateurs et catégories.
     """
-    list_display = ('collaborateur', 'categorie', 'niveau_competence', 'date_certification')
-    list_filter = ('niveau_competence', 'date_certification', 'categorie')
+    list_display = ('collaborateur', 'categorie')
+    list_filter = ('categorie',)
     search_fields = ('collaborateur__nom_collaborateur', 'categorie__nom_categorie')
-    ordering = ('-date_certification',)
+    ordering = ('collaborateur', 'categorie')
     autocomplete_fields = ['collaborateur', 'categorie']
+    
+    class Meta:
+        verbose_name = "Spécialisation Collaborateur-Catégorie"
+        verbose_name_plural = "Spécialisations Collaborateur-Catégorie"
 
 @admin.register(AtelierCategorie)
 class AtelierCategorieAdmin(admin.ModelAdmin):
     """
-    Configuration pour les capacités Atelier-Catégorie.
+    Configuration simplifiée pour les relations Atelier-Catégorie.
+    Relation many-to-many simple entre ateliers et catégories.
     """
-    list_display = ('atelier', 'categorie', 'capacite_categorie', 'temps_moyen_traitement')
+    list_display = ('atelier', 'categorie')
     list_filter = ('atelier', 'categorie')
     search_fields = ('atelier__nom_atelier', 'categorie__nom_categorie')
     ordering = ('atelier', 'categorie')
     autocomplete_fields = ['atelier', 'categorie']
+    
+    class Meta:
+        verbose_name = "Relation Atelier-Catégorie"
+        verbose_name_plural = "Relations Atelier-Catégorie"

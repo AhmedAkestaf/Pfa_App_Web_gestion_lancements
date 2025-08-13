@@ -106,6 +106,18 @@ class LancementForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
+        # CORRECTION PRINCIPALE : Si on est en mode modification (instance existe)
+        if self.instance.pk:
+            # Rendre le champ num_lanc non requis et en lecture seule
+            self.fields['num_lanc'].required = False
+            self.fields['num_lanc'].widget.attrs.update({
+                'readonly': True,
+                'class': 'form-control',
+                'style': 'background-color: #e9ecef;'
+            })
+            # Ajouter un message d'aide spécifique pour la modification
+            self.fields['num_lanc'].help_text = 'Le numéro de lancement ne peut pas être modifié'
+        
         # Filtrer les affaires actives pour les nouveaux lancements
         if not self.instance.pk:
             self.fields['affaire'].queryset = Affaire.objects.filter(
@@ -145,6 +157,31 @@ class LancementForm(forms.ModelForm):
             self.add_error(field, full_message)
         else:
             self.add_error(None, full_message)
+
+    def clean_num_lanc(self):
+        """
+        Validation spéciale pour le numéro de lancement
+        """
+        num_lanc = self.cleaned_data.get('num_lanc')
+        
+        # Si on est en mode modification et que le numéro n'a pas changé, c'est OK
+        if self.instance.pk and self.instance.num_lanc == num_lanc:
+            return num_lanc
+        
+        # Si on est en mode création et que le numéro est vide, on génère automatiquement
+        if not self.instance.pk and not num_lanc:
+            return self.generate_lancement_number()
+        
+        # Vérifier l'unicité du numéro
+        if num_lanc:
+            existing = Lancement.objects.filter(num_lanc=num_lanc)
+            if self.instance.pk:
+                existing = existing.exclude(pk=self.instance.pk)
+            
+            if existing.exists():
+                raise ValidationError("Ce numéro de lancement existe déjà.")
+        
+        return num_lanc
 
     def clean_date_lancement(self):
         """
@@ -247,8 +284,6 @@ class LancementForm(forms.ModelForm):
         try:
             atelier = cleaned_data.get('atelier')
             categorie = cleaned_data.get('categorie')
-            collaborateur = cleaned_data.get('collaborateur')
-            affaire = cleaned_data.get('affaire')
             poids_debitage = cleaned_data.get('poids_debitage', Decimal('0'))
             poids_assemblage = cleaned_data.get('poids_assemblage', Decimal('0'))
             
@@ -262,25 +297,6 @@ class LancementForm(forms.ModelForm):
                 poids_assemblage = Decimal(str(poids_assemblage))
             else:
                 poids_assemblage = Decimal('0')
-            
-            # Vérifier que l'affaire est compatible avec la date de lancement
-            if affaire and hasattr(affaire, 'date_fin_prevue') and affaire.date_fin_prevue:
-                try:
-                    date_lancement = cleaned_data.get('date_lancement')
-                    if date_lancement and date_lancement > affaire.date_fin_prevue:
-                        self.add_error_with_context(
-                            'date_lancement',
-                            f"La date de lancement ({date_lancement.strftime('%d/%m/%Y')}) "
-                            f"est postérieure à la date de fin prévue de l'affaire "
-                            f"({affaire.date_fin_prevue.strftime('%d/%m/%Y')}).",
-                            "AFFAIRE-DATES"
-                        )
-                except Exception as e:
-                    self.add_error_with_context(
-                        'affaire',
-                        f"Erreur lors de la vérification des dates de l'affaire: {str(e)}",
-                        "AFFAIRE-DATES"
-                    )
             
             # Vérifier que l'atelier peut traiter cette catégorie
             if atelier and categorie:
@@ -298,29 +314,6 @@ class LancementForm(forms.ModelForm):
                         'atelier',
                         f"Erreur lors de la vérification atelier-catégorie: {str(e)}",
                         "ATELIER-CATEGORIE"
-                    )
-            
-            # Vérifier que le collaborateur peut travailler dans cet atelier
-            if atelier and collaborateur:
-                try:
-                    from apps.ateliers.models import CollaborateurAtelier
-                    if not CollaborateurAtelier.objects.filter(
-                        atelier=atelier, 
-                        collaborateur=collaborateur,
-                        date_fin_affectation__isnull=True  # Affectation active
-                    ).exists():
-                        # Avertissement mais pas d'erreur bloquante
-                        self.add_error_with_context(
-                            None,
-                            f"Attention: {collaborateur.get_full_name()} n'est pas "
-                            f"actuellement affecté à l'atelier '{atelier.nom_atelier}'.",
-                            "COLLABORATEUR-ATELIER"
-                        )
-                except Exception as e:
-                    self.add_error_with_context(
-                        'collaborateur',
-                        f"Erreur lors de la vérification collaborateur-atelier: {str(e)}",
-                        "COLLABORATEUR-ATELIER"
                     )
             
             # Vérifier que les poids ne sont pas tous les deux à zéro

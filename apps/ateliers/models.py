@@ -72,10 +72,8 @@ class Categorie(models.Model):
 
 class CollaborateurAtelier(models.Model):
     """
-    Table d'association pour gérer l'affectation des collaborateurs aux ateliers.
-    Permet de suivre qui travaille dans quel atelier, avec quel rôle,
-    et pendant quelle période. Un collaborateur peut travailler dans plusieurs
-    ateliers et un atelier peut avoir plusieurs collaborateurs.
+    Table d'association simplifiée pour gérer l'affectation des collaborateurs aux ateliers.
+    Relation many-to-many simple entre collaborateurs et ateliers.
     """
     # Relations vers les tables principales
     collaborateur = models.ForeignKey(
@@ -88,22 +86,6 @@ class CollaborateurAtelier(models.Model):
         on_delete=models.CASCADE,
         verbose_name="Atelier"
     )
-    
-    # Période d'affectation
-    date_affectation = models.DateField(auto_now_add=True, verbose_name="Date d'affectation")
-    date_fin_affectation = models.DateField(
-        null=True, 
-        blank=True, 
-        verbose_name="Date de fin d'affectation"
-    )
-    
-    # Rôle du collaborateur dans cet atelier
-    role_dans_atelier = models.CharField(max_length=50, choices=[
-        ('operateur', 'Opérateur'),
-        ('chef_equipe', 'Chef d\'équipe'),
-        ('technicien', 'Technicien'),
-        ('controleur', 'Contrôleur'),
-    ], verbose_name="Rôle dans l'atelier")
     
     def __str__(self):
         """Retourne la relation collaborateur-atelier"""
@@ -118,10 +100,8 @@ class CollaborateurAtelier(models.Model):
 
 class CollaborateurCategorie(models.Model):
     """
-    Table d'association pour gérer les compétences/spécialisations des collaborateurs.
-    Indique dans quelles catégories chaque collaborateur est compétent,
-    avec son niveau de compétence. Permet la gestion des habilitations
-    et certifications.
+    Table d'association simplifiée pour gérer les compétences/spécialisations des collaborateurs.
+    Relation many-to-many simple entre collaborateurs et catégories.
     """
     # Relations vers les tables principales
     collaborateur = models.ForeignKey(
@@ -135,20 +115,9 @@ class CollaborateurCategorie(models.Model):
         verbose_name="Catégorie"
     )
     
-    # Niveau de compétence dans cette catégorie
-    niveau_competence = models.CharField(max_length=20, choices=[
-        ('debutant', 'Débutant'),
-        ('intermediaire', 'Intermédiaire'),
-        ('avance', 'Avancé'),
-        ('expert', 'Expert'),
-    ], verbose_name="Niveau de compétence")
-    
-    # Date d'obtention de la compétence/certification
-    date_certification = models.DateField(auto_now_add=True, verbose_name="Date de certification")
-    
     def __str__(self):
-        """Retourne la relation collaborateur-catégorie avec le niveau"""
-        return f"{self.collaborateur} - {self.categorie} ({self.niveau_competence})"
+        """Retourne la relation collaborateur-catégorie"""
+        return f"{self.collaborateur} - {self.categorie}"
 
     class Meta:
         db_table = 'collaborateur_categorie'
@@ -159,10 +128,8 @@ class CollaborateurCategorie(models.Model):
 
 class AtelierCategorie(models.Model):
     """
-    Table d'association pour définir les capacités des ateliers par catégorie.
-    Indique quelles catégories de produits/services peuvent être traitées
-    dans chaque atelier, avec quelle capacité et en combien de temps.
-    Permet la planification et l'optimisation des ressources.
+    Table d'association simplifiée pour définir les relations entre ateliers et catégories.
+    Relation many-to-many simple entre ateliers et catégories.
     """
     # Relations vers les tables principales
     atelier = models.ForeignKey(
@@ -176,21 +143,6 @@ class AtelierCategorie(models.Model):
         verbose_name="Catégorie"
     )
     
-    # Capacité de traitement pour cette catégorie dans cet atelier
-    capacite_categorie = models.IntegerField(
-        default=0, 
-        verbose_name="Capacité pour cette catégorie"
-    )
-    
-    # Temps moyen de traitement en heures
-    temps_moyen_traitement = models.DecimalField(
-        max_digits=8, 
-        decimal_places=2, 
-        null=True, 
-        blank=True,
-        verbose_name="Temps moyen de traitement (heures)"
-    )
-    
     def __str__(self):
         """Retourne la relation atelier-catégorie"""
         return f"{self.atelier} - {self.categorie}"
@@ -198,5 +150,5 @@ class AtelierCategorie(models.Model):
     class Meta:
         db_table = 'atelier_categorie'
         unique_together = ('atelier', 'categorie')
-        verbose_name = 'Capacité Atelier-Catégorie'
-        verbose_name_plural = 'Capacités Atelier-Catégorie'
+        verbose_name = 'Relation Atelier-Catégorie'
+        verbose_name_plural = 'Relations Atelier-Catégorie'

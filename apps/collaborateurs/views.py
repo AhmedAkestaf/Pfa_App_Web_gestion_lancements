@@ -101,7 +101,7 @@ def collaborateur_detail(request, pk):
     # Récupérer les informations complémentaires
     affectations_ateliers = CollaborateurAtelier.objects.filter(
         collaborateur=collaborateur
-    ).select_related('atelier').order_by('-date_affectation')
+    ).select_related('atelier').order_by('id')  # Utiliser 'id' au lieu de 'date_affectation'
     
     competences = CollaborateurCategorie.objects.filter(
         collaborateur=collaborateur

@@ -1,0 +1,284 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Nouvelle compétence Collaborateur-Catégorie - AIC Métallurgie{% endblock %}
+
+{% block head_css %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item">
+    <a href="{% url 'associations:collaborateur_categorie_list' %}">Compétences Collaborateur-Catégorie</a>
+</li>
+<li class="breadcrumb-item active">Nouvelle compétence</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-graduation-cap me-2"></i>
+                    Nouvelle compétence Collaborateur-Catégorie
+                </h5>
+            </div>
+            
+            <form method="post" id="competenceForm">
+                {% csrf_token %}
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Sélection du collaborateur -->
+                        <div class="col-md-6 mb-3">
+                            <label for="collaborateur" class="form-label required">
+                                <i class="fas fa-user me-1"></i>Collaborateur
+                            </label>
+                            <select class="form-select" id="collaborateur" name="collaborateur" required>
+                                <option value="">Sélectionner un collaborateur</option>
+                                {% for collaborateur in collaborateurs %}
+                                <option value="{{ collaborateur.id }}" 
+                                        data-email="{{ collaborateur.email }}"
+                                        data-role="{{ collaborateur.user_role.name|default:'Aucun rôle' }}">
+                                    {{ collaborateur.get_full_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                <small id="collaborateur-info" class="text-muted"></small>
+                            </div>
+                        </div>
+                        
+                        <!-- Sélection de la catégorie -->
+                        <div class="col-md-6 mb-3">
+                            <label for="categorie" class="form-label required">
+                                <i class="fas fa-tags me-1"></i>Catégorie
+                            </label>
+                            <select class="form-select" id="categorie" name="categorie" required>
+                                <option value="">Sélectionner une catégorie</option>
+                                {% for categorie in categories %}
+                                <option value="{{ categorie.id }}" 
+                                        data-description="{{ categorie.description|default:'Aucune description' }}">
+                                    {{ categorie.nom_categorie }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                <small id="categorie-info" class="text-muted"></small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Vérification des conflits -->
+                    <div id="conflict-warning" class="alert alert-warning d-none">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Attention :</strong> <span id="conflict-message"></span>
+                    </div>
+                    
+                    <!-- Résumé de la compétence -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <i class="fas fa-lightbulb me-2"></i>
+                                <strong>Résumé :</strong>
+                                <div id="competence-summary" class="mt-2">
+                                    Sélectionnez un collaborateur et une catégorie pour voir le résumé.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'associations:collaborateur_categorie_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Retour à la liste
+                        </a>
+                        <div>
+                            <button type="button" class="btn btn-outline-info me-2" id="previewBtn" disabled>
+                                <i class="fas fa-eye me-1"></i>Prévisualiser
+                            </button>
+                            <button type="submit" class="btn btn-info" id="submitBtn" disabled>
+                                <i class="fas fa-save me-1"></i>Ajouter la compétence
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de prévisualisation -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Prévisualisation de la compétence</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="previewContent">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-info" id="confirmCreate">
+                    <i class="fas fa-check me-1"></i>Confirmer et créer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const collaborateurSelect = document.getElementById('collaborateur');
+    const categorieSelect = document.getElementById('categorie');
+    const submitBtn = document.getElementById('submitBtn');
+    const previewBtn = document.getElementById('previewBtn');
+    const conflictWarning = document.getElementById('conflict-warning');
+    const conflictMessage = document.getElementById('conflict-message');
+    const competenceSummary = document.getElementById('competence-summary');
+    
+    function updateCollaborateurInfo() {
+        const selectedOption = collaborateurSelect.options[collaborateurSelect.selectedIndex];
+        const infoElement = document.getElementById('collaborateur-info');
+        
+        if (selectedOption.value) {
+            const email = selectedOption.dataset.email;
+            const role = selectedOption.dataset.role;
+            infoElement.innerHTML = `Email: ${email} | Rôle: ${role}`;
+        } else {
+            infoElement.innerHTML = '';
+        }
+    }
+    
+    function updateCategorieInfo() {
+        const selectedOption = categorieSelect.options[categorieSelect.selectedIndex];
+        const infoElement = document.getElementById('categorie-info');
+        
+        if (selectedOption.value) {
+            const description = selectedOption.dataset.description;
+            infoElement.innerHTML = `Description: ${description}`;
+        } else {
+            infoElement.innerHTML = '';
+        }
+    }
+    
+    function checkForConflicts() {
+        const collaborateur = collaborateurSelect.value;
+        const categorie = categorieSelect.value;
+        
+        if (collaborateur && categorie) {
+            fetch('/associations/check-collaborateur-categorie-conflict/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    'collaborateur_id': collaborateur,
+                    'categorie_id': categorie
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.has_conflict) {
+                    conflictMessage.textContent = data.message;
+                    conflictWarning.classList.remove('d-none');
+                } else {
+                    conflictWarning.classList.add('d-none');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur lors de la vérification des conflits:', error);
+            });
+        }
+    }
+    
+    function updateSummary() {
+        const collaborateur = collaborateurSelect.options[collaborateurSelect.selectedIndex];
+        const categorie = categorieSelect.options[categorieSelect.selectedIndex];
+        
+        if (collaborateur.value && categorie.value) {
+            competenceSummary.innerHTML = `
+                <strong>${collaborateur.text}</strong> aura une compétence dans la catégorie 
+                <strong>${categorie.text}</strong>.
+            `;
+            submitBtn.disabled = false;
+            previewBtn.disabled = false;
+        } else {
+            competenceSummary.innerHTML = 'Sélectionnez un collaborateur et une catégorie pour voir le résumé.';
+            submitBtn.disabled = true;
+            previewBtn.disabled = true;
+        }
+    }
+    
+    function validateForm() {
+        updateSummary();
+        checkForConflicts();
+    }
+    
+    // Event listeners
+    collaborateurSelect.addEventListener('change', function() {
+        updateCollaborateurInfo();
+        validateForm();
+    });
+    
+    categorieSelect.addEventListener('change', function() {
+        updateCategorieInfo();
+        validateForm();
+    });
+    
+    // Preview functionality
+    previewBtn.addEventListener('click', function() {
+        const collaborateur = collaborateurSelect.options[collaborateurSelect.selectedIndex];
+        const categorie = categorieSelect.options[categorieSelect.selectedIndex];
+        
+        document.getElementById('previewContent').innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Collaborateur</h6>
+                    <div class="card">
+                        <div class="card-body">
+                            <strong>${collaborateur.text}</strong><br>
+                            <small class="text-muted">${collaborateur.dataset.email}</small><br>
+                            <small class="text-muted">Rôle: ${collaborateur.dataset.role}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6>Catégorie</h6>
+                    <div class="card">
+                        <div class="card-body">
+                            <strong>${categorie.text}</strong><br>
+                            <small class="text-muted">${categorie.dataset.description}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        La compétence <strong>${categorie.text}</strong> 
+                        sera attribuée à <strong>${collaborateur.text}</strong>.
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        new bootstrap.Modal(document.getElementById('previewModal')).show();
+    });
+    
+    document.getElementById('confirmCreate').addEventListener('click', function() {
+        document.getElementById('competenceForm').submit();
+    });
+    
+    // Initial validation
+    validateForm();
+});
+</script>
+{% endblock %}

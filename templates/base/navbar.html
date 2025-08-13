@@ -61,6 +61,22 @@
                             <i class="fas fa-briefcase"></i> Affaires
                         </a></li>
                         {% endif %}
+                        {% if can_view_collaborateurs or can_view_ateliers or can_view_categories %}
+                       <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Associations</h6></li>
+
+                       <li><a class="dropdown-item" href="{% url 'associations:collaborateur_atelier_list' %}">
+                              <i class="fas fa-user-cog"></i> Affectations aux ateliers
+                              </a></li>
+
+                      <li><a class="dropdown-item" href="{% url 'associations:collaborateur_categorie_list' %}">
+                              <i class="fas fa-graduation-cap"></i> Compétences par catégorie
+                     </a></li>
+
+                     <li><a class="dropdown-item" href="{% url 'associations:atelier_categorie_list' %}">
+                               <i class="fas fa-cogs"></i> Catégories par atelier
+                    </a></li>
+                    {% endif %}
                     </ul>
                 </li>
                 

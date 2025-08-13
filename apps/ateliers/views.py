@@ -94,10 +94,8 @@ def atelier_detail(request, pk):
         atelier=atelier
     ).select_related('categorie')
     
-    # Récupération des collaborateurs affectés à l'atelier
-    collaborateurs_affectes = atelier.collaborateuratelier_set.filter(
-        date_fin_affectation__isnull=True
-    ).select_related('collaborateur')
+    # Récupération des collaborateurs affectés à l'atelier (sans filtrer par date_fin_affectation)
+    collaborateurs_affectes = atelier.collaborateuratelier_set.select_related('collaborateur')
     
     # Vérification des permissions
     can_update = request.user.has_permission('ateliers', 'update')
@@ -252,9 +250,8 @@ def atelier_delete(request, pk):
     
     # Vérification des dépendances
     lancements_count = atelier.lancement_set.count() if hasattr(atelier, 'lancement_set') else 0
-    collaborateurs_affectes = atelier.collaborateuratelier_set.filter(
-        date_fin_affectation__isnull=True
-    ).count()
+    # Compter tous les collaborateurs affectés (sans filtrer par date_fin_affectation)
+    collaborateurs_affectes = atelier.collaborateuratelier_set.count()
     
     context = {
         'atelier': atelier,
@@ -333,10 +330,10 @@ def categorie_detail(request, pk):
         categorie=categorie
     ).select_related('atelier')
     
-    # Récupération des collaborateurs compétents
+    # Récupération des collaborateurs compétents (sans tri par date_certification)
     collaborateurs_competents = CollaborateurCategorie.objects.filter(
         categorie=categorie
-    ).select_related('collaborateur').order_by('-date_certification')
+    ).select_related('collaborateur').order_by('collaborateur__nom_collaborateur', 'collaborateur__prenom_collaborateur')
     
     # Récupération des lancements récents (10 derniers)
     lancements_recents = []

@@ -167,34 +167,17 @@
                                                     <thead>
                                                         <tr>
                                                             <th>Atelier</th>
-                                                            <th>Rôle</th>
-                                                            <th>Date Affectation</th>
-                                                            <th>Date Fin</th>
-                                                            <th>Statut</th>
+                                                            <th>Type</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         {% for affectation in affectations_ateliers %}
                                                             <tr>
                                                                 <td>
-                                                                    <strong>{{ affectation.atelier.nom_atelier }}</strong><br>
-                                                                    <small class="text-muted">{{ affectation.atelier.type_atelier }}</small>
-                                                                </td>
-                                                                <td>{{ affectation.role_dans_atelier }}</td>
-                                                                <td>{{ affectation.date_affectation|date:"d/m/Y" }}</td>
-                                                                <td>
-                                                                    {% if affectation.date_fin_affectation %}
-                                                                        {{ affectation.date_fin_affectation|date:"d/m/Y" }}
-                                                                    {% else %}
-                                                                        <span class="text-muted">En cours</span>
-                                                                    {% endif %}
+                                                                    <strong>{{ affectation.atelier.nom_atelier }}</strong>
                                                                 </td>
                                                                 <td>
-                                                                    {% if not affectation.date_fin_affectation %}
-                                                                        <span class="badge bg-success">Actif</span>
-                                                                    {% else %}
-                                                                        <span class="badge bg-secondary">Terminé</span>
-                                                                    {% endif %}
+                                                                    <span class="text-muted">{{ affectation.atelier.type_atelier|default:"Non spécifié" }}</span>
                                                                 </td>
                                                             </tr>
                                                         {% endfor %}
@@ -225,9 +208,6 @@
                                                                 <span class="badge bg-{% if competence.niveau_competence == 'expert' %}success{% elif competence.niveau_competence == 'avance' %}warning{% else %}info{% endif %}">
                                                                     {{ competence.get_niveau_competence_display }}
                                                                 </span>
-                                                                <small class="text-muted">
-                                                                    Certifié le {{ competence.date_certification|date:"d/m/Y" }}
-                                                                </small>
                                                             </div>
                                                             {% if competence.categorie.description %}
                                                                 <small class="text-muted d-block mt-2">

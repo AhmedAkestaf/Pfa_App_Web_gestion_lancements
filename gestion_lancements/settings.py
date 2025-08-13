@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'apps.ateliers.apps.AteliersConfig',
     'apps.lancements.apps.LancementsConfig',
     'apps.reporting.apps.ReportingConfig',
+    'apps.associations.apps.AssociationsConfig',
 ]
 
 MIDDLEWARE = [
