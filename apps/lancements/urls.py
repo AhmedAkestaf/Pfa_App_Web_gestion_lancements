@@ -16,7 +16,7 @@ urlpatterns = [
     path('statistics/', views.lancement_statistics, name='statistics'),
     path('export/', views.lancement_export, name='export'),
     
-    # APIs et vues AJAX
+    # APIs et vues AJAX 
     path('api/data/', views.get_lancements_data, name='api_data'),
     path('<int:pk>/update-status/', views.update_lancement_status, name='update_status'),
 ]

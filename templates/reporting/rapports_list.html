@@ -1,0 +1,482 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Rapports de Production{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item active">Rapports</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.reporting-header {
+    padding: 1.5rem 0;
+    border-bottom: 3px solid #17a2b8;
+    margin-bottom: 2rem;
+}
+
+.rapport-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid #17a2b8;
+    cursor: pointer;
+}
+
+.rapport-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.metric-card {
+    border: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+
+.period-selector {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+}
+
+.type-badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 50px;
+    font-weight: 600;
+}
+
+.empty-state {
+    padding: 4rem 2rem;
+}
+
+.filter-card {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border: none;
+}
+
+.quick-actions {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border: none;
+    color: white;
+    border-radius: 15px;
+    padding: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <main class="col-12 px-md-4">
+            <div class="reporting-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center">
+                <h1 class="h2">
+                    <i class="fas fa-chart-bar" style="margin-right: 15px; color: #17a2b8;"></i>
+                    <span>Rapports de Production</span>
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <a href="{% url 'reporting:graphiques' %}" class="btn btn-info">
+                            <i class="fas fa-chart-line"></i> Tableaux de bord
+                        </a>
+                        <a href="{% url 'reporting:export' %}" class="btn btn-success">
+                            <i class="fas fa-download"></i> Export
+                        </a>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+                            <i class="fas fa-plus"></i> Nouveau Rapport
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Métriques rapides -->
+            <div class="row mb-4">
+                <div class="col-xl-3 col-md-6">
+                    <div class="card metric-card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-file-alt fa-3x mb-3 opacity-75"></i>
+                            <h3>{{ total_rapports|default:0 }}</h3>
+                            <p class="mb-0">Rapports Générés</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="card metric-card bg-success text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-rocket fa-3x mb-3 opacity-75"></i>
+                            <h3>{{ total_lancements|default:0 }}</h3>
+                            <p class="mb-0">Lancements Analysés</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="card metric-card bg-warning text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-weight-hanging fa-3x mb-3 opacity-75"></i>
+                            <h3>{{ total_poids|floatformat:0|default:0 }}kg</h3>
+                            <p class="mb-0">Poids Total Traité</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="card metric-card bg-info text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-calendar fa-3x mb-3 opacity-75"></i>
+                            <h3>{{ rapport_recent.type_rapport|default:"Aucun" }}</h3>
+                            <p class="mb-0">Dernier Rapport</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtres -->
+            <div class="card filter-card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="type_rapport" class="form-label">Type de Rapport</label>
+                            <select class="form-select" id="type_rapport" name="type_rapport">
+                                <option value="">Tous les types</option>
+                                <option value="journalier" {% if type_filter == 'journalier' %}selected{% endif %}>Journalier</option>
+                                <option value="hebdomadaire" {% if type_filter == 'hebdomadaire' %}selected{% endif %}>Hebdomadaire</option>
+                                <option value="mensuel" {% if type_filter == 'mensuel' %}selected{% endif %}>Mensuel</option>
+                                <option value="annuel" {% if type_filter == 'annuel' %}selected{% endif %}>Annuel</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_from" class="form-label">Période - Du</label>
+                            <input type="date" class="form-control" id="date_from" name="date_from" value="{{ date_from }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_to" class="form-label">Au</label>
+                            <input type="date" class="form-control" id="date_to" name="date_to" value="{{ date_to }}">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-outline-primary me-2">
+                                <i class="fas fa-filter"></i> Filtrer
+                            </button>
+                            <a href="{% url 'reporting:rapports_list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Réinitialiser
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Actions rapides -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card quick-actions">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-bolt me-2"></i>Actions Rapides
+                            </h5>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <button class="btn btn-light btn-sm w-100 mb-2" onclick="generateQuickReport('journalier')">
+                                        <i class="fas fa-calendar-day"></i> Rapport Journalier
+                                    </button>
+                                </div>
+                                <div class="col-md-3">
+                                    <button class="btn btn-light btn-sm w-100 mb-2" onclick="generateQuickReport('hebdomadaire')">
+                                        <i class="fas fa-calendar-week"></i> Rapport Hebdomadaire
+                                    </button>
+                                </div>
+                                <div class="col-md-3">
+                                    <button class="btn btn-light btn-sm w-100 mb-2" onclick="generateQuickReport('mensuel')">
+                                        <i class="fas fa-calendar-alt"></i> Rapport Mensuel
+                                    </button>
+                                </div>
+                                <div class="col-md-3">
+                                    <a href="{% url 'reporting:graphiques' %}" class="btn btn-light btn-sm w-100 mb-2">
+                                        <i class="fas fa-chart-pie"></i> Vue Graphique
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Liste des rapports -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Rapports Existants
+                        <span class="badge bg-secondary ms-2">{{ page_obj.paginator.count|default:0 }} rapports</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if page_obj %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Période</th>
+                                        <th>Lancements</th>
+                                        <th>Poids Total</th>
+                                        <th>Généré le</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rapport in page_obj %}
+                                        <tr class="rapport-card" onclick="viewRapportDetails('{{ rapport.id }}')"> 
+                                            <td>
+                                                <span class="badge type-badge 
+                                                    {% if rapport.type_rapport == 'journalier' %}bg-primary
+                                                    {% elif rapport.type_rapport == 'hebdomadaire' %}bg-info  
+                                                    {% elif rapport.type_rapport == 'mensuel' %}bg-success
+                                                    {% elif rapport.type_rapport == 'annuel' %}bg-warning
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    {{ rapport.get_type_rapport_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <strong>{{ rapport.date_debut|date:"d/m/Y" }}</strong>
+                                                <i class="fas fa-arrow-right mx-2 text-muted"></i>
+                                                <strong>{{ rapport.date_fin|date:"d/m/Y" }}</strong>
+                                                <br>
+                                                <small class="text-muted">
+                                                    {{ rapport.date_debut|timesince:rapport.date_fin }}
+                                                </small>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="text-center">
+                                                        <h6 class="mb-0">{{ rapport.nb_lancements }}</h6>
+                                                        <small class="text-muted">lancements</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-weight-hanging text-info me-2"></i>
+                                                    <div>
+                                                        <strong>{{ rapport.poids_total|floatformat:1 }} kg</strong>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div>
+                                                    {{ rapport.created_at|date:"d/m/Y H:i" }}
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-clock"></i> {{ rapport.created_at|timesince }}
+                                                    </small>
+                                                </div>
+                                            </td>
+                                            <td onclick="event.stopPropagation();">
+                                                <div class="btn-group" role="group">
+                                                    <a href="{% url 'reporting:rapport_detail' rapport.id %}" 
+                                                       class="btn btn-sm btn-outline-info" title="Voir détails">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    <button class="btn btn-sm btn-outline-success" 
+                                                            onclick="downloadRapport('{{ rapport.id }}')" title="Télécharger">
+                                                        <i class="fas fa-download"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger" 
+                                                            onclick="deleteRapport('{{ rapport.id }}')" title="Supprimer">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if page_obj.has_other_pages %}
+                            <nav aria-label="Navigation pagination">
+                                <ul class="pagination justify-content-center">
+                                    {% if page_obj.has_previous %}
+                                        <li class="page-item">
+                                            <!-- eslint-disable-next-line -->
+                                            <a class="page-link" href="?page=1{% if type_filter %}&type_rapport={{ type_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                                &laquo; Première
+                                            </a>
+                                        </li>
+                                        <li class="page-item">
+                                            <!-- eslint-disable-next-line -->
+                                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if type_filter %}&type_rapport={{ type_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                                Précédente
+                                            </a>
+                                        </li>
+                                    {% endif %}
+
+                                    <li class="page-item active">
+                                        <span class="page-link">
+                                            Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
+                                        </span>
+                                    </li>
+
+                                    {% if page_obj.has_next %}
+                                        <li class="page-item">
+                                            <!-- eslint-disable-next-line -->
+                                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if type_filter %}&type_rapport={{ type_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                                Suivante
+                                            </a>
+                                        </li>
+                                        <li class="page-item">
+                                            <!-- eslint-disable-next-line -->
+                                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if type_filter %}&type_rapport={{ type_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                                Dernière &raquo;
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="empty-state text-center py-5">
+                            <i class="fas fa-chart-bar fa-4x text-muted mb-4"></i>
+                            <h4>Aucun rapport généré</h4>
+                            <p class="text-muted mb-4">
+                                Commencez par générer votre premier rapport de production.
+                            </p>
+                            <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+                                <i class="fas fa-plus me-2"></i>Générer un Rapport
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Modal pour générer un nouveau rapport -->
+<div class="modal fade" id="generateReportModal" tabindex="-1" aria-labelledby="generateReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="generateReportModalLabel">
+                    <i class="fas fa-plus me-2"></i>Générer un Nouveau Rapport
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'reporting:generate_rapport' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="modal_type_rapport" class="form-label">Type de rapport</label>
+                        <select class="form-select" id="modal_type_rapport" name="type_rapport" required>
+                            <option value="">Sélectionnez un type</option>
+                            <option value="journalier">Journalier</option>
+                            <option value="hebdomadaire">Hebdomadaire</option>
+                            <option value="mensuel">Mensuel</option>
+                            <option value="annuel">Annuel</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="modal_date_debut" class="form-label">Date de début</label>
+                            <input type="date" class="form-control" id="modal_date_debut" name="date_debut" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="modal_date_fin" class="form-label">Date de fin</label>
+                            <input type="date" class="form-control" id="modal_date_fin" name="date_fin" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-cogs me-2"></i>Générer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function viewRapportDetails(rapportId) {
+    window.location.href = `/reporting/rapport/${rapportId}/`;
+}
+
+function generateQuickReport(type) {
+    const today = new Date();
+    let dateDebut, dateFin;
+    
+    switch(type) {
+        case 'journalier':
+            dateDebut = dateFin = today.toISOString().split('T')[0];
+            break;
+        case 'hebdomadaire':
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay());
+            const weekEnd = new Date(today);
+            weekEnd.setDate(today.getDate() - today.getDay() + 6);
+            dateDebut = weekStart.toISOString().split('T')[0];
+            dateFin = weekEnd.toISOString().split('T')[0];
+            break;
+        case 'mensuel':
+            dateDebut = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+            dateFin = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+            break;
+    }
+    
+    // Remplir le modal avec les dates calculées
+    document.getElementById('modal_type_rapport').value = type;
+    document.getElementById('modal_date_debut').value = dateDebut;
+    document.getElementById('modal_date_fin').value = dateFin;
+    
+    // Ouvrir le modal
+    const modal = new bootstrap.Modal(document.getElementById('generateReportModal'));
+    modal.show();
+}
+
+function downloadRapport(rapportId) {
+    window.open(`/reporting/rapport/${rapportId}/download/`, '_blank');
+}
+
+function deleteRapport(rapportId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce rapport ?')) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        const token = csrfToken ? csrfToken.value : '';
+        
+        fetch(`/reporting/rapport/${rapportId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': token,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erreur lors de la suppression');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur lors de la suppression');
+        });
+    }
+}
+</script>
+{% endblock %}

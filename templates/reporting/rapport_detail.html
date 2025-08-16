@@ -1,0 +1,716 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Détail du Rapport {{ rapport.get_type_rapport_display }}{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'reporting:rapports_list' %}">Rapports</a>
+    </li>
+    <li class="breadcrumb-item active">{{ rapport.get_type_rapport_display }} - {{ rapport.date_debut|date:"d/m/Y" }}</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.rapport-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.metric-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    position: relative;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+}
+
+.data-section {
+    background: #fff;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.table-custom {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.table-custom thead th {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.progress-custom {
+    height: 8px;
+    border-radius: 10px;
+    background: #e9ecef;
+    overflow: hidden;
+}
+
+.progress-bar-custom {
+    background: linear-gradient(90deg, #28a745, #20c997);
+    border-radius: 10px;
+}
+
+.atelier-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+}
+
+.collaborateur-card {
+    border: none;
+    border-radius: 10px;
+    background: #f8f9fa;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.collaborateur-card:hover {
+    background: #e9ecef;
+    transform: scale(1.02);
+}
+
+.avatar-lg {
+    width: 50px;
+    height: 50px;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.export-actions {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 15px;
+    padding: 1.5rem;
+    color: white;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+.status-timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.status-timeline::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -25px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid #667eea;
+    z-index: 1;
+}
+
+/* Classes pour les largeurs de progress bar */
+.progress-width-60 {
+    width: 60px;
+}
+
+.progress-width-80 {
+    width: 80px;
+}
+
+/* Classes pour les avatars */
+.avatar-40 {
+    width: 40px;
+    height: 40px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <main class="col-12 px-md-4">
+            <!-- En-tête du rapport -->
+            <div class="rapport-header">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h2 mb-0">
+                            <i class="fas fa-file-chart-line me-3"></i>
+                            Rapport {{ rapport.get_type_rapport_display }}
+                        </h1>
+                        <div class="mt-3">
+                            <h4 class="mb-2">
+                                <i class="fas fa-calendar me-2"></i>
+                                {{ rapport.date_debut|date:"d/m/Y" }} - {{ rapport.date_fin|date:"d/m/Y" }}
+                            </h4>
+                            <p class="mb-0 opacity-75">
+                                <i class="fas fa-clock me-2"></i>
+                                Généré le {{ rapport.created_at|date:"d/m/Y à H:i" }}
+                                {% if rapport.updated_at != rapport.created_at %}
+                                    - Mis à jour le {{ rapport.updated_at|date:"d/m/Y à H:i" }}
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-light" onclick="window.print()">
+                                <i class="fas fa-print"></i> Imprimer
+                            </button>
+                            <button class="btn btn-light" onclick="downloadPDF()">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </button>
+                            <button class="btn btn-light" onclick="downloadExcel()">
+                                <i class="fas fa-file-excel"></i> Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Métriques principales -->
+            <div class="row mb-4">
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card metric-card h-100">
+                        <div class="card-body text-center">
+                            <div class="text-primary mb-3">
+                                <i class="fas fa-rocket fa-3x"></i>
+                            </div>
+                            <h2 class="text-primary">{{ rapport.nb_lancements }}</h2>
+                            <p class="mb-0 text-muted">Lancements</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card metric-card h-100">
+                        <div class="card-body text-center">
+                            <div class="text-success mb-3">
+                                <i class="fas fa-weight-hanging fa-3x"></i>
+                            </div>
+                            <h2 class="text-success">{{ rapport.poids_total|floatformat:1 }}kg</h2>
+                            <p class="mb-0 text-muted">Poids Total</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card metric-card h-100">
+                        <div class="card-body text-center">
+                            <div class="text-warning mb-3">
+                                <i class="fas fa-industry fa-3x"></i>
+                            </div>
+                            <h2 class="text-warning">{{ stats.nb_ateliers|default:0 }}</h2>
+                            <p class="mb-0 text-muted">Ateliers Actifs</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card metric-card h-100">
+                        <div class="card-body text-center">
+                            <div class="text-info mb-3">
+                                <i class="fas fa-users fa-3x"></i>
+                            </div>
+                            <h2 class="text-info">{{ stats.nb_collaborateurs|default:0 }}</h2>
+                            <p class="mb-0 text-muted">Collaborateurs</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Détails par atelier -->
+            <div class="data-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3>
+                        <i class="fas fa-industry me-2 text-primary"></i>
+                        Répartition par Atelier
+                    </h3>
+                    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#atelierDetails">
+                        <i class="fas fa-chevron-down"></i> Détails
+                    </button>
+                </div>
+                
+                <div class="row">
+                    {% for stat in stats_ateliers %}
+                    <div class="col-lg-6 mb-3">
+                        <div class="card border-0 bg-light">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">{{ stat.atelier__nom_atelier }}</h6>
+                                        <small class="text-muted">{{ stat.atelier__type_atelier }}</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-primary">{{ stat.nb_lancements }} lancements</span>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <small>Poids traité</small>
+                                        <small><strong>{{ stat.poids_total|floatformat:1 }} kg</strong></small>
+                                    </div>
+                                    <div class="progress progress-custom">
+                                        <div class="progress-bar progress-bar-custom progress-bar-atelier-{{ forloop.counter }}"
+                                             data-width="{{ stat.pourcentage_poids }}"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="collapse" id="atelierDetails">
+                    <div class="table-responsive mt-4">
+                        <table class="table table-custom">
+                            <thead>
+                                <tr>
+                                    <th>Atelier</th>
+                                    <th>Type</th>
+                                    <th>Lancements</th>
+                                    <th>Poids Débitage</th>
+                                    <th>Poids Assemblage</th>
+                                    <th>Total</th>
+                                    <th>Pourcentage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in stats_ateliers %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-industry text-primary me-2"></i>
+                                            <strong>{{ stat.atelier__nom_atelier }}</strong>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="atelier-badge bg-info text-white">
+                                            {{ stat.atelier__get_type_atelier_display }}
+                                        </span>
+                                    </td>
+                                    <td><span class="badge bg-secondary">{{ stat.nb_lancements }}</span></td>
+                                    <td>{{ stat.poids_debitage|floatformat:1 }} kg</td>
+                                    <td>{{ stat.poids_assemblage|floatformat:1 }} kg</td>
+                                    <td><strong>{{ stat.poids_total|floatformat:1 }} kg</strong></td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress progress-custom progress-width-60 me-2">
+                                                <div class="progress-bar progress-bar-custom progress-bar-table-{{ forloop.counter }}"
+                                                     data-width="{{ stat.pourcentage_poids }}"></div>
+                                            </div>
+                                            <span>{{ stat.pourcentage_poids|floatformat:1 }}%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Détails par collaborateur -->
+            <div class="data-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3>
+                        <i class="fas fa-users me-2 text-success"></i>
+                        Performance par Collaborateur
+                    </h3>
+                    <button class="btn btn-outline-success btn-sm" data-bs-toggle="collapse" data-bs-target="#collaborateurDetails">
+                        <i class="fas fa-chevron-down"></i> Détails
+                    </button>
+                </div>
+
+                <div class="row">
+                    {% for stat in stats_collaborateurs %}
+                    <div class="col-lg-4 mb-3">
+                        <div class="collaborateur-card">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-lg bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3">
+                                    {{ stat.collaborateur__nom_collaborateur.0 }}{{ stat.collaborateur__prenom_collaborateur.0 }}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ stat.collaborateur__nom_collaborateur }} {{ stat.collaborateur__prenom_collaborateur }}</h6>
+                                    <small class="text-muted">{{ stat.nb_lancements }} lancements</small>
+                                    <div class="mt-1">
+                                        <small><strong>{{ stat.poids_total|floatformat:1 }} kg</strong></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="collapse" id="collaborateurDetails">
+                    <div class="table-responsive mt-4">
+                        <table class="table table-custom">
+                            <thead>
+                                <tr>
+                                    <th>Collaborateur</th>
+                                    <th>Lancements</th>
+                                    <th>Poids Total</th>
+                                    <th>Moyenne par Lancement</th>
+                                    <th>Performance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in stats_collaborateurs %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3 avatar-40">
+                                                {{ stat.collaborateur__nom_collaborateur.0 }}{{ stat.collaborateur__prenom_collaborateur.0 }}
+                                            </div>
+                                            <div>
+                                                <strong>{{ stat.collaborateur__nom_collaborateur }} {{ stat.collaborateur__prenom_collaborateur }}</strong>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td><span class="badge bg-primary">{{ stat.nb_lancements }}</span></td>
+                                    <td><strong>{{ stat.poids_total|floatformat:1 }} kg</strong></td>
+                                    <td>{{ stat.moyenne_poids|floatformat:1 }} kg</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress progress-custom progress-width-80 me-2">
+                                                <div class="progress-bar progress-bar-custom progress-bar-collab-{{ forloop.counter }}"
+                                                     data-width="{{ stat.pourcentage_performance }}"></div>
+                                            </div>
+                                            <span>{{ stat.pourcentage_performance|floatformat:1 }}%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Détails par affaire -->
+            <div class="data-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3>
+                        <i class="fas fa-briefcase me-2 text-warning"></i>
+                        Répartition par Affaire
+                    </h3>
+                    <button class="btn btn-outline-warning btn-sm" data-bs-toggle="collapse" data-bs-target="#affaireDetails">
+                        <i class="fas fa-chevron-down"></i> Détails
+                    </button>
+                </div>
+
+                <div class="collapse show" id="affaireDetails">
+                    <div class="table-responsive">
+                        <table class="table table-custom">
+                            <thead>
+                                <tr>
+                                    <th>Code Affaire</th>
+                                    <th>Client</th>
+                                    <th>Lancements</th>
+                                    <th>Poids Total</th>
+                                    <th>Statut</th>
+                                    <th>Progression</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in stats_affaires %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ stat.affaire__code_affaire }}</strong>
+                                    </td>
+                                    <td>{{ stat.affaire__client|truncatechars:30 }}</td>
+                                    <td><span class="badge bg-secondary">{{ stat.nb_lancements }}</span></td>
+                                    <td><strong>{{ stat.poids_total|floatformat:1 }} kg</strong></td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if stat.affaire__statut == 'en_cours' %}bg-warning
+                                            {% elif stat.affaire__statut == 'termine' %}bg-success
+                                            {% else %}bg-info{% endif %}">
+                                            {{ stat.affaire__get_statut_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="progress progress-custom">
+                                            <div class="progress-bar progress-bar-custom progress-bar-affaire-{{ forloop.counter }}"
+                                                 data-width="{{ stat.pourcentage_avancement|default:0 }}"></div>
+                                        </div>
+                                        <small class="text-muted">{{ stat.pourcentage_avancement|default:0|floatformat:0 }}%</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline du rapport -->
+            <div class="data-section">
+                <h3 class="mb-4">
+                    <i class="fas fa-history me-2 text-info"></i>
+                    Chronologie de la Période
+                </h3>
+                <div class="status-timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-marker"></div>
+                        <div class="card border-0 bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">Début de période</h6>
+                                <p class="card-text">{{ rapport.date_debut|date:"d/m/Y" }}</p>
+                                <small class="text-muted">Démarrage de l'analyse</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% for event in timeline_events %}
+                    <div class="timeline-item">
+                        <div class="timeline-marker timeline-marker-{{ forloop.counter }}"
+                             data-color="{{ event.color|default:'#667eea' }}"></div>
+                        <div class="card border-0 bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">{{ event.title }}</h6>
+                                <p class="card-text">{{ event.description }}</p>
+                                <small class="text-muted">{{ event.date|date:"d/m/Y" }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-marker"></div>
+                        <div class="card border-0 bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">Fin de période</h6>
+                                <p class="card-text">{{ rapport.date_fin|date:"d/m/Y" }}</p>
+                                <small class="text-muted">Clôture de l'analyse</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions d'export -->
+            <div class="export-actions">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h4 class="mb-2">
+                            <i class="fas fa-download me-2"></i>
+                            Actions d'Export
+                        </h4>
+                        <p class="mb-0 opacity-75">
+                            Téléchargez ce rapport dans différents formats pour vos analyses
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-light btn-sm" onclick="downloadPDF()">
+                                <i class="fas fa-file-pdf text-danger me-2"></i>Télécharger PDF
+                            </button>
+                            <button class="btn btn-light btn-sm" onclick="downloadExcel()">
+                                <i class="fas fa-file-excel text-success me-2"></i>Télécharger Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Boutons de navigation -->
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{% url 'reporting:rapports_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Retour aux Rapports
+                </a>
+                <div>
+                    <button class="btn btn-outline-primary" onclick="regenerateReport()">
+                        <i class="fas fa-redo me-2"></i>Régénérer
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="deleteReport()">
+                        <i class="fas fa-trash me-2"></i>Supprimer
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Fonction pour appliquer les largeurs des barres de progression
+function applyProgressBars() {
+    // Barres de progression des ateliers (cartes)
+    document.querySelectorAll('[class*="progress-bar-atelier-"]').forEach(function(element) {
+        const width = element.getAttribute('data-width');
+        if (width) {
+            element.style.width = width + '%';
+        }
+    });
+    
+    // Barres de progression des ateliers (tableau)
+    document.querySelectorAll('[class*="progress-bar-table-"]').forEach(function(element) {
+        const width = element.getAttribute('data-width');
+        if (width) {
+            element.style.width = width + '%';
+        }
+    });
+    
+    // Barres de progression des collaborateurs
+    document.querySelectorAll('[class*="progress-bar-collab-"]').forEach(function(element) {
+        const width = element.getAttribute('data-width');
+        if (width) {
+            element.style.width = width + '%';
+        }
+    });
+    
+    // Barres de progression des affaires
+    document.querySelectorAll('[class*="progress-bar-affaire-"]').forEach(function(element) {
+        const width = element.getAttribute('data-width');
+        if (width) {
+            element.style.width = width + '%';
+        }
+    });
+    
+    // Couleurs des marqueurs de timeline
+    document.querySelectorAll('[class*="timeline-marker-"]').forEach(function(element) {
+        const color = element.getAttribute('data-color');
+        if (color) {
+            element.style.borderColor = color;
+        }
+    });
+}
+
+// Appliquer les barres de progression au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    applyProgressBars();
+});
+
+function downloadPDF() {
+    window.open(`/reporting/rapport/{{ rapport.id }}/download/pdf/`, '_blank');
+}
+
+function downloadExcel() {
+    window.open(`/reporting/rapport/{{ rapport.id }}/download/excel/`, '_blank');
+}
+
+function regenerateReport() {
+    if (confirm('Voulez-vous régénérer ce rapport avec les données actuelles ?')) {
+        fetch(`/reporting/rapport/{{ rapport.id }}/regenerate/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erreur lors de la régénération');
+            }
+        });
+    }
+}
+
+function deleteReport() {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce rapport ? Cette action est irréversible.')) {
+        fetch(`/reporting/rapport/{{ rapport.id }}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '/reporting/rapports/';
+            } else {
+                alert('Erreur lors de la suppression');
+            }
+        });
+    }
+}
+
+// Impression personnalisée
+window.addEventListener('beforeprint', function() {
+    document.body.classList.add('print-mode');
+});
+
+window.addEventListener('afterprint', function() {
+    document.body.classList.remove('print-mode');
+});
+</script>
+
+<style>
+@media print {
+    .btn, .export-actions, .collapse {
+        display: none !important;
+    }
+    
+    .data-section {
+        page-break-inside: avoid;
+        margin-bottom: 1rem !important;
+    }
+    
+    .rapport-header {
+        background: #667eea !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+</style>
+{% endblock %}

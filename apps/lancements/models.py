@@ -90,11 +90,39 @@ class Lancement(models.Model):
         return f"Lancement {self.num_lanc}"
 
     def get_poids_total(self):
-        """Méthode pour calculer le poids total"""
-        return self.poids_debitage + self.poids_assemblage
+        """Méthode pour calculer le poids total avec gestion des erreurs"""
+        try:
+            poids_debitage = float(self.poids_debitage or 0)
+            poids_assemblage = float(self.poids_assemblage or 0)
+            return poids_debitage + poids_assemblage
+        except (ValueError, TypeError):
+            return 0.0
+    
+    def get_poids_total_display(self):
+        """Retourne le poids total formaté pour l'affichage"""
+        return f"{self.get_poids_total():.2f} kg"
+
+    def get_absolute_url(self):
+        """URL pour accéder au détail du lancement"""
+        from django.urls import reverse
+        return reverse('lancements:detail', kwargs={'pk': self.pk})
+
+    @property
+    def is_en_retard(self):
+        """Vérifie si le lancement est en retard par rapport à la date prévue"""
+        from django.utils import timezone
+        if self.statut in ['termine']:
+            return False
+        return self.date_lancement < timezone.now().date()
 
     class Meta:
         db_table = 'lancement'
         verbose_name = 'Lancement'
         verbose_name_plural = 'Lancements'
-        ordering = ['-date_lancement']
+        ordering = ['-date_lancement', '-created_at']
+        indexes = [
+            models.Index(fields=['date_lancement']),
+            models.Index(fields=['statut']),
+            models.Index(fields=['affaire']),
+            models.Index(fields=['atelier']),
+        ]

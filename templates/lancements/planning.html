@@ -9,6 +9,7 @@
 {% endblock %}
 
 {% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.css" rel="stylesheet">
 <style>
 .planning-header {
     background: linear-gradient(135deg, #17a2b8, #007bff);
@@ -22,6 +23,7 @@
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     border: none;
     border-radius: 15px;
+    min-height: 600px;
 }
 
 .calendar-controls {
@@ -31,100 +33,61 @@
     margin-bottom: 1rem;
 }
 
-.calendar-nav {
+.view-toggle button {
+    border: 1px solid #dee2e6;
     background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 10px;
-    padding: 0.5rem;
-}
-
-.calendar-table {
-    width: 100%;
-    height: 600px;
-}
-
-.calendar-table th,
-.calendar-table td {
-    border: 1px solid #dee2e6;
-    vertical-align: top;
-    padding: 0.5rem;
-    height: 80px;
-}
-
-.calendar-table th {
-    background: #f8f9fa;
-    text-align: center;
-    font-weight: 600;
-    height: 40px;
-}
-
-.calendar-day {
-    position: relative;
-    height: 100%;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    margin: 0 0.25rem;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
 }
 
-.calendar-day:hover {
-    background-color: #f0f8ff;
+.view-toggle button.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
 }
 
-.calendar-day.today {
-    background-color: #e3f2fd;
-    border: 2px solid #2196f3;
+.month-navigation {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
-.calendar-day.other-month {
-    opacity: 0.3;
-}
-
-.day-number {
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-}
-
-.lancement-item {
-    font-size: 0.7rem;
-    padding: 0.1rem 0.3rem;
-    margin: 0.1rem 0;
-    border-radius: 3px;
+/* Styles FullCalendar personnalisés */
+.fc-event {
+    border-radius: 4px;
+    border: none !important;
+    padding: 2px 4px;
+    font-size: 0.75rem;
     cursor: pointer;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
-.lancement-planifie {
-    background-color: #6c757d;
-    color: white;
+.fc-event.lancement-planifie {
+    background-color: #6c757d !important;
+    color: white !important;
 }
 
-.lancement-en_cours {
-    background-color: #ffc107;
-    color: #212529;
+.fc-event.lancement-en_cours {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
 }
 
-.lancement-termine {
-    background-color: #28a745;
-    color: white;
+.fc-event.lancement-termine {
+    background-color: #28a745 !important;
+    color: white !important;
 }
 
-.lancement-en_attente {
-    background-color: #17a2b8;
-    color: white;
-}
-
-.legend-card {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 10px;
-    padding: 1rem;
+.fc-event.lancement-en_attente {
+    background-color: #17a2b8 !important;
+    color: white !important;
 }
 
 .legend-item {
     display: flex;
     align-items: center;
-    margin: 0.25rem 0;
+    margin: 0.5rem 0;
 }
 
 .legend-color {
@@ -138,54 +101,60 @@
     border-left: 4px solid #17a2b8;
 }
 
-.view-toggle {
-    background: white;
+/* Styles pour le debug (à retirer en production) */
+.debug-info {
+    background: #f8f9fa;
     border: 1px solid #dee2e6;
-    border-radius: 10px;
-    padding: 0.25rem;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 15px;
+    font-size: 0.875rem;
 }
 
-.view-toggle button {
-    border: none;
-    background: transparent;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    transition: all 0.2s;
+#calendar {
+    min-height: 500px;
 }
 
-.view-toggle button.active {
-    background: #007bff;
-    color: white;
+.fc {
+    min-height: 500px;
 }
 
-.month-navigation {
+.loading-spinner {
     display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 1rem;
+    height: 200px;
 }
 
-.quick-actions {
-    position: sticky;
-    top: 20px;
+/* Empêcher le freeze lors des transitions */
+.fc-view-harness {
+    overflow: hidden;
 }
 
-/* Modal styles */
-.lancement-modal .modal-content {
-    border-radius: 15px;
-}
-
-.lancement-modal .modal-header {
-    background: linear-gradient(135deg, #e83e8c, #fd7e14);
-    color: white;
-    border-radius: 15px 15px 0 0;
+.fc-daygrid-event-harness {
+    position: relative;
 }
 </style>
-
-<!-- FullCalendar CSS -->
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.css" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
+<!-- Données JSON pour JavaScript -->
+<script type="application/json" id="lancements-json">{{ lancements_json|safe }}</script>
+
+<!-- Informations de debug -->
+{% if debug_info %}
+<div class="debug-info">
+    <strong>🔍 Debug Planning:</strong>
+    <span class="badge bg-primary">{{ debug_info.total_lancements_db }} total en DB</span>
+    <span class="badge bg-info">{{ debug_info.lancements_month }} ce mois</span>
+    <span class="badge bg-success">{{ debug_info.lancements_json_length }} caractères JSON</span>
+    {% if debug_info.lancements_json_length <= 2 %}
+        <span class="badge bg-warning">⚠️ JSON vide ou invalide détecté</span>
+    {% endif %}
+    <br><small>URL API: {% url 'lancements:api_data' %}</small>
+</div>
+{% endif %}
+
 <div class="container-fluid">
     <!-- En-tête -->
     <div class="planning-header">
@@ -199,13 +168,13 @@
             </div>
             <div class="col-md-4 text-md-end">
                 <div class="view-toggle">
-                    <button type="button" class="active" data-view="month">
+                    <button type="button" class="btn-view active" data-view="dayGridMonth">
                         <i class="fas fa-calendar"></i> Mois
                     </button>
-                    <button type="button" data-view="week">
+                    <button type="button" class="btn-view" data-view="timeGridWeek">
                         <i class="fas fa-calendar-week"></i> Semaine
                     </button>
-                    <button type="button" data-view="day">
+                    <button type="button" class="btn-view" data-view="timeGridDay">
                         <i class="fas fa-calendar-day"></i> Jour
                     </button>
                 </div>
@@ -246,155 +215,168 @@
 
             <!-- Calendrier principal -->
             <div class="card calendar-card">
-                <div class="card-body p-0">
-                    <div id="calendar"></div>
+                <div class="card-body p-2">
+                    <div id="calendar-loading" class="loading-spinner">
+                        <div>
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Chargement...</span>
+                            </div>
+                            <p class="mt-2 text-center">Chargement du planning...</p>
+                        </div>
+                    </div>
+                    <div id="calendar" style="display: none;"></div>
+                    <div id="calendar-error" class="alert alert-danger" style="display: none;">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Erreur de chargement</h5>
+                        <p id="error-message">Une erreur s'est produite lors du chargement du calendrier.</p>
+                        <button class="btn btn-outline-danger" onclick="location.reload()">
+                            <i class="fas fa-sync"></i> Recharger la page
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Sidebar droite -->
         <div class="col-lg-3">
-            <div class="quick-actions">
-                <!-- Légende -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fas fa-info-circle me-2"></i>Légende
-                        </h5>
+            <!-- Légende -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Légende
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #6c757d;"></div>
+                        <span>Planifié</span>
                     </div>
-                    <div class="card-body legend-card">
-                        <div class="legend-item">
-                            <div class="legend-color lancement-planifie"></div>
-                            <span>Planifié</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color lancement-en_cours"></div>
-                            <span>En cours</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color lancement-termine"></div>
-                            <span>Terminé</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color lancement-en_attente"></div>
-                            <span>En attente</span>
-                        </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #ffc107;"></div>
+                        <span>En cours</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #28a745;"></div>
+                        <span>Terminé</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #17a2b8;"></div>
+                        <span>En attente</span>
                     </div>
                 </div>
+            </div>
 
-                <!-- Statistiques rapides -->
-                <div class="card stats-card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fas fa-chart-bar me-2"></i>Statistiques du mois
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-6 mb-3">
-                                <h4 class="text-primary">{{ stats.total_month|default:0 }}</h4>
-                                <small class="text-muted">Total</small>
-                            </div>
-                            <div class="col-6 mb-3">
-                                <h4 class="text-warning">{{ stats.en_cours_month|default:0 }}</h4>
-                                <small class="text-muted">En cours</small>
-                            </div>
-                            <div class="col-6">
-                                <h4 class="text-success">{{ stats.termines_month|default:0 }}</h4>
-                                <small class="text-muted">Terminés</small>
-                            </div>
-                            <div class="col-6">
-                                <h4 class="text-info">{{ stats.planifies_month|default:0 }}</h4>
-                                <small class="text-muted">Planifiés</small>
-                            </div>
+            <!-- Statistiques rapides -->
+            <div class="card stats-card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Statistiques du mois
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <h4 class="text-primary">{{ stats.total_month|default:0 }}</h4>
+                            <small class="text-muted">Total</small>
                         </div>
-                        
-                        <hr>
-                        
-                        <div class="text-center">
-                            <strong class="text-info">{{ stats.poids_total_month|floatformat:1|default:0 }} kg</strong>
-                            <br><small class="text-muted">Poids total du mois</small>
+                        <div class="col-6 mb-3">
+                            <h4 class="text-warning">{{ stats.en_cours_month|default:0 }}</h4>
+                            <small class="text-muted">En cours</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-success">{{ stats.termines_month|default:0 }}</h4>
+                            <small class="text-muted">Terminés</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-info">{{ stats.planifies_month|default:0 }}</h4>
+                            <small class="text-muted">Planifiés</small>
                         </div>
                     </div>
-                </div>
-
-                <!-- Filtres -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fas fa-filter me-2"></i>Filtres
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="filterForm">
-                            <div class="mb-3">
-                                <label class="form-label">Atelier</label>
-                                <select class="form-select form-select-sm" id="filterAtelier">
-                                    <option value="">Tous les ateliers</option>
-                                    {% for atelier in ateliers %}
-                                        <option value="{{ atelier.id }}" data-name="{{ atelier.nom_atelier }}">{{ atelier.nom_atelier }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label">Statut</label>
-                                <select class="form-select form-select-sm" id="filterStatut">
-                                    <option value="">Tous les statuts</option>
-                                    <option value="planifie">Planifié</option>
-                                    <option value="en_cours">En cours</option>
-                                    <option value="termine">Terminé</option>
-                                    <option value="en_attente">En attente</option>
-                                </select>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label">Collaborateur</label>
-                                <select class="form-select form-select-sm" id="filterCollaborateur">
-                                    <option value="">Tous</option>
-                                    {% for collaborateur in collaborateurs %}
-                                        <option value="{{ collaborateur.id }}" data-name="{{ collaborateur.get_full_name }}">{{ collaborateur.get_full_name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            
-                            <button type="button" class="btn btn-outline-primary btn-sm w-100" id="applyFilters">
-                                <i class="fas fa-search"></i> Appliquer
-                            </button>
-                            
-                            <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-2" id="clearFilters">
-                                <i class="fas fa-times"></i> Effacer
-                            </button>
-                        </form>
+                    
+                    <hr>
+                    
+                    <div class="text-center">
+                        <strong class="text-info">{{ stats.poids_total_month|default:0 }} kg</strong>
+                        <br><small class="text-muted">Poids total du mois</small>
                     </div>
                 </div>
+            </div>
 
-                <!-- Actions rapides -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fas fa-bolt me-2"></i>Actions Rapides
-                        </h5>
-                    </div>
-                    <div class="card-body d-grid gap-2">
-                        <a href="{% url 'lancements:list' %}" class="btn btn-outline-primary btn-sm">
-                            <i class="fas fa-list"></i> Liste des lancements
-                        </a>
+            <!-- Filtres -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter me-2"></i>Filtres
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="filterForm">
+                        <div class="mb-3">
+                            <label class="form-label">Atelier</label>
+                            <select class="form-select form-select-sm" id="filterAtelier">
+                                <option value="">Tous les ateliers</option>
+                                {% for atelier in ateliers %}
+                                    <option value="{{ atelier.id }}">{{ atelier.nom_atelier }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                         
-                        {% if can_create %}
-                        <a href="{% url 'lancements:create' %}" class="btn btn-outline-success btn-sm">
-                            <i class="fas fa-plus"></i> Nouveau lancement
-                        </a>
-                        {% endif %}
+                        <div class="mb-3">
+                            <label class="form-label">Statut</label>
+                            <select class="form-select form-select-sm" id="filterStatut">
+                                <option value="">Tous les statuts</option>
+                                <option value="planifie">Planifié</option>
+                                <option value="en_cours">En cours</option>
+                                <option value="termine">Terminé</option>
+                                <option value="en_attente">En attente</option>
+                            </select>
+                        </div>
                         
-                        <button class="btn btn-outline-info btn-sm" onclick="window.print()">
-                            <i class="fas fa-print"></i> Imprimer planning
+                        <div class="mb-3">
+                            <label class="form-label">Collaborateur</label>
+                            <select class="form-select form-select-sm" id="filterCollaborateur">
+                                <option value="">Tous</option>
+                                {% for collaborateur in collaborateurs %}
+                                    <option value="{{ collaborateur.id }}">{{ collaborateur.get_full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" id="applyFilters">
+                            <i class="fas fa-search"></i> Appliquer
                         </button>
                         
-                        <button class="btn btn-outline-warning btn-sm" id="exportPdf">
-                            <i class="fas fa-file-pdf"></i> Exporter PDF
+                        <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="clearFilters">
+                            <i class="fas fa-times"></i> Effacer
                         </button>
-                    </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Actions rapides -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>Actions Rapides
+                    </h5>
+                </div>
+                <div class="card-body d-grid gap-2">
+                    <a href="{% url 'lancements:list' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-list"></i> Liste des lancements
+                    </a>
+                    
+                    {% if can_create %}
+                    <a href="{% url 'lancements:create' %}" class="btn btn-outline-success btn-sm">
+                        <i class="fas fa-plus"></i> Nouveau lancement
+                    </a>
+                    {% endif %}
+                    
+                    <button class="btn btn-outline-info btn-sm" onclick="window.print()">
+                        <i class="fas fa-print"></i> Imprimer planning
+                    </button>
+                    
+                    <button class="btn btn-outline-warning btn-sm" id="refreshData">
+                        <i class="fas fa-sync"></i> Actualiser
+                    </button>
                 </div>
             </div>
         </div>
@@ -402,18 +384,22 @@
 </div>
 
 <!-- Modal pour les détails du lancement -->
-<div class="modal fade lancement-modal" id="lancementModal" tabindex="-1">
+<div class="modal fade" id="lancementModal" tabindex="-1" aria-labelledby="lancementModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="lancementModalLabel">
                     <i class="fas fa-rocket me-2"></i>
                     <span id="modalTitle">Détails du Lancement</span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="modalContent">
-                <!-- Contenu chargé dynamiquement -->
+                <div class="text-center p-3">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
@@ -422,215 +408,689 @@
         </div>
     </div>
 </div>
-
-<!-- Template data -->
-{{ lancements_json|json_script:"lancements-data" }}
-{{ ateliers_json|json_script:"ateliers-data" }}
-{{ collaborateurs_json|json_script:"collaborateurs-data" }}
 {% endblock %}
 
 {% block extra_js %}
+<!-- Bootstrap JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 <!-- FullCalendar JS -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/locales/fr.global.min.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Get data from Django template
-    const lancements = JSON.parse(document.getElementById('lancements-data').textContent);
-    const ateliers = JSON.parse(document.getElementById('ateliers-data').textContent);
-    const collaborateurs = JSON.parse(document.getElementById('collaborateurs-data').textContent);
+    console.log('=== Initialisation du planning ===');
+    
+    // Variables globales
+    let calendar;
+    let allEvents = [];
+    let isNavigating = false;
+    let navigationTimeout = null;
+    
+    // Configuration de l'URL API
+    const API_URL = '{% url "lancements:api_data" %}';
+    console.log('URL API:', API_URL);
+    
+    // Debounce pour éviter les appels multiples
+    function debounce(func, delay) {
+        let timeoutId;
+        return function (...args) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+    
+    // Fonctions utilitaires
+    function showError(message) {
+        console.error('Erreur:', message);
+        const loadingEl = document.getElementById('calendar-loading');
+        const errorEl = document.getElementById('calendar-error');
+        const errorMsg = document.getElementById('error-message');
+        
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (errorEl) {
+            errorEl.style.display = 'block';
+            if (errorMsg) errorMsg.textContent = message;
+        }
+    }
+    
+    function hideLoadingShowCalendar() {
+        const loadingEl = document.getElementById('calendar-loading');
+        const calendarEl = document.getElementById('calendar');
+        const errorEl = document.getElementById('calendar-error');
+        
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (errorEl) errorEl.style.display = 'none';
+        if (calendarEl) calendarEl.style.display = 'block';
+    }
+    
+    // Fonction pour charger les données via AJAX avec cache
+    let dataCache = new Map();
+    
+    async function loadLancementsData(start = null, end = null, useCache = true) {
+        const cacheKey = `${start}-${end}`;
+        
+        if (useCache && dataCache.has(cacheKey)) {
+            console.log('📦 Utilisation du cache pour:', cacheKey);
+            return dataCache.get(cacheKey);
+        }
+        
+        try {
+            console.log('Chargement des données via API...');
+            
+            const params = new URLSearchParams();
+            if (start) params.append('start', start);
+            if (end) params.append('end', end);
+            
+            const url = `${API_URL}${params.toString() ? '?' + params.toString() : ''}`;
+            console.log('URL finale:', url);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // Timeout 10s
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log('Données API reçues:', data);
+            
+            if (data.success && Array.isArray(data.events)) {
+                dataCache.set(cacheKey, data.events);
+                return data.events;
+            } else {
+                console.warn('Données API invalides:', data);
+                return [];
+            }
+            
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                console.warn('Requête API annulée (timeout)');
+            } else {
+                console.error('Erreur lors du chargement API:', error);
+            }
+            // Fallback vers les données Django
+            return getDjangoData();
+        }
+    }
+    
+    // Fonction fallback pour récupérer les données depuis Django
+    function getDjangoData() {
+        try {
+            console.log('Tentative de récupération des données Django...');
+            const lancementsJson = document.getElementById('lancements-json');
+            
+            if (!lancementsJson || !lancementsJson.textContent.trim()) {
+                console.warn('Élément lancements-json non trouvé ou vide');
+                return [];
+            }
+            
+            const jsonText = lancementsJson.textContent.trim();
+            
+            if (jsonText === '[]' || jsonText === '') {
+                console.log('Données Django vides');
+                return [];
+            }
+            
+            const data = JSON.parse(jsonText);
+            console.log('Données Django parsées:', Array.isArray(data) ? data.length + ' éléments' : 'Format invalide');
+            
+            return Array.isArray(data) ? data : [];
+            
+        } catch (e) {
+            console.error('Erreur lors du parsing des données Django:', e);
+            return [];
+        }
+    }
+    
+    // Transformation des données pour FullCalendar
+    function transformDataForCalendar(lancements) {
+        if (!Array.isArray(lancements)) {
+            console.error('lancements n\'est pas un tableau:', typeof lancements);
+            return [];
+        }
+        
+        console.log('Transformation de', lancements.length, 'lancements');
+        
+        return lancements.map((lancement, index) => {
+            try {
+                return {
+                    id: lancement.id?.toString() || `temp-${index}`,
+                    title: lancement.num_lanc || `L-${lancement.id || index}`,
+                    start: lancement.date_lancement,
+                    className: ['lancement-' + (lancement.statut || 'planifie')],
+                    extendedProps: {
+                        ...lancement,
+                        num_lanc: lancement.num_lanc || `L-${lancement.id || index}`,
+                        statut_display: lancement.statut_display || lancement.statut || 'Planifié',
+                        atelier_nom: lancement.atelier_nom || 'Aucun atelier',
+                        collaborateur_nom: lancement.collaborateur_nom || 'Aucun collaborateur',
+                        affaire_code: lancement.affaire_code || 'N/A',
+                        client: lancement.client || 'N/A',
+                        sous_livrable: lancement.sous_livrable || 'Pas de description',
+                        poids_total: lancement.poids_total || 0
+                    }
+                };
+            } catch (e) {
+                console.error('Erreur transformation lancement:', e, lancement);
+                return null;
+            }
+        }).filter(event => event !== null);
+    }
 
-    // Transform lancements data for FullCalendar
-    const calendarEvents = lancements.map(lancement => ({
-        id: lancement.id.toString(),
-        title: lancement.num_lanc,
-        start: lancement.date_lancement,
-        extendedProps: {
-            num_lanc: lancement.num_lanc,
-            affaire: lancement.affaire_code,
-            client: lancement.client,
-            atelier: lancement.atelier_nom,
-            atelier_id: lancement.atelier_id,
-            collaborateur: lancement.collaborateur_nom,
-            collaborateur_id: lancement.collaborateur_id,
-            statut: lancement.statut,
-            statut_display: lancement.statut_display,
-            poids_total: lancement.poids_total,
-            sous_livrable: lancement.sous_livrable
-        },
-        className: 'lancement-' + lancement.statut
-    }));
+    // Chargement différé des données par période
+    const deferredDataLoad = debounce(async function(dateInfo) {
+        if (isNavigating) return;
+        
+        isNavigating = true;
+        console.log('🔄 Chargement différé pour:', dateInfo.startStr, 'à', dateInfo.endStr);
+        
+        try {
+            const startDate = dateInfo.start.toISOString().split('T')[0];
+            const endDate = dateInfo.end.toISOString().split('T')[0];
+            
+            const lancements = await loadLancementsData(startDate, endDate);
+            const events = transformDataForCalendar(lancements);
+            
+            if (calendar && events.length > 0) {
+                console.log('📊 Mise à jour avec', events.length, 'événements');
+                
+                // Supprimer les événements existants et ajouter les nouveaux
+                calendar.removeAllEvents();
+                
+                // Ajouter les nouveaux événements un par un pour éviter les conflits
+                setTimeout(() => {
+                    events.forEach((event, index) => {
+                        setTimeout(() => {
+                            if (calendar) {
+                                calendar.addEvent(event);
+                            }
+                        }, index * 10); // Délai de 10ms entre chaque ajout
+                    });
+                    
+                    setTimeout(() => {
+                        isNavigating = false;
+                    }, events.length * 10 + 100);
+                }, 50);
+            } else {
+                isNavigating = false;
+            }
+        } catch (error) {
+            console.error('Erreur lors du chargement différé:', error);
+            isNavigating = false;
+        }
+    }, 300);
 
     // Initialisation du calendrier FullCalendar
-    const calendarEl = document.getElementById('calendar');
-    const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        locale: 'fr',
-        height: 600,
-        events: calendarEvents,
-        headerToolbar: false, // On utilise nos propres contrôles
+    function initializeCalendar(initialEvents) {
+        const calendarEl = document.getElementById('calendar');
         
-        eventClick: function(info) {
-            showLancementDetails(info.event);
-        },
-        
-        eventContent: function(arg) {
-            const props = arg.event.extendedProps;
-            return {
-                html: `
-                    <div class="lancement-item lancement-${props.statut}" title="${props.sous_livrable}">
-                        <strong>${props.num_lanc}</strong><br>
-                        <small>${props.atelier}</small>
-                    </div>
-                `
-            };
+        if (!calendarEl) {
+            showError('Élément #calendar non trouvé dans le DOM!');
+            return;
         }
-    });
-    
-    calendar.render();
 
-    // Navigation du calendrier
-    document.getElementById('prevMonth').addEventListener('click', function() {
-        calendar.prev();
-        updateMonthDisplay();
-    });
+        try {
+            console.log('Initialisation du calendrier avec', initialEvents.length, 'événements');
+            
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'fr',
+                height: 'auto',
+                headerToolbar: false,
+                events: initialEvents,
+                
+                // Configuration optimisée
+                eventDisplay: 'block',
+                dayMaxEvents: 3,
+                moreLinkClick: 'popover',
+                
+                // Performance
+                eventDidMount: function(info) {
+                    const props = info.event.extendedProps;
+                    info.el.title = `${props.num_lanc}
+Affaire: ${props.affaire_code}
+Client: ${props.client}
+Atelier: ${props.atelier_nom}
+Statut: ${props.statut_display}
+Poids: ${props.poids_total} kg`;
+                },
+                
+                eventClick: function(info) {
+                    console.log('Clic sur événement:', info.event.extendedProps);
+                    showLancementDetails(info.event);
+                },
+                
+                eventContent: function(arg) {
+                    const props = arg.event.extendedProps;
+                    const statusColors = {
+                        'planifie': '#6c757d',
+                        'en_cours': '#ffc107',
+                        'termine': '#28a745',
+                        'en_attente': '#17a2b8'
+                    };
+                    
+                    const color = statusColors[props.statut] || '#6c757d';
+                    const textColor = (props.statut === 'en_cours') ? '#212529' : 'white';
+                    
+                    return {
+                        html: `<div style="font-size: 0.75rem; padding: 2px 4px; background-color: ${color}; color: ${textColor}; border-radius: 3px; overflow: hidden;">
+                            <div style="font-weight: bold;">${props.num_lanc}</div>
+                            <div style="font-size: 0.6rem;">${(props.atelier_nom || 'Sans atelier').substring(0, 15)}</div>
+                        </div>`
+                    };
+                },
+                
+                // Gestion des changements de dates avec debounce
+                datesSet: function(dateInfo) {
+                    console.log('Changement de dates:', dateInfo.start, 'à', dateInfo.end);
+                    updateMonthDisplay();
+                    
+                    // Charger les données pour cette période si nécessaire
+                    if (!isNavigating) {
+                        deferredDataLoad(dateInfo);
+                    }
+                },
+                
+                loading: function(isLoading) {
+                    console.log('FullCalendar loading:', isLoading);
+                    if (isLoading && !isNavigating) {
+                        // Optionnel: afficher un indicateur de chargement
+                    }
+                }
+            });
+            
+            calendar.render();
+            hideLoadingShowCalendar();
+            
+            console.log('✅ Calendrier rendu avec succès');
+            
+            // Sauvegarder les événements pour les filtres
+            allEvents = initialEvents;
+            
+        } catch (e) {
+            console.error('❌ Erreur lors de l\'initialisation du calendrier:', e);
+            showError('Erreur lors de l\'initialisation du calendrier: ' + e.message);
+        }
+    }
 
-    document.getElementById('nextMonth').addEventListener('click', function() {
-        calendar.next();
-        updateMonthDisplay();
-    });
+    // Navigation du calendrier avec protection contre les clics multiples
+    function setupNavigation() {
+        console.log('Configuration de la navigation...');
+        
+        const prevButton = document.getElementById('prevMonth');
+        const nextButton = document.getElementById('nextMonth');
+        const todayButton = document.getElementById('todayBtn');
+        const refreshButton = document.getElementById('refreshData');
 
-    document.getElementById('todayBtn').addEventListener('click', function() {
-        calendar.today();
-        updateMonthDisplay();
-    });
+        if (prevButton) {
+            prevButton.addEventListener('click', debounce(function(e) {
+                e.preventDefault();
+                if (!isNavigating && calendar) {
+                    console.log('👈 Mois précédent');
+                    calendar.prev();
+                }
+            }, 200));
+            console.log('✅ Bouton précédent configuré');
+        }
+
+        if (nextButton) {
+            nextButton.addEventListener('click', debounce(function(e) {
+                e.preventDefault();
+                if (!isNavigating && calendar) {
+                    console.log('👉 Mois suivant');
+                    calendar.next();
+                }
+            }, 200));
+            console.log('✅ Bouton suivant configuré');
+        }
+
+        if (todayButton) {
+            todayButton.addEventListener('click', debounce(function(e) {
+                e.preventDefault();
+                if (!isNavigating && calendar) {
+                    console.log('🎯 Retour à aujourd\'hui');
+                    calendar.today();
+                }
+            }, 200));
+            console.log('✅ Bouton aujourd\'hui configuré');
+        }
+        
+        if (refreshButton) {
+            refreshButton.addEventListener('click', debounce(function(e) {
+                e.preventDefault();
+                console.log('🔄 Actualisation des données');
+                dataCache.clear(); // Vider le cache
+                location.reload();
+            }, 500));
+            console.log('✅ Bouton actualiser configuré');
+        }
+    }
 
     // Changement de vue
-    document.querySelectorAll('[data-view]').forEach(button => {
-        button.addEventListener('click', function() {
-            const view = this.dataset.view;
-            
-            // Retirer la classe active des autres boutons
-            document.querySelectorAll('[data-view]').forEach(btn => btn.classList.remove('active'));
-            this.classList.add('active');
-            
-            // Changer la vue du calendrier
-            let fullCalendarView = 'dayGridMonth';
-            if (view === 'week') fullCalendarView = 'timeGridWeek';
-            if (view === 'day') fullCalendarView = 'timeGridDay';
-            
-            calendar.changeView(fullCalendarView);
+    function setupViewToggle() {
+        console.log('Configuration du toggle de vue...');
+        
+        document.querySelectorAll('.btn-view').forEach(button => {
+            button.addEventListener('click', debounce(function(e) {
+                e.preventDefault();
+                if (isNavigating) return;
+                
+                const view = this.dataset.view;
+                console.log('🔄 Changement de vue:', view);
+                
+                // Mettre à jour l'état visuel des boutons
+                document.querySelectorAll('.btn-view').forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Changer la vue du calendrier
+                if (calendar) {
+                    calendar.changeView(view);
+                }
+            }, 200));
         });
-    });
+        
+        console.log('✅ Toggle de vue configuré');
+    }
 
     // Mise à jour de l'affichage du mois
     function updateMonthDisplay() {
+        const monthTitle = document.getElementById('currentMonth');
+        if (!monthTitle || !calendar) return;
+        
         const currentDate = calendar.getDate();
         const monthNames = [
             'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
             'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
         ];
         const monthDisplay = monthNames[currentDate.getMonth()] + ' ' + currentDate.getFullYear();
-        document.getElementById('currentMonth').textContent = monthDisplay;
+        monthTitle.textContent = monthDisplay;
     }
 
-    // Filtres
-    document.getElementById('applyFilters').addEventListener('click', function() {
-        applyFilters();
-    });
+    // Configuration des filtres
+    function setupFilters() {
+        console.log('Configuration des filtres...');
+        
+        const applyFiltersBtn = document.getElementById('applyFilters');
+        const clearFiltersBtn = document.getElementById('clearFilters');
 
-    document.getElementById('clearFilters').addEventListener('click', function() {
-        document.getElementById('filterForm').reset();
-        applyFilters();
-    });
+        if (applyFiltersBtn) {
+            applyFiltersBtn.addEventListener('click', debounce(function(e) {
+                e.preventDefault();
+                console.log('🔍 Application des filtres');
+                applyFilters();
+            }, 300));
+            console.log('✅ Bouton appliquer filtres configuré');
+        }
+
+        if (clearFiltersBtn) {
+            clearFiltersBtn.addEventListener('click', debounce(function(e) {
+                e.preventDefault();
+                console.log('🗑️ Effacement des filtres');
+                clearFilters();
+            }, 300));
+            console.log('✅ Bouton effacer filtres configuré');
+        }
+    }
 
     function applyFilters() {
-        const atelierId = document.getElementById('filterAtelier').value;
-        const statut = document.getElementById('filterStatut').value;
-        const collaborateurId = document.getElementById('filterCollaborateur').value;
+        const atelierId = document.getElementById('filterAtelier')?.value || '';
+        const statut = document.getElementById('filterStatut')?.value || '';
+        const collaborateurId = document.getElementById('filterCollaborateur')?.value || '';
 
-        // Filtrer les événements
-        const filteredEvents = calendarEvents.filter(event => {
+        console.log('🔍 Filtres appliqués:', { atelierId, statut, collaborateurId });
+
+        const filteredEvents = allEvents.filter(event => {
+            const props = event.extendedProps;
             let show = true;
             
-            if (atelierId && event.extendedProps.atelier_id.toString() !== atelierId) {
-                show = false;
-            }
-            
-            if (statut && event.extendedProps.statut !== statut) {
-                show = false;
-            }
-            
-            if (collaborateurId && event.extendedProps.collaborateur_id.toString() !== collaborateurId) {
-                show = false;
-            }
+            if (atelierId && props.atelier_id != atelierId) show = false;
+            if (statut && props.statut !== statut) show = false;
+            if (collaborateurId && props.collaborateur_id != collaborateurId) show = false;
             
             return show;
         });
 
-        // Mettre à jour le calendrier avec les événements filtrés
-        calendar.removeAllEvents();
-        calendar.addEventSource(filteredEvents);
-    }
+        console.log('📊 Événements filtrés:', filteredEvents.length, '/', allEvents.length);
 
-    // Fonction pour afficher les détails d'un lancement
-    function showLancementDetails(event) {
-        const props = event.extendedProps;
-        const modal = new bootstrap.Modal(document.getElementById('lancementModal'));
-        
-        document.getElementById('modalTitle').textContent = `Lancement ${props.num_lanc}`;
-        document.getElementById('viewDetailsBtn').href = `/lancements/${event.id}/`;
-        
-        const content = `
-            <div class="row">
-                <div class="col-md-6">
-                    <h6><i class="fas fa-briefcase me-2"></i>Affaire</h6>
-                    <p><strong>${props.affaire}</strong><br><small class="text-muted">${props.client}</small></p>
-                    
-                    <h6><i class="fas fa-industry me-2"></i>Atelier</h6>
-                    <p>${props.atelier}</p>
-                    
-                    <h6><i class="fas fa-user me-2"></i>Collaborateur</h6>
-                    <p>${props.collaborateur}</p>
-                </div>
-                <div class="col-md-6">
-                    <h6><i class="fas fa-flag me-2"></i>Statut</h6>
-                    <p><span class="badge bg-${getStatusColor(props.statut)}">${props.statut_display}</span></p>
-                    
-                    <h6><i class="fas fa-weight me-2"></i>Poids Total</h6>
-                    <p><strong>${props.poids_total} kg</strong></p>
-                    
-                    <h6><i class="fas fa-calendar me-2"></i>Date de lancement</h6>
-                    <p>${event.start.toLocaleDateString('fr-FR')}</p>
-                </div>
-            </div>
-            
-            <hr>
-            
-            <h6><i class="fas fa-clipboard me-2"></i>Description</h6>
-            <p>${props.sous_livrable}</p>
-        `;
-        
-        document.getElementById('modalContent').innerHTML = content;
-        modal.show();
-    }
-
-    function getStatusColor(status) {
-        switch(status) {
-            case 'planifie': return 'secondary';
-            case 'en_cours': return 'warning';
-            case 'termine': return 'success';
-            case 'en_attente': return 'info';
-            default: return 'secondary';
+        if (calendar) {
+            calendar.removeAllEvents();
+            filteredEvents.forEach((event, index) => {
+                setTimeout(() => {
+                    if (calendar) {
+                        calendar.addEvent(event);
+                    }
+                }, index * 5);
+            });
         }
     }
 
-    // Export PDF (placeholder)
-    document.getElementById('exportPdf').addEventListener('click', function() {
-        alert('Fonctionnalité d\'export PDF à implémenter');
-        // Ici, vous pourriez intégrer une bibliothèque comme jsPDF
+    function clearFilters() {
+        const form = document.getElementById('filterForm');
+        if (form) form.reset();
+        
+        if (calendar && allEvents.length > 0) {
+            calendar.removeAllEvents();
+            allEvents.forEach((event, index) => {
+                setTimeout(() => {
+                    if (calendar) {
+                        calendar.addEvent(event);
+                    }
+                }, index * 5);
+            });
+        }
+    }
+
+    // Affichage des détails d'un lancement
+    function showLancementDetails(event) {
+        const props = event.extendedProps;
+        console.log('📋 Affichage détails:', props.num_lanc);
+        
+        const modalTitle = document.getElementById('modalTitle');
+        const modalContent = document.getElementById('modalContent');
+        const viewDetailsBtn = document.getElementById('viewDetailsBtn');
+
+        if (modalTitle) modalTitle.textContent = `Lancement ${props.num_lanc}`;
+        if (viewDetailsBtn) {
+            const detailUrl = "{% url 'lancements:detail' 0 %}".replace('0', event.id);
+            viewDetailsBtn.href = detailUrl;
+        }
+        
+        if (modalContent) {
+            modalContent.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-briefcase me-2"></i>Affaire</h6>
+                        <p><strong>${props.affaire_code}</strong><br>
+                        <small class="text-muted">${props.client}</small></p>
+                        
+                        <h6><i class="fas fa-industry me-2"></i>Atelier</h6>
+                        <p>${props.atelier_nom}</p>
+                        
+                        <h6><i class="fas fa-user me-2"></i>Collaborateur</h6>
+                        <p>${props.collaborateur_nom}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-flag me-2"></i>Statut</h6>
+                        <p><span class="badge bg-${getStatusColor(props.statut)}">${props.statut_display}</span></p>
+                        
+                        <h6><i class="fas fa-weight me-2"></i>Poids Total</h6>
+                        <p><strong>${props.poids_total} kg</strong></p>
+                        
+                        <h6><i class="fas fa-calendar me-2"></i>Date de lancement</h6>
+                        <p>${formatDate(event.start)}</p>
+                    </div>
+                </div>
+                <hr>
+                <h6><i class="fas fa-clipboard me-2"></i>Description</h6>
+                <p>${props.sous_livrable}</p>
+            `;
+        }
+        
+        // Afficher la modal
+        const modalElement = document.getElementById('lancementModal');
+        if (modalElement && typeof bootstrap !== 'undefined') {
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        }
+    }
+
+    function getStatusColor(status) {
+        const colors = {
+            'planifie': 'secondary',
+            'en_cours': 'warning',
+            'termine': 'success',
+            'en_attente': 'info'
+        };
+        return colors[status] || 'secondary';
+    }
+
+    function formatDate(date) {
+        if (!date) return 'N/A';
+        try {
+            return new Date(date).toLocaleDateString('fr-FR');
+        } catch (e) {
+            return date.toString();
+        }
+    }
+
+    // Fonction d'initialisation principale
+    async function init() {
+        try {
+            console.log('🚀 Début de l\'initialisation du planning...');
+            
+            // Vérifier les dépendances
+            if (!checkDependencies()) {
+                return;
+            }
+            
+            // Vérifier que les éléments DOM existent
+            const calendarEl = document.getElementById('calendar');
+            if (!calendarEl) {
+                throw new Error('Élément #calendar non trouvé dans le DOM');
+            }
+            
+            console.log('✅ Éléments DOM trouvés');
+            
+            // Essayer de charger les données initiales
+            console.log('📡 Tentative de chargement des données initiales...');
+            
+            // D'abord essayer les données Django (plus rapide)
+            let lancements = getDjangoData();
+            
+            if (!lancements || lancements.length === 0) {
+                console.log('📡 Aucune donnée Django, tentative via API...');
+                lancements = await loadLancementsData();
+            }
+            
+            console.log('📊 Données initiales:', lancements?.length || 0, 'lancements');
+            
+            if (!lancements || lancements.length === 0) {
+                console.log('⚠️ Aucune donnée disponible');
+                hideLoadingShowCalendar();
+                const calendarEl = document.getElementById('calendar');
+                if (calendarEl) {
+                    
+                    // Initialiser quand même le calendrier vide
+                    initializeCalendar([]);
+                    
+                    // Ajouter un message informatif
+                    setTimeout(() => {
+                        if (calendar) {
+                            const viewEl = calendarEl.querySelector('.fc-view-harness');
+                            if (viewEl) {
+                                const infoDiv = document.createElement('div');
+                                infoDiv.className = 'alert alert-info text-center m-3';
+                                infoDiv.innerHTML = `
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Aucun lancement trouvé</strong><br>
+                                    <small>Aucun lancement n'est programmé pour cette période.</small>
+                                `;
+                                viewEl.appendChild(infoDiv);
+                            }
+                        }
+                    }, 500);
+                }
+            } else {
+                // Transformer et initialiser le calendrier
+                const events = transformDataForCalendar(lancements);
+                console.log('🔄 Événements transformés:', events.length);
+                
+                if (events.length > 0) {
+                    initializeCalendar(events);
+                } else {
+                    console.warn('⚠️ Aucun événement valide après transformation');
+                    initializeCalendar([]);
+                }
+            }
+            
+            // Configurer les contrôles (toujours, même sans données)
+            setupNavigation();
+            setupViewToggle();
+            setupFilters();
+            
+            console.log('✅ Planning initialisé avec succès');
+            
+        } catch (error) {
+            console.error('❌ Erreur lors de l\'initialisation:', error);
+            showError('Erreur lors de l\'initialisation du planning: ' + error.message);
+        }
+    }
+    
+    // Vérification des dépendances
+    function checkDependencies() {
+        const issues = [];
+        
+        if (typeof FullCalendar === 'undefined') {
+            issues.push('FullCalendar n\'est pas chargé');
+        }
+        
+        if (typeof bootstrap === 'undefined') {
+            console.warn('⚠️ Bootstrap JS non détecté - certaines fonctionnalités peuvent ne pas marcher');
+        }
+        
+        if (issues.length > 0) {
+            console.error('❌ Dépendances manquantes:', issues);
+            showError('Dépendances manquantes: ' + issues.join(', '));
+            return false;
+        }
+        
+        console.log('✅ Toutes les dépendances sont chargées');
+        return true;
+    }
+    
+    // Nettoyage à la fermeture de la page
+    window.addEventListener('beforeunload', function() {
+        if (calendar) {
+            console.log('🧹 Nettoyage du calendrier...');
+            try {
+                calendar.destroy();
+            } catch (e) {
+                console.warn('Erreur lors du nettoyage:', e);
+            }
+        }
+        
+        // Annuler tous les timeouts en cours
+        if (navigationTimeout) {
+            clearTimeout(navigationTimeout);
+        }
     });
+    
+    // Lancer l'initialisation
+    console.log('🏁 Démarrage de l\'initialisation...');
+    init();
 });
 </script>
 {% endblock %}

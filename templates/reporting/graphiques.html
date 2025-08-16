@@ -1,0 +1,917 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Tableaux de Bord - Analytics{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'reporting:rapports_list' %}">Rapports</a>
+    </li>
+    <li class="breadcrumb-item active">Tableaux de bord</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.dashboard-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.chart-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.chart-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+}
+
+.chart-header {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 15px 15px 0 0;
+}
+
+.metric-mini {
+    background: white;
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.metric-mini:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+}
+
+.filter-controls {
+    background: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.chart-container {
+    position: relative;
+    height: 400px;
+    padding: 1.5rem;
+}
+
+.chart-container-small {
+    position: relative;
+    height: 300px;
+    padding: 1rem;
+}
+
+.legend-custom {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #f8f9fa;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-size: 0.875rem;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.insights-panel {
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    color: #333;
+}
+
+.insight-item {
+    background: rgba(255,255,255,0.8);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid #667eea;
+}
+
+.data-table-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.table-header {
+    background: #f8f9fa;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.icon-container {
+    width: 30px;
+    height: 30px;
+    font-size: 0.75rem;
+}
+
+.progress-custom {
+    width: 60px;
+    height: 8px;
+}
+
+@media (max-width: 768px) {
+    .chart-container {
+        height: 250px;
+    }
+    
+    .metric-mini {
+        margin-bottom: 1rem;
+    }
+    
+    .filter-controls .row > div {
+        margin-bottom: 1rem;
+    }
+}
+
+@media print {
+    .btn, .filter-controls {
+        display: none !important;
+    }
+    
+    .chart-card {
+        page-break-inside: avoid;
+        margin-bottom: 1rem !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Pass data to JavaScript -->
+<script type="application/json" id="chart-data">
+{
+    "collaborateurs": {
+        "labels": [{% for collab in top_collaborateurs %}"{{ collab.nom_collaborateur|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+        "debitage": [{% for collab in top_collaborateurs %}{{ collab.poids_debitage|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
+        "assemblage": [{% for collab in top_collaborateurs %}{{ collab.poids_assemblage|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}]
+    },
+    "affaires": {
+        "labels": [{% for affaire in top_affaires %}"{{ affaire.code_affaire|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+        "values": [{% for affaire in top_affaires %}{{ affaire.poids_total|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
+        "colors": ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7"]
+    },
+    "evolution": {
+        "labels": [{% for period in evolution_periods %}"{{ period.label|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+        "values": [{% for period in evolution_periods %}{{ period.poids_total|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}]
+    }
+}
+</script>
+
+<div class="container-fluid">
+    <div class="row">
+        <main class="col-12 px-md-4">
+            <!-- En-tête -->
+            <div class="dashboard-header">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h2 mb-0">
+                            <i class="fas fa-chart-line me-3"></i>
+                            Tableaux de Bord Analytics
+                        </h1>
+                        <p class="mt-2 mb-0 opacity-75">
+                            Analyse graphique et insights de la production
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-light" onclick="refreshData()">
+                                <i class="fas fa-sync"></i> Actualiser
+                            </button>
+                            <button class="btn btn-light" onclick="fullscreen()">
+                                <i class="fas fa-expand"></i> Plein écran
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Contrôles de filtre -->
+            <div class="filter-controls">
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-3">
+                        <label for="periode" class="form-label">Période d'analyse</label>
+                        <select class="form-select" id="periode" onchange="updateCharts()">
+                            <option value="7">7 derniers jours</option>
+                            <option value="30" selected>30 derniers jours</option>
+                            <option value="90">3 derniers mois</option>
+                            <option value="365">12 derniers mois</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="atelier_filter" class="form-label">Atelier</label>
+                        <select class="form-select" id="atelier_filter" onchange="updateCharts()">
+                            <option value="">Tous les ateliers</option>
+                            {% for atelier in ateliers %}
+                                <option value="{{ atelier.id }}">{{ atelier.nom_atelier }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="type_analyse" class="form-label">Type d'analyse</label>
+                        <select class="form-select" id="type_analyse" onchange="updateCharts()">
+                            <option value="production">Production</option>
+                            <option value="performance">Performance</option>
+                            <option value="planning">Planning</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" onclick="exportDashboard()">
+                            <i class="fas fa-download me-2"></i>Exporter
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Métriques rapides -->
+            <div class="row mb-4">
+                <div class="col-xl-3 col-md-6">
+                    <div class="metric-mini">
+                        <i class="fas fa-rocket fa-2x text-primary mb-2"></i>
+                        <h4 class="text-primary">{{ dashboard_stats.total_lancements|default:0 }}</h4>
+                        <small class="text-muted">Lancements Actifs</small>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="metric-mini">
+                        <i class="fas fa-weight-hanging fa-2x text-success mb-2"></i>
+                        <h4 class="text-success">{{ dashboard_stats.poids_total|floatformat:0|default:0 }}kg</h4>
+                        <small class="text-muted">Production Totale</small>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="metric-mini">
+                        <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
+                        <h4 class="text-warning">{{ dashboard_stats.efficacite|floatformat:1|default:0 }}%</h4>
+                        <small class="text-muted">Efficacité Moyenne</small>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="metric-mini">
+                        <i class="fas fa-clock fa-2x text-info mb-2"></i>
+                        <h4 class="text-info">{{ dashboard_stats.delai_moyen|default:0 }}j</h4>
+                        <small class="text-muted">Délai Moyen</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graphiques principaux -->
+            <div class="row">
+                <!-- Graphique poids par collaborateur -->
+                <div class="col-xl-6 col-lg-12">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-users me-2"></i>
+                                Poids par Collaborateur
+                            </h5>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="poidsCollaborateurChart"></canvas>
+                        </div>
+                        <div class="px-3 pb-3">
+                            <div class="legend-custom">
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background-color: #dc3545;"></span>
+                                    <span>Poids Assemblage</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background-color: #28a745;"></span>
+                                    <span>Poids Débitage</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graphique poids par affaire (camembert) -->
+                <div class="col-xl-6 col-lg-12">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-briefcase me-2"></i>
+                                Répartition par Affaire
+                            </h5>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="poidsAffaireChart"></canvas>
+                        </div>
+                        <div class="px-3 pb-3">
+                            <div class="legend-custom" id="affaires-legend">
+                                <!-- Legend will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deuxième ligne de graphiques -->
+            <div class="row">
+                <!-- Évolution temporelle -->
+                <div class="col-12">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-line me-2"></i>
+                                    Évolution de la Production
+                                </h5>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-light" onclick="switchTimeView('daily')">Jour</button>
+                                    <button type="button" class="btn btn-light active" onclick="switchTimeView('weekly')">Semaine</button>
+                                    <button type="button" class="btn btn-light" onclick="switchTimeView('monthly')">Mois</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="evolutionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Troisième ligne - Détails par atelier -->
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="data-table-card">
+                        <div class="table-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-table me-2"></i>
+                                Performance Détaillée par Atelier
+                            </h5>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Atelier</th>
+                                        <th>Type</th>
+                                        <th>Lancements</th>
+                                        <th>Poids Débitage</th>
+                                        <th>Poids Assemblage</th>
+                                        <th>Total</th>
+                                        <th>Efficacité</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for atelier in performance_ateliers %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="icon-container bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center">
+                                                    <i class="fas fa-industry"></i>
+                                                </div>
+                                                <strong>{{ atelier.nom_atelier }}</strong>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ atelier.get_type_atelier_display }}</span>
+                                        </td>
+                                        <td><span class="badge bg-secondary">{{ atelier.nb_lancements|default:0 }}</span></td>
+                                        <td class="text-danger fw-bold">{{ atelier.poids_debitage|floatformat:1|default:0 }} kg</td>
+                                        <td class="text-success fw-bold">{{ atelier.poids_assemblage|floatformat:1|default:0 }} kg</td>
+                                        <td class="fw-bold">{{ atelier.poids_total|floatformat:1|default:0 }} kg</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="progress me-2 progress-custom">
+                                                    <div class="progress-bar bg-success efficacite-bar" data-efficacite="{{ atelier.efficacite|default:0 }}"></div>
+                                                </div>
+                                                <span>{{ atelier.efficacite|floatformat:0|default:0 }}%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel d'insights -->
+                <div class="col-lg-4">
+                    <div class="insights-panel">
+                        <h5 class="mb-3">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            Insights & Recommandations
+                        </h5>
+                        
+                        <div class="insight-item">
+                            <h6 class="text-primary">
+                                <i class="fas fa-arrow-up me-1"></i>
+                                Meilleure Performance
+                            </h6>
+                            <p class="mb-0 small">
+                                {% if top_performer %}
+                                    {{ top_performer.nom_atelier }} avec {{ top_performer.poids_total|floatformat:1 }}kg traités
+                                {% else %}
+                                    Données insuffisantes
+                                {% endif %}
+                            </p>
+                        </div>
+
+                        <div class="insight-item">
+                            <h6 class="text-warning">
+                                <i class="fas fa-clock me-1"></i>
+                                Délai Moyen
+                            </h6>
+                            <p class="mb-0 small">
+                                Les lancements sont traités en moyenne en {{ dashboard_stats.delai_moyen|default:0 }} jours.
+                            </p>
+                        </div>
+
+                        <div class="insight-item">
+                            <h6 class="text-info">
+                                <i class="fas fa-chart-line me-1"></i>
+                                Tendance
+                            </h6>
+                            <p class="mb-0 small">
+                                {% if trend == 'up' %}
+                                    Production en hausse de {{ trend_percentage|floatformat:1 }}% ce mois
+                                {% elif trend == 'down' %}
+                                    Production en baisse de {{ trend_percentage|floatformat:1 }}% ce mois
+                                {% else %}
+                                    Production stable ce mois
+                                {% endif %}
+                            </p>
+                        </div>
+
+                        <div class="insight-item">
+                            <h6 class="text-success">
+                                <i class="fas fa-target me-1"></i>
+                                Objectif
+                            </h6>
+                            <p class="mb-0 small">
+                                {{ dashboard_stats.completion_rate|floatformat:1|default:0 }}% de l'objectif mensuel atteint
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graphiques additionnels en modal -->
+            <div class="row mt-4">
+                <div class="col-12 text-center">
+                    <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#detailedChartsModal">
+                        <i class="fas fa-expand-arrows-alt me-2"></i>Graphiques Détaillés
+                    </button>
+                    <button class="btn btn-outline-success me-2" onclick="exportCharts()">
+                        <i class="fas fa-download me-2"></i>Exporter les Graphiques
+                    </button>
+                    <a href="{% url 'reporting:rapports_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Retour aux Rapports
+                    </a>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Modal pour graphiques détaillés -->
+<div class="modal fade" id="detailedChartsModal" tabindex="-1" aria-labelledby="detailedChartsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailedChartsModalLabel">
+                    <i class="fas fa-chart-bar me-2"></i>Analyses Détaillées
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs" id="chartTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="collaborateurs-tab" data-bs-toggle="tab" 
+                                data-bs-target="#collaborateurs" type="button" role="tab">
+                            <i class="fas fa-users me-1"></i>Collaborateurs
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="categories-tab" data-bs-toggle="tab" 
+                                data-bs-target="#categories" type="button" role="tab">
+                            <i class="fas fa-tags me-1"></i>Catégories
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="planning-tab" data-bs-toggle="tab" 
+                                data-bs-target="#planning" type="button" role="tab">
+                            <i class="fas fa-calendar me-1"></i>Planning
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content mt-3" id="chartTabsContent">
+                    <div class="tab-pane fade show active" id="collaborateurs" role="tabpanel">
+                        <div class="chart-container">
+                            <canvas id="detailedCollaborateurChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="categories" role="tabpanel">
+                        <div class="chart-container">
+                            <canvas id="categoriesChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="planning" role="tabpanel">
+                        <div class="chart-container">
+                            <canvas id="planningChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-primary" onclick="exportDetailedCharts()">
+                    <i class="fas fa-download me-2"></i>Exporter
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Configuration des couleurs
+const colors = {
+    primary: '#667eea',
+    success: '#28a745',
+    danger: '#dc3545',
+    warning: '#ffc107',
+    info: '#17a2b8',
+    secondary: '#6c757d'
+};
+
+const affaireColors = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7"];
+
+// Variables globales pour les graphiques
+let poidsCollaborateurChart, poidsAffaireChart, evolutionChart;
+
+// Récupération des données depuis le JSON
+function getChartData() {
+    const dataScript = document.getElementById('chart-data');
+    return JSON.parse(dataScript.textContent);
+}
+
+// Initialisation des graphiques
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    populateAffairesLegend();
+    initializeProgressBars();
+});
+
+function initializeProgressBars() {
+    // Définir les largeurs des barres de progression dynamiquement
+    document.querySelectorAll('.efficacite-bar').forEach(bar => {
+        const efficacite = bar.getAttribute('data-efficacite') || 0;
+        bar.style.width = efficacite + '%';
+    });
+}
+
+function populateAffairesLegend() {
+    const data = getChartData();
+    const legendContainer = document.getElementById('affaires-legend');
+    
+    if (legendContainer && data.affaires.labels) {
+        legendContainer.innerHTML = '';
+        data.affaires.labels.forEach((label, index) => {
+            const legendItem = document.createElement('div');
+            legendItem.className = 'legend-item';
+            legendItem.innerHTML = `
+                <span class="legend-color" style="background-color: ${affaireColors[index % affaireColors.length]};"></span>
+                <span>${label}</span>
+            `;
+            legendContainer.appendChild(legendItem);
+        });
+    }
+}
+
+function initializeCharts() {
+    const data = getChartData();
+    
+    // Graphique collaborateurs (barres empilées)
+    const ctx1 = document.getElementById('poidsCollaborateurChart').getContext('2d');
+    const collaborateursData = {
+        labels: data.collaborateurs.labels,
+        datasets: [
+            {
+                label: 'Poids Débitage',
+                data: data.collaborateurs.debitage,
+                backgroundColor: colors.success,
+                stack: 'Stack 0'
+            },
+            {
+                label: 'Poids Assemblage',
+                data: data.collaborateurs.assemblage,
+                backgroundColor: colors.danger,
+                stack: 'Stack 0'
+            }
+        ]
+    };
+
+    poidsCollaborateurChart = new Chart(ctx1, {
+        type: 'bar',
+        data: collaborateursData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { stacked: true },
+                y: { 
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value + ' kg';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y + ' kg';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Graphique affaires (camembert)
+    const ctx2 = document.getElementById('poidsAffaireChart').getContext('2d');
+    const affairesData = {
+        labels: data.affaires.labels,
+        datasets: [{
+            data: data.affaires.values,
+            backgroundColor: affaireColors
+        }]
+    };
+
+    poidsAffaireChart = new Chart(ctx2, {
+        type: 'doughnut',
+        data: affairesData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            return context.label + ': ' + context.parsed + ' kg (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Graphique d'évolution temporelle
+    const ctx3 = document.getElementById('evolutionChart').getContext('2d');
+    const evolutionData = {
+        labels: data.evolution.labels,
+        datasets: [{
+            label: 'Production (kg)',
+            data: data.evolution.values,
+            borderColor: colors.primary,
+            backgroundColor: colors.primary + '20',
+            fill: true,
+            tension: 0.4
+        }]
+    };
+
+    evolutionChart = new Chart(ctx3, {
+        type: 'line',
+        data: evolutionData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value + ' kg';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+}
+
+// Fonctions utilitaires
+function updateCharts() {
+    const periode = document.getElementById('periode').value;
+    const atelier = document.getElementById('atelier_filter').value;
+    const type = document.getElementById('type_analyse').value;
+    
+    // Ici, vous feriez un appel AJAX pour récupérer les nouvelles données
+    // et mettre à jour les graphiques
+    console.log('Mise à jour avec:', periode, atelier, type);
+    
+    // Simulation de mise à jour
+    setTimeout(() => {
+        refreshData();
+    }, 500);
+}
+
+function refreshData() {
+    // Animation de rechargement
+    document.querySelectorAll('.chart-container').forEach(container => {
+        container.style.opacity = '0.5';
+        setTimeout(() => {
+            container.style.opacity = '1';
+        }, 1000);
+    });
+}
+
+function switchTimeView(view) {
+    // Mise à jour des boutons actifs
+    document.querySelectorAll('.btn-group .btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Mise à jour du graphique d'évolution
+    updateEvolutionChart(view);
+}
+
+function updateEvolutionChart(view) {
+    // Logique pour changer la vue temporelle
+    console.log('Vue temporelle changée:', view);
+}
+
+function fullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+function exportDashboard() {
+    // Logique d'export du tableau de bord
+    const format = prompt('Format d\'export (png, pdf, excel):');
+    if (format) {
+        window.open(`/reporting/export/dashboard/?format=${format}`, '_blank');
+    }
+}
+
+function exportCharts() {
+    // Export de tous les graphiques
+    window.open('/reporting/export/charts/', '_blank');
+}
+
+function exportDetailedCharts() {
+    // Export des graphiques détaillés du modal
+    window.open('/reporting/export/detailed-charts/', '_blank');
+}
+
+// Initialisation des graphiques détaillés dans le modal
+document.getElementById('detailedChartsModal').addEventListener('shown.bs.modal', function() {
+    // Initialiser les graphiques détaillés uniquement quand le modal s'ouvre
+    initializeDetailedCharts();
+});
+
+function initializeDetailedCharts() {
+    // Graphiques détaillés pour le modal
+    const data = getChartData();
+    
+    // Graphique collaborateurs détaillé
+    const ctx1 = document.getElementById('detailedCollaborateurChart');
+    if (ctx1) {
+        new Chart(ctx1.getContext('2d'), {
+            type: 'horizontalBar',
+            data: {
+                labels: data.collaborateurs.labels,
+                datasets: [
+                    {
+                        label: 'Poids Débitage',
+                        data: data.collaborateurs.debitage,
+                        backgroundColor: colors.success
+                    },
+                    {
+                        label: 'Poids Assemblage',
+                        data: data.collaborateurs.assemblage,
+                        backgroundColor: colors.danger
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { beginAtZero: true }
+                }
+            }
+        });
+    }
+    
+    // Graphique catégories
+    const ctx2 = document.getElementById('categoriesChart');
+    if (ctx2) {
+        new Chart(ctx2.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Débitage', 'Assemblage', 'Finition', 'Contrôle'],
+                datasets: [{
+                    label: 'Production par Catégorie',
+                    data: [45, 35, 15, 5],
+                    backgroundColor: [colors.primary, colors.success, colors.warning, colors.info]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+    
+    // Graphique planning
+    const ctx3 = document.getElementById('planningChart');
+    if (ctx3) {
+        new Chart(ctx3.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
+                datasets: [{
+                    label: 'Charge de travail planifiée',
+                    data: [80, 90, 85, 75, 95, 60, 40],
+                    borderColor: colors.primary,
+                    backgroundColor: colors.primary + '20',
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Auto-refresh des données toutes les 5 minutes
+setInterval(refreshData, 300000);
+</script>
+{% endblock %}

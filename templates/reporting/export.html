@@ -1,0 +1,596 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Export de Données{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'reporting:rapports_list' %}">Rapports</a>
+    </li>
+    <li class="breadcrumb-item active">Export</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.export-header {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.export-option {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    cursor: pointer;
+    margin-bottom: 1.5rem;
+}
+
+.export-option:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+}
+
+.export-option.selected {
+    border: 2px solid #28a745;
+    transform: scale(1.02);
+}
+
+.export-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    color: white;
+    font-size: 2rem;
+}
+
+.format-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.settings-card {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 2rem;
+    border: none;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.progress-export {
+    height: 8px;
+    border-radius: 10px;
+    background: #e9ecef;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.progress-bar-export {
+    background: linear-gradient(90deg, #28a745, #20c997);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+.export-preview {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    padding: 2rem;
+    margin-top: 2rem;
+}
+
+.filter-section {
+    background: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.alert-export {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <main class="col-12 px-md-4">
+            <!-- En-tête -->
+            <div class="export-header">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h2 mb-0">
+                            <i class="fas fa-download me-3"></i>
+                            Export de Données
+                        </h1>
+                        <p class="mt-2 mb-0 opacity-75">
+                            Exportez vos données de production dans différents formats
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="text-white">
+                            <div class="h4 mb-0">{{ total_exports|default:0 }}</div>
+                            <small class="opacity-75">Exports ce mois</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-export alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Formulaire d'export -->
+            <form id="exportForm" method="POST" action="{% url 'reporting:process_export' %}">
+                {% csrf_token %}
+                
+                <!-- Sélection du format -->
+                <div class="row">
+                    <div class="col-12">
+                        <h3 class="mb-4">
+                            <i class="fas fa-file-export me-2 text-success"></i>
+                            Choisissez le Format d'Export
+                        </h3>
+                        
+                        <div class="format-grid">
+                            <!-- Excel -->
+                            <div class="export-option" onclick="selectFormat('excel')" data-format="excel">
+                                <div class="card-body text-center">
+                                    <div class="export-icon bg-success">
+                                        <i class="fas fa-file-excel"></i>
+                                    </div>
+                                    <h5>Excel (.xlsx)</h5>
+                                    <p class="text-muted mb-3">Parfait pour les analyses et calculs</p>
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-success">✓ Tableaux croisés</small>
+                                        <small class="text-success">✓ Formules</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PDF -->
+                            <div class="export-option" onclick="selectFormat('pdf')" data-format="pdf">
+                                <div class="card-body text-center">
+                                    <div class="export-icon bg-danger">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </div>
+                                    <h5>PDF</h5>
+                                    <p class="text-muted mb-3">Idéal pour les rapports officiels</p>
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-success">✓ Mise en page</small>
+                                        <small class="text-success">✓ Graphiques</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- CSV -->
+                            <div class="export-option" onclick="selectFormat('csv')" data-format="csv">
+                                <div class="card-body text-center">
+                                    <div class="export-icon bg-info">
+                                        <i class="fas fa-file-csv"></i>
+                                    </div>
+                                    <h5>CSV</h5>
+                                    <p class="text-muted mb-3">Compatible avec tous les outils</p>
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-success">✓ Universel</small>
+                                        <small class="text-success">✓ Léger</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- JSON -->
+                            <div class="export-option" onclick="selectFormat('json')" data-format="json">
+                                <div class="card-body text-center">
+                                    <div class="export-icon bg-warning">
+                                        <i class="fas fa-file-code"></i>
+                                    </div>
+                                    <h5>JSON</h5>
+                                    <p class="text-muted mb-3">Pour les développeurs et APIs</p>
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-success">✓ Structuré</small>
+                                        <small class="text-success">✓ API Ready</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <input type="hidden" id="selectedFormat" name="format" required>
+                    </div>
+                </div>
+
+                <!-- Filtres et options -->
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="filter-section">
+                            <h4 class="mb-3">
+                                <i class="fas fa-filter me-2 text-primary"></i>
+                                Filtres d'Export
+                            </h4>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="date_debut" class="form-label">Date de début</label>
+                                    <input type="date" class="form-control" id="date_debut" name="date_debut" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="date_fin" class="form-label">Date de fin</label>
+                                    <input type="date" class="form-control" id="date_fin" name="date_fin" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="ateliers" class="form-label">Ateliers</label>
+                                    <select multiple class="form-select" id="ateliers" name="ateliers">
+                                        {% for atelier in ateliers %}
+                                            <option value="{{ atelier.id }}">{{ atelier.nom_atelier }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="collaborateurs" class="form-label">Collaborateurs</label>
+                                    <select multiple class="form-select" id="collaborateurs" name="collaborateurs">
+                                        {% for collaborateur in collaborateurs %}
+                                            <option value="{{ collaborateur.id }}">{{ collaborateur.get_full_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="statuts" class="form-label">Statuts</label>
+                                    <select multiple class="form-select" id="statuts" name="statuts">
+                                        <option value="planifie">Planifié</option>
+                                        <option value="en_cours">En cours</option>
+                                        <option value="termine">Terminé</option>
+                                        <option value="en_attente">En attente</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="affaires" class="form-label">Affaires</label>
+                                    <select multiple class="form-select" id="affaires" name="affaires">
+                                        {% for affaire in affaires %}
+                                            <option value="{{ affaire.id }}">{{ affaire.code_affaire }} - {{ affaire.client|truncatechars:20 }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <div class="settings-card">
+                            <h4 class="mb-3">
+                                <i class="fas fa-cog me-2 text-secondary"></i>
+                                Options d'Export
+                            </h4>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="include_graphics" name="include_graphics" checked>
+                                <label class="form-check-label" for="include_graphics">
+                                    Inclure les graphiques
+                                </label>
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="include_stats" name="include_stats" checked>
+                                <label class="form-check-label" for="include_stats">
+                                    Inclure les statistiques
+                                </label>
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="detailed_data" name="detailed_data">
+                                <label class="form-check-label" for="detailed_data">
+                                    Données détaillées
+                                </label>
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="send_email" name="send_email">
+                                <label class="form-check-label" for="send_email">
+                                    Envoyer par email
+                                </label>
+                            </div>
+
+                            <div class="mb-3" id="email_field" style="display: none;">
+                                <label for="email_address" class="form-label">Adresse email</label>
+                                <input type="email" class="form-control" id="email_address" name="email_address" placeholder="votre@email.com">
+                            </div>
+
+                            <div class="alert alert-info alert-export">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Info:</strong> L'export peut prendre quelques minutes selon la quantité de données.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Boutons d'action -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <button type="button" class="btn btn-outline-info" onclick="previewExport()">
+                        <i class="fas fa-eye me-2"></i>Aperçu
+                    </button>
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary me-2" onclick="resetForm()">
+                            <i class="fas fa-undo me-2"></i>Réinitialiser
+                        </button>
+                        <button type="submit" class="btn btn-success btn-lg" id="exportBtn">
+                            <i class="fas fa-download me-2"></i>Exporter
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Barre de progression -->
+            <div id="exportProgress" style="display: none;">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="spinner-border spinner-border-sm text-success me-3" role="status"></div>
+                            <strong>Export en cours...</strong>
+                        </div>
+                        <div class="progress-export">
+                            <div class="progress-bar-export" id="progressBar" style="width: 0%"></div>
+                        </div>
+                        <small class="text-muted" id="progressText">Préparation des données...</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aperçu de l'export -->
+            <div class="export-preview" id="exportPreview" style="display: none;">
+                <h4 class="mb-3">
+                    <i class="fas fa-search me-2 text-info"></i>
+                    Aperçu de l'Export
+                </h4>
+                <div id="previewContent">
+                    <!-- Contenu généré dynamiquement -->
+                </div>
+            </div>
+
+            <!-- Bouton retour -->
+            <div class="text-center mt-4">
+                <a href="{% url 'reporting:rapports_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Retour aux Rapports
+                </a>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedFormat = '';
+
+function selectFormat(format) {
+    // Désélectionner tous les formats
+    document.querySelectorAll('.export-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    // Sélectionner le format choisi
+    document.querySelector(`[data-format="${format}"]`).classList.add('selected');
+    document.getElementById('selectedFormat').value = format;
+    selectedFormat = format;
+    
+    // Activer le bouton d'export
+    document.getElementById('exportBtn').disabled = false;
+}
+
+function resetForm() {
+    if (confirm('Voulez-vous réinitialiser tous les champs ?')) {
+        document.getElementById('exportForm').reset();
+        document.querySelectorAll('.export-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        selectedFormat = '';
+        document.getElementById('exportBtn').disabled = true;
+    }
+}
+
+function previewExport() {
+    if (!selectedFormat) {
+        alert('Veuillez d\'abord sélectionner un format d\'export.');
+        return;
+    }
+    
+    // Collecter les données du formulaire
+    const formData = new FormData(document.getElementById('exportForm'));
+    
+    // Afficher l'aperçu
+    const previewDiv = document.getElementById('exportPreview');
+    const previewContent = document.getElementById('previewContent');
+    
+    previewContent.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Format sélectionné:</h6>
+                <span class="badge bg-primary">${selectedFormat.toUpperCase()}</span>
+            </div>
+            <div class="col-md-6">
+                <h6>Période:</h6>
+                <p>${formData.get('date_debut')} → ${formData.get('date_fin')}</p>
+            </div>
+        </div>
+        <div class="mt-3">
+            <h6>Options:</h6>
+            <ul class="list-unstyled">
+                <li>${formData.get('include_graphics') ? '✓' : '✗'} Graphiques inclus</li>
+                <li>${formData.get('include_stats') ? '✓' : '✗'} Statistiques incluses</li>
+                <li>${formData.get('detailed_data') ? '✓' : '✗'} Données détaillées</li>
+                <li>${formData.get('send_email') ? '✓' : '✗'} Envoi par email</li>
+            </ul>
+        </div>
+    `;
+    
+    previewDiv.style.display = 'block';
+    previewDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Gestion de l'envoi par email
+document.getElementById('send_email').addEventListener('change', function() {
+    const emailField = document.getElementById('email_field');
+    emailField.style.display = this.checked ? 'block' : 'none';
+    if (this.checked) {
+        document.getElementById('email_address').required = true;
+    } else {
+        document.getElementById('email_address').required = false;
+    }
+});
+
+// Gestion de l'envoi du formulaire - VERSION CORRIGÉE
+document.getElementById('exportForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!selectedFormat) {
+        alert('Veuillez sélectionner un format d\'export.');
+        return;
+    }
+    
+    startExportProcess();
+});
+
+function startExportProcess() {
+    // Afficher la barre de progression
+    document.getElementById('exportProgress').style.display = 'block';
+    document.getElementById('exportBtn').disabled = true;
+    
+    // Créer un formulaire caché pour le téléchargement
+    const form = document.getElementById('exportForm');
+    const originalAction = form.action;
+    const originalTarget = form.target;
+    
+    // Ouvrir dans un nouvel onglet pour le téléchargement
+    form.target = '_blank';
+    
+    // Simulation de progression
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 15 + 5; // Progression plus rapide
+        if (progress > 90) progress = 90; // S'arrêter à 90% jusqu'à ce que le téléchargement commence
+        
+        document.getElementById('progressBar').style.width = progress + '%';
+        
+        if (progress < 30) {
+            document.getElementById('progressText').textContent = 'Collecte des données...';
+        } else if (progress < 60) {
+            document.getElementById('progressText').textContent = 'Traitement en cours...';
+        } else if (progress < 90) {
+            document.getElementById('progressText').textContent = 'Génération du fichier...';
+        } else {
+            document.getElementById('progressText').textContent = 'Préparation du téléchargement...';
+        }
+    }, 300);
+    
+    // Soumettre le formulaire pour téléchargement direct
+    setTimeout(() => {
+        try {
+            form.submit();
+            
+            // Finaliser après un délai
+            setTimeout(() => {
+                clearInterval(interval);
+                document.getElementById('progressBar').style.width = '100%';
+                document.getElementById('progressText').textContent = 'Export terminé !';
+                
+                setTimeout(() => {
+                    document.getElementById('exportProgress').style.display = 'none';
+                    document.getElementById('exportBtn').disabled = false;
+                    showSuccessMessage('Export terminé avec succès !');
+                }, 1000);
+            }, 2000);
+            
+        } catch (error) {
+            clearInterval(interval);
+            showExportError('Erreur lors du téléchargement: ' + error.message);
+        }
+        
+        // Restaurer les attributs du formulaire
+        form.action = originalAction;
+        form.target = originalTarget;
+        
+    }, 1000);
+}
+
+function showExportError(message) {
+    document.getElementById('exportProgress').style.display = 'none';
+    document.getElementById('exportBtn').disabled = false;
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Erreur d'export:</strong> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.export-header').after(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 10000);
+}
+
+function showSuccessMessage(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.export-header').after(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', function() {
+    // Définir les dates par défaut (30 derniers jours)
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
+    
+    document.getElementById('date_fin').value = today.toISOString().split('T')[0];
+    document.getElementById('date_debut').value = thirtyDaysAgo.toISOString().split('T')[0];
+    
+    // Désactiver le bouton d'export initialement
+    document.getElementById('exportBtn').disabled = true;
+    
+    // Vérifier si les éléments existent avant d'ajouter les event listeners
+    const sendEmailCheckbox = document.getElementById('send_email');
+    if (sendEmailCheckbox) {
+        sendEmailCheckbox.addEventListener('change', function() {
+            const emailField = document.getElementById('email_field');
+            if (emailField) {
+                emailField.style.display = this.checked ? 'block' : 'none';
+                const emailInput = document.getElementById('email_address');
+                if (emailInput) {
+                    emailInput.required = this.checked;
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
