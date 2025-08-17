@@ -9,14 +9,14 @@ class Affaire(models.Model):
     Une affaire est un projet global qui peut contenir plusieurs lancements.
     Elle représente l'engagement commercial avec un client.
     """
-    # Identifiant unique de l'affaire
+    # Identifiant unique de l'affaire (SEUL CHAMP OBLIGATOIRE)
     code_affaire = models.CharField(max_length=50, unique=False, verbose_name="Code affaire")
     
-    # Informations sur le livrable et le client
-    livrable = models.TextField(verbose_name="Description du livrable")
-    client = models.CharField(max_length=100, verbose_name="Nom du client")
+    # Informations sur le livrable et le client (OPTIONNELS)
+    livrable = models.TextField(blank=True, null=True, verbose_name="Nom du livrable")
+    client = models.CharField(max_length=100, blank=True, null=True, verbose_name="Nom du client")
     
-    # Responsable commercial de l'affaire
+    # Responsable commercial de l'affaire (OPTIONNEL)
     responsable_affaire = models.ForeignKey(
         Collaborateur,
         on_delete=models.SET_NULL,
@@ -26,30 +26,63 @@ class Affaire(models.Model):
         verbose_name="Responsable de l'affaire"
     )
     
-    # Planification temporelle
-    date_debut = models.DateField(verbose_name="Date de début")
-    date_fin_prevue = models.DateField(verbose_name="Date de fin prévue")
+    # Planification temporelle (OPTIONNELLE)
+    date_debut = models.DateField(blank=True, null=True, verbose_name="Date de début")
+    date_fin_prevue = models.DateField(blank=True, null=True, verbose_name="Date de fin prévue")
     
-    # Suivi du statut de l'affaire
+    # Suivi du statut de l'affaire (SIMPLIFIÉ - seulement 2 choix)
     statut = models.CharField(max_length=20, choices=[
         ('en_cours', 'En cours'),
         ('terminee', 'Terminée'),
-        ('suspendue', 'Suspendue'),
-        ('annulee', 'Annulée'),
     ], default='en_cours', verbose_name="Statut")
     
     # Date de création
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Date de création")
 
     def __str__(self):
-        """Retourne le code de l'affaire et le client"""
-        return f"{self.code_affaire} - {self.client}"
+        """Retourne le code de l'affaire et le client si disponible"""
+        if self.client:
+            return f"{self.code_affaire} - {self.client}"
+        return f"{self.code_affaire}"
+
+    def is_complete(self):
+        """Vérifie si l'affaire a tous les champs remplis"""
+        return all([
+            self.client,
+            self.livrable,
+            self.responsable_affaire,
+            self.date_debut,
+            self.date_fin_prevue
+        ])
+    
+    def get_missing_fields(self):
+        """Retourne la liste des champs manquants"""
+        missing = []
+        if not self.client:
+            missing.append('Client')
+        if not self.livrable:
+            missing.append('Description du livrable')
+        if not self.responsable_affaire:
+            missing.append('Responsable de l\'affaire')
+        if not self.date_debut:
+            missing.append('Date de début')
+        if not self.date_fin_prevue:
+            missing.append('Date de fin prévue')
+        return missing
+    
+    @property
+    def completion_percentage(self):
+        """Calcule le pourcentage de completion de l'affaire"""
+        total_fields = 5  # client, livrable, responsable, date_debut, date_fin_prevue
+        completed_fields = total_fields - len(self.get_missing_fields())
+        return (completed_fields / total_fields) * 100
 
     class Meta:
         db_table = 'affaire'
         verbose_name = 'Affaire'
         verbose_name_plural = 'Affaires'
-        ordering = ['-date_debut']
+        ordering = ['-date_debut', '-created_at']
+
 
 class Permission(models.Model):
     """Modèle pour définir les permissions système"""

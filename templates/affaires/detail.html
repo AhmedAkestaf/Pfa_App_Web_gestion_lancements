@@ -1,7 +1,7 @@
 {% extends 'base/base.html' %}
 {% load static %}
 
-{% block title %}{{ affaire.code_affaire }} - {{ affaire.client }}{% endblock %}
+{% block title %}{{ affaire.code_affaire }}{% if affaire.client %} - {{ affaire.client }}{% endif %}{% endblock %}
 
 {% block breadcrumb_items %}
     <li class="breadcrumb-item"><a href="{% url 'core:affaires_list' %}">Affaires</a></li>
@@ -118,8 +118,8 @@
                     <i class="fas fa-briefcase me-3"></i>
                     {{ affaire.code_affaire }}
                 </h1>
-                <h3 class="mb-3 opacity-90">{{ affaire.client }}</h3>
-                <p class="mb-0 opacity-75">{{ affaire.livrable }}</p>
+                <h3 class="mb-3 opacity-90">{{ affaire.client|default:"Client non défini" }}</h3>
+                <p class="mb-0 opacity-75">{{ affaire.livrable|default:"Description non définie" }}</p>
             </div>
             <div class="col-md-4 text-md-end">
                 <span class="badge status-badge-lg 
@@ -225,7 +225,13 @@
                     </div>
                     <div class="row mb-3">
                         <div class="col-sm-4"><strong>Client:</strong></div>
-                        <div class="col-sm-8">{{ affaire.client }}</div>
+                        <div class="col-sm-8">
+                            {% if affaire.client %}
+                                {{ affaire.client }}
+                            {% else %}
+                                <span class="text-muted">Non défini</span>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-sm-4"><strong>Responsable:</strong></div>
@@ -244,22 +250,38 @@
                     </div>
                     <div class="row mb-3">
                         <div class="col-sm-4"><strong>Date début:</strong></div>
-                        <div class="col-sm-8">{{ affaire.date_debut|date:"d/m/Y" }}</div>
+                        <div class="col-sm-8">
+                            {% if affaire.date_debut %}
+                                {{ affaire.date_debut|date:"d/m/Y" }}
+                            {% else %}
+                                <span class="text-muted">Non définie</span>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-sm-4"><strong>Date fin prévue:</strong></div>
                         <div class="col-sm-8">
-                            {{ affaire.date_fin_prevue|date:"d/m/Y" }}
-                            {% if affaire.date_fin_prevue < today and affaire.statut != 'terminee' %}
-                                <span class="badge bg-warning text-dark ms-2">
-                                    <i class="fas fa-exclamation-triangle"></i> En retard
-                                </span>
+                            {% if affaire.date_fin_prevue %}
+                                {{ affaire.date_fin_prevue|date:"d/m/Y" }}
+                                {% if affaire.date_fin_prevue < today and affaire.statut != 'terminee' %}
+                                    <span class="badge bg-warning text-dark ms-2">
+                                        <i class="fas fa-exclamation-triangle"></i> En retard
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Non définie</span>
                             {% endif %}
                         </div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-sm-4"><strong>Durée prévue:</strong></div>
-                        <div class="col-sm-8">{{ duree_prevue }} jour{{ duree_prevue|pluralize }}</div>
+                        <div class="col-sm-8">
+                            {% if duree_prevue|add:0 %}
+                                {{ duree_prevue }} jour{{ duree_prevue|pluralize }}
+                            {% else %}
+                                <span class="text-muted">{{ duree_prevue }}</span>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-sm-4"><strong>Créée le:</strong></div>
@@ -274,7 +296,11 @@
                     <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Description du livrable</h5>
                 </div>
                 <div class="card-body">
-                    <p class="mb-0">{{ affaire.livrable|linebreaks }}</p>
+                    {% if affaire.livrable %}
+                        <p class="mb-0">{{ affaire.livrable|linebreaks }}</p>
+                    {% else %}
+                        <p class="text-muted mb-0">Aucune description définie pour le livrable.</p>
+                    {% endif %}
                 </div>
             </div>
         </div>

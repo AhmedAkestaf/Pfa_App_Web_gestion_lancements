@@ -538,10 +538,34 @@ def affaire_detail(request, affaire_id):
         assemblage=models.Sum('poids_assemblage')
     )
     
-    # Durée prévue vs réalisée
+    # Durée prévue vs réalisée - GESTION DES VALEURS NULL
     from datetime import date
-    duree_prevue = (affaire.date_fin_prevue - affaire.date_debut).days
-    duree_ecoulee = (date.today() - affaire.date_debut).days if affaire.date_debut <= date.today() else 0
+    today = date.today()
+    
+    # Initialiser les variables
+    duree_prevue = 0
+    duree_ecoulee = 0
+    progression = 0
+    
+    # Calcul seulement si les dates sont présentes
+    if affaire.date_debut and affaire.date_fin_prevue:
+        duree_prevue = (affaire.date_fin_prevue - affaire.date_debut).days
+        if affaire.date_debut <= today:
+            duree_ecoulee = (today - affaire.date_debut).days
+        
+        if duree_prevue > 0:
+            progression = min(100, (duree_ecoulee / duree_prevue * 100))
+    elif affaire.date_debut:
+        # Si on a seulement la date de début
+        if affaire.date_debut <= today:
+            duree_ecoulee = (today - affaire.date_debut).days
+        duree_prevue = "Non définie"
+    elif affaire.date_fin_prevue:
+        # Si on a seulement la date de fin
+        duree_prevue = "Date de début manquante"
+    else:
+        # Aucune date définie
+        duree_prevue = "Dates non définies"
     
     context = {
         'affaire': affaire,
@@ -550,7 +574,8 @@ def affaire_detail(request, affaire_id):
         'poids_total': poids_total,
         'duree_prevue': duree_prevue,
         'duree_ecoulee': duree_ecoulee,
-        'progression': min(100, (duree_ecoulee / duree_prevue * 100)) if duree_prevue > 0 else 0,
+        'progression': progression,
+        'today': today,  # Ajout pour le template
         'can_update': request.user.has_perm('affaires.update'),
         'can_delete': request.user.has_perm('affaires.delete'),
     }
@@ -700,11 +725,11 @@ def affaires_export(request):
     for affaire in affaires:
         writer.writerow([
             affaire.code_affaire,
-            affaire.client,
-            affaire.livrable,
+            affaire.client or '',
+            affaire.livrable or '',
             affaire.responsable_affaire.get_full_name() if affaire.responsable_affaire else '',
-            affaire.date_debut.strftime('%d/%m/%Y'),
-            affaire.date_fin_prevue.strftime('%d/%m/%Y'),
+            affaire.date_debut.strftime('%d/%m/%Y') if affaire.date_debut else '',
+            affaire.date_fin_prevue.strftime('%d/%m/%Y') if affaire.date_fin_prevue else '',
             affaire.get_statut_display(),
             affaire.lancements.count()
         ])

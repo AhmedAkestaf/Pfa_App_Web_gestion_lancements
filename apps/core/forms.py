@@ -1,3 +1,4 @@
+# apps/core/forms.py
 from django import forms
 from django.core.exceptions import ValidationError
 from .models import Role, Permission
@@ -256,16 +257,17 @@ class AffaireForm(forms.ModelForm):
             'code_affaire': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Ex: AFF-2024-001',
-                'maxlength': 50
+                'maxlength': 50,
+                'required': True  # Seul champ obligatoire
             }),
             'client': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Nom du client',
+                'placeholder': 'Nom du client (optionnel)',
                 'maxlength': 100
             }),
             'livrable': forms.Textarea(attrs={
                 'class': 'form-control',
-                'placeholder': 'Description détaillée du livrable',
+                'placeholder': 'Description détaillée du livrable (optionnel)',
                 'rows': 4
             }),
             'responsable_affaire': forms.Select(attrs={
@@ -296,27 +298,74 @@ class AffaireForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # Filtrer les collaborateurs pour ne montrer que ceux qui peuvent être responsables d'affaires
+        # Filtrer les collaborateurs pour ne montrer que ceux qui sont actifs
         self.fields['responsable_affaire'].queryset = Collaborateur.objects.filter(
             is_active=True
         ).order_by('nom_collaborateur', 'prenom_collaborateur')
         
-        # Ajouter un choix vide
-        self.fields['responsable_affaire'].empty_label = "Sélectionner un responsable"
+        # Ajouter un choix vide pour tous les champs optionnels
+        self.fields['responsable_affaire'].empty_label = "Sélectionner un responsable (optionnel)"
+        
+        # Rendre SEUL le code_affaire obligatoire
+        self.fields['code_affaire'].required = True
+        self.fields['client'].required = False
+        self.fields['livrable'].required = False
+        self.fields['responsable_affaire'].required = False
+        self.fields['date_debut'].required = False
+        self.fields['date_fin_prevue'].required = False
+        self.fields['statut'].required = False  # A une valeur par défaut
     
-
+    def clean_code_affaire(self):
+        """Validation du code affaire (SANS vérification d'unicité)"""
+        code_affaire = self.cleaned_data.get('code_affaire')
+        
+        if not code_affaire:
+            raise ValidationError('Le code affaire est obligatoire.')
+        
+        # SUPPRIMÉ: Plus de vérification d'unicité car les doublons sont maintenant autorisés
+        return code_affaire
     
     def clean(self):
-        """Validation globale du formulaire"""
+        """Validation globale du formulaire - seulement si les dates sont remplies"""
         cleaned_data = super().clean()
         date_debut = cleaned_data.get('date_debut')
         date_fin_prevue = cleaned_data.get('date_fin_prevue')
         
+        # Validation des dates seulement si les deux sont renseignées
         if date_debut and date_fin_prevue:
             if date_fin_prevue <= date_debut:
                 raise ValidationError('La date de fin prévue doit être postérieure à la date de début.')
         
         return cleaned_data
+
+
+class AffaireQuickCreateForm(forms.ModelForm):
+    """Formulaire rapide pour créer une affaire avec juste le code"""
+    
+    class Meta:
+        model = Affaire
+        fields = ['code_affaire']
+        widgets = {
+            'code_affaire': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: AFF-2024-001',
+                'maxlength': 50,
+                'required': True
+            })
+        }
+        labels = {
+            'code_affaire': 'Code de l\'affaire'
+        }
+    
+    def clean_code_affaire(self):
+        """Validation du code affaire (SANS vérification d'unicité)"""
+        code_affaire = self.cleaned_data.get('code_affaire')
+        
+        if not code_affaire:
+            raise ValidationError('Le code affaire est obligatoire.')
+        
+        # SUPPRIMÉ: Plus de vérification d'unicité car les doublons sont maintenant autorisés
+        return code_affaire
 
 
 class AffaireSearchForm(forms.Form):
@@ -334,10 +383,28 @@ class AffaireSearchForm(forms.Form):
     
     statut = forms.ChoiceField(
         required=False,
+        choices=[
+            ('', 'Tous les statuts'),
+            ('en_cours', 'En cours'),
+            ('terminee', 'Terminée'),
+        ],
         widget=forms.Select(attrs={
             'class': 'form-select'
         }),
         label='Statut'
+    )
+    
+    completion = forms.ChoiceField(
+        required=False,
+        choices=[
+            ('', 'Toutes les affaires'),
+            ('complete', 'Affaires complètes'),
+            ('incomplete', 'Affaires incomplètes'),
+        ],
+        widget=forms.Select(attrs={
+            'class': 'form-select'
+        }),
+        label='État de completion'
     )
     
     responsable = forms.ModelChoiceField(
@@ -352,10 +419,6 @@ class AffaireSearchForm(forms.Form):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
-        # Définir les choix de statut
-        statut_choices = [('', 'Tous les statuts')] + list(Affaire._meta.get_field('statut').choices)
-        self.fields['statut'].choices = statut_choices
         
         # Définir les choix de responsables
         self.fields['responsable'].queryset = Collaborateur.objects.filter(
