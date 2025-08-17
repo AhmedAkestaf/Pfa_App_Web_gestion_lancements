@@ -164,17 +164,7 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="capacite_max" class="form-label required-field">Capacité maximale</label>
-                                <div class="icon-input">
-                                    <i class="fas fa-tachometer-alt"></i>
-                                    <input type="number" class="form-control" id="capacite_max" name="capacite_max" 
-                                           required min="1" max="1000" placeholder="Ex: 50">
-                                </div>
-                                <div class="help-text">Nombre maximum de pièces/unités traitables simultanément</div>
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-12 mb-3">
                                 <label for="responsable_atelier" class="form-label">Responsable de l'atelier</label>
                                 <div class="icon-input">
                                     <i class="fas fa-user-tie"></i>
@@ -205,7 +195,6 @@
                             </div>
                             <div class="col-md-6">
                                 <small class="text-muted">
-                                    Capacité: <span id="preview-capacite">0</span><br>
                                     Responsable: <span id="preview-responsable">Non défini</span>
                                 </small>
                             </div>
@@ -240,14 +229,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Éléments du formulaire
     const nomInput = document.getElementById('nom_atelier');
     const typeSelect = document.getElementById('type_atelier');
-    const capaciteInput = document.getElementById('capacite_max');
     const responsableSelect = document.getElementById('responsable_atelier');
     
     // Éléments de l'aperçu
     const previewCard = document.getElementById('atelier-preview');
     const previewNom = document.getElementById('preview-nom');
     const previewType = document.getElementById('preview-type');
-    const previewCapacite = document.getElementById('preview-capacite');
     const previewResponsable = document.getElementById('preview-responsable');
     const previewBtn = document.getElementById('preview-btn');
 
@@ -264,10 +251,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function updatePreview() {
         const nom = nomInput.value.trim();
         const type = typeSelect.value;
-        const capacite = capaciteInput.value;
         const responsableText = responsableSelect.options[responsableSelect.selectedIndex].text;
 
-        if (nom || type || capacite) {
+        if (nom || type) {
             previewCard.style.display = 'block';
             
             previewNom.textContent = nom || 'Nom de l\'atelier';
@@ -281,7 +267,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 previewType.className = 'badge bg-secondary';
             }
             
-            previewCapacite.textContent = capacite || '0';
             previewResponsable.textContent = responsableSelect.value ? responsableText : 'Non défini';
         } else {
             previewCard.style.display = 'none';
@@ -291,7 +276,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Écouteurs d'événements
     nomInput.addEventListener('input', updatePreview);
     typeSelect.addEventListener('change', updatePreview);
-    capaciteInput.addEventListener('input', updatePreview);
     responsableSelect.addEventListener('change', updatePreview);
 
     // Bouton d'aperçu
@@ -310,11 +294,10 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', function(e) {
         const nom = nomInput.value.trim();
         const type = typeSelect.value;
-        const capacite = parseInt(capaciteInput.value);
 
-        if (!nom || !type || !capacite || capacite < 1) {
+        if (!nom || !type) {
             e.preventDefault();
-            alert('Veuillez remplir tous les champs obligatoires correctement.');
+            alert('Veuillez remplir tous les champs obligatoires.');
             return false;
         }
     });

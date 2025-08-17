@@ -4,7 +4,7 @@ from apps.collaborateurs.models import Collaborateur
 class Atelier(models.Model):
     """
     Modèle représentant les ateliers de production.
-    Chaque atelier a des spécialités, une capacité et un responsable.
+    Chaque atelier a des spécialités et un responsable.
     Les ateliers sont les lieux physiques où sont réalisés les travaux.
     """
     # Informations de base de l'atelier
@@ -26,9 +26,6 @@ class Atelier(models.Model):
         related_name='ateliers_responsable',
         verbose_name="Responsable de l'atelier"
     )
-    
-    # Capacité maximale de production
-    capacite_max = models.IntegerField(default=0, verbose_name="Capacité maximale")
     
     # Date de création
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Date de création")

@@ -5,9 +5,9 @@ from .models import Atelier, Categorie, CollaborateurAtelier, CollaborateurCateg
 class AtelierAdmin(admin.ModelAdmin):
     """
     Configuration de l'interface d'administration pour les Ateliers.
-    Gestion des ateliers de production avec leurs responsables et capacités.
+    Gestion des ateliers de production avec leurs responsables.
     """
-    list_display = ('nom_atelier', 'type_atelier', 'responsable_atelier', 'capacite_max', 'created_at')
+    list_display = ('nom_atelier', 'type_atelier', 'responsable_atelier', 'created_at')
     list_filter = ('type_atelier', 'created_at')
     search_fields = ('nom_atelier',)
     ordering = ('nom_atelier',)

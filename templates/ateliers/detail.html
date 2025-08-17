@@ -81,11 +81,6 @@
     margin-bottom: 1rem;
 }
 
-.progress-custom {
-    height: 8px;
-    border-radius: 4px;
-}
-
 .avatar {
     width: 50px;
     height: 50px;
@@ -164,11 +159,6 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="stat-item">
-                        <span class="stat-number">{{ atelier.capacite_max }}</span>
-                        <small class="text-muted">Capacité Maximale</small>
-                    </div>
-
                     <div class="mb-3">
                         <label class="form-label fw-bold">Type d'atelier :</label>
                         <div>
@@ -262,18 +252,9 @@
                             <div class="categorie-item">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <h6 class="mb-0">{{ atelier_cat.categorie.nom_categorie }}</h6>
-                                    {% if atelier_cat.capacite_categorie %}
-                                        <span class="badge bg-primary">{{ atelier_cat.capacite_categorie }}</span>
-                                    {% endif %}
                                 </div>
                                 {% if atelier_cat.categorie.description %}
-                                    <p class="small text-muted mb-2">{{ atelier_cat.categorie.description|truncatewords:10 }}</p>
-                                {% endif %}
-                                {% if atelier_cat.temps_moyen_traitement %}
-                                    <div class="small">
-                                        <i class="fas fa-clock me-1"></i>
-                                        Temps moyen : {{ atelier_cat.temps_moyen_traitement }}h
-                                    </div>
+                                    <p class="small text-muted mb-0">{{ atelier_cat.categorie.description|truncatewords:10 }}</p>
                                 {% endif %}
                             </div>
                         {% endfor %}
@@ -294,45 +275,43 @@
             <div class="card info-card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-chart-bar me-2"></i>Statistiques de Production
+                        <i class="fas fa-chart-bar me-2"></i>Statistiques de l'Atelier
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="row text-center">
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <div class="stat-item">
                                 <span class="stat-number">{{ collaborateurs_affectes.count }}</span>
                                 <small class="text-muted">Collaborateurs Affectés</small>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <div class="stat-item">
                                 <span class="stat-number">{{ atelier_categories.count }}</span>
                                 <small class="text-muted">Catégories Traitées</small>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <div class="stat-item">
                                 <span class="stat-number">0</span>
                                 <small class="text-muted">Lancements en Cours</small>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="stat-item">
-                                <span class="stat-number">{{ atelier.capacite_max }}</span>
-                                <small class="text-muted">Capacité Totale</small>
-                            </div>
-                        </div>
                     </div>
 
                     <div class="mt-4">
-                        <h6>Taux d'Utilisation</h6>
-                        <div class="progress progress-custom">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: 65%;">
-                                65%
-                            </div>
-                        </div>
-                        <small class="text-muted">Utilisation actuelle de l'atelier</small>
+                        <h6>Activité de l'Atelier</h6>
+                        <p class="text-muted">
+                            Cet atelier de type <strong>{{ atelier.get_type_atelier_display }}</strong> 
+                            {% if atelier.responsable_atelier %}
+                                est géré par <strong>{{ atelier.responsable_atelier.get_full_name }}</strong>
+                            {% else %}
+                                n'a pas encore de responsable assigné
+                            {% endif %}
+                            et traite {{ atelier_categories.count }} catégorie{{ atelier_categories.count|pluralize }} 
+                            avec {{ collaborateurs_affectes.count }} collaborateur{{ collaborateurs_affectes.count|pluralize }} affecté{{ collaborateurs_affectes.count|pluralize }}.
+                        </p>
                     </div>
                 </div>
             </div>

@@ -199,18 +199,7 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="capacite_max" class="form-label required-field">Capacité maximale</label>
-                                <div class="icon-input">
-                                    <i class="fas fa-tachometer-alt"></i>
-                                    <input type="number" class="form-control" id="capacite_max" name="capacite_max" 
-                                           required min="1" max="1000" value="{{ atelier.capacite_max }}"
-                                           data-original="{{ atelier.capacite_max }}">
-                                </div>
-                                <div class="help-text">Nombre maximum de pièces/unités traitables simultanément</div>
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-12 mb-3">
                                 <label for="responsable_atelier" class="form-label">Responsable de l'atelier</label>
                                 <div class="icon-input">
                                     <i class="fas fa-user-tie"></i>
@@ -242,7 +231,6 @@
                                 <strong>Type :</strong> {{ atelier.get_type_atelier_display }}<br>
                             </div>
                             <div class="col-md-6">
-                                <strong>Capacité :</strong> {{ atelier.capacite_max }}<br>
                                 <strong>Responsable :</strong> 
                                 {% if atelier.responsable_atelier %}
                                     {{ atelier.responsable_atelier.get_full_name }}
@@ -265,7 +253,6 @@
                             </div>
                             <div class="col-md-6">
                                 <small class="text-muted">
-                                    Capacité: <span id="preview-capacite">{{ atelier.capacite_max }}</span><br>
                                     Responsable: <span id="preview-responsable">
                                         {% if atelier.responsable_atelier %}
                                             {{ atelier.responsable_atelier.get_full_name }}
@@ -311,7 +298,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Éléments du formulaire
     const nomInput = document.getElementById('nom_atelier');
     const typeSelect = document.getElementById('type_atelier');
-    const capaciteInput = document.getElementById('capacite_max');
     const responsableSelect = document.getElementById('responsable_atelier');
     
     // Éléments de contrôle
@@ -324,7 +310,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Éléments de l'aperçu
     const previewNom = document.getElementById('preview-nom');
     const previewType = document.getElementById('preview-type');
-    const previewCapacite = document.getElementById('preview-capacite');
     const previewResponsable = document.getElementById('preview-responsable');
 
     // Types d'ateliers avec leurs badges
@@ -332,7 +317,8 @@ document.addEventListener('DOMContentLoaded', function() {
         'fabrication': 'bg-info',
         'assemblage': 'bg-success', 
         'finition': 'bg-warning text-dark',
-        'controle': 'bg-secondary'
+        'controle': 'bg-secondary',
+        'debitage': 'bg-danger'
     };
 
     // Fonction pour détecter les changements
@@ -349,10 +335,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const newLabel = typeSelect.value ? 
                 typeSelect.options[typeSelect.selectedIndex].text : 'Aucun';
             changes.push(`Type: "${originalLabel}" → "${newLabel}"`);
-        }
-        
-        if (capaciteInput.value !== capaciteInput.dataset.original) {
-            changes.push(`Capacité: "${capaciteInput.dataset.original}" → "${capaciteInput.value}"`);
         }
         
         if (responsableSelect.value !== responsableSelect.dataset.original) {
@@ -380,7 +362,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function updatePreview() {
         const nom = nomInput.value.trim();
         const type = typeSelect.value;
-        const capacite = capaciteInput.value;
         const responsableText = responsableSelect.options[responsableSelect.selectedIndex].text;
 
         previewNom.textContent = nom || 'Nom de l\'atelier';
@@ -394,7 +375,6 @@ document.addEventListener('DOMContentLoaded', function() {
             previewType.className = 'badge bg-secondary';
         }
         
-        previewCapacite.textContent = capacite || '0';
         previewResponsable.textContent = responsableSelect.value ? responsableText : 'Non défini';
     }
 
@@ -405,11 +385,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     typeSelect.addEventListener('change', function() {
-        detectChanges();
-        updatePreview();
-    });
-    
-    capaciteInput.addEventListener('input', function() {
         detectChanges();
         updatePreview();
     });
@@ -436,9 +411,8 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', function(e) {
         const nom = nomInput.value.trim();
         const type = typeSelect.value;
-        const capacite = parseInt(capaciteInput.value);
 
-        if (!nom || !type || !capacite || capacite < 1) {
+        if (!nom || !type) {
             e.preventDefault();
             alert('Veuillez remplir tous les champs obligatoires correctement.');
             return false;

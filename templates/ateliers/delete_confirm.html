@@ -180,7 +180,6 @@
                                 </div>
                                 <div class="col-md-6">
                                     <small class="text-muted">
-                                        Capacité: {{ atelier.capacite_max }}<br>
                                         Créé le: {{ atelier.created_at|date:"d/m/Y" }}<br>
                                         {% if atelier.responsable_atelier %}
                                             Responsable: {{ atelier.responsable_atelier.get_full_name }}

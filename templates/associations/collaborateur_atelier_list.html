@@ -3,10 +3,11 @@
 {% load permission_tags %}
 
 {% block title %}Affectations Collaborateur-Atelier - AIC Métallurgie{% endblock %}
-
-{% block extra_css %}
+{% block head_css %}
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
 {% endblock %}
+
+
 
 {% block breadcrumb_items %}
 <li class="breadcrumb-item">
@@ -99,8 +100,7 @@
                                 <span class="fw-bold">{{ affectation.atelier.nom_atelier }}</span>
                                 <br>
                                 <small class="text-muted">
-                                    {{ affectation.atelier.get_type_atelier_display }} - 
-                                    Capacité: {{ affectation.atelier.capacite_max }}
+                                    {{ affectation.atelier.get_type_atelier_display }}
                                 </small>
                                 {% if affectation.atelier.responsable_atelier %}
                                 <br>

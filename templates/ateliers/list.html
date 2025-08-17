@@ -40,19 +40,6 @@
     padding: 0.375rem 0.75rem;
 }
 
-.capacity-indicator {
-    height: 6px;
-    background-color: #e9ecef;
-    border-radius: 3px;
-    overflow: hidden;
-}
-
-.capacity-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
-    transition: width 0.3s ease;
-}
-
 .avatar {
     width: 40px;
     height: 40px;
@@ -64,18 +51,6 @@
     padding: 4rem 2rem;
 }
 </style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Set capacity fill widths based on data attributes
-    const capacityFills = document.querySelectorAll('.capacity-fill');
-    capacityFills.forEach(function(fill) {
-        const capacity = parseInt(fill.getAttribute('data-capacity')) || 0;
-        const percentage = Math.min(capacity, 100); // Cap at 100%
-        fill.style.width = percentage + '%';
-    });
-});
-</script>
 {% endblock %}
 
 {% block content %}
@@ -161,7 +136,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <th>Atelier</th>
                                         <th>Type</th>
                                         <th>Responsable</th>
-                                        <th>Capacité</th>
                                         <th>Date Création</th>
                                         <th>Actions</th>
                                     </tr>
@@ -184,6 +158,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                                     {% if atelier.type_atelier == 'fabrication' %}bg-info
                                                     {% elif atelier.type_atelier == 'assemblage' %}bg-success
                                                     {% elif atelier.type_atelier == 'finition' %}bg-warning
+                                                    {% elif atelier.type_atelier == 'controle' %}bg-secondary
+                                                    {% elif atelier.type_atelier == 'debitage' %}bg-danger
                                                     {% else %}bg-secondary{% endif %}">
                                                     {{ atelier.get_type_atelier_display }}
                                                 </span>
@@ -199,14 +175,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                                 {% else %}
                                                     <span class="text-muted">Aucun responsable</span>
                                                 {% endif %}
-                                            </td>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <span class="me-2">{{ atelier.capacite_max }}</span>
-                                                    <div class="capacity-indicator flex-grow-1" style="width: 60px;">
-                                                        <div class="capacity-fill" data-capacity="{{ atelier.capacite_max }}"></div>
-                                                    </div>
-                                                </div>
                                             </td>
                                             <td>{{ atelier.created_at|date:"d/m/Y" }}</td>
                                             <td>
