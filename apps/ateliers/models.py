@@ -149,3 +149,5 @@ class AtelierCategorie(models.Model):
         unique_together = ('atelier', 'categorie')
         verbose_name = 'Relation Atelier-Catégorie'
         verbose_name_plural = 'Relations Atelier-Catégorie'
+
+        

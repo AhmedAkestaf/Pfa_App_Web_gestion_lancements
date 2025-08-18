@@ -355,6 +355,7 @@ def lancement_delete(request, pk):
 def lancement_planning(request):
     """
     Vue pour afficher le planning des lancements sous forme de calendrier
+    CORRIGÉ: Charge tous les lancements, pas seulement le mois courant
     """
     import json
     
@@ -363,25 +364,29 @@ def lancement_planning(request):
         year = int(request.GET.get('year', timezone.now().year))
         month = int(request.GET.get('month', timezone.now().month))
         
-        # Calcul des dates de début et fin du mois
-        first_day = datetime(year, month, 1)
-        if month == 12:
-            last_day = datetime(year + 1, 1, 1) - timedelta(days=1)
-        else:
-            last_day = datetime(year, month + 1, 1) - timedelta(days=1)
+        # CORRECTION: Calculer une plage plus large pour avoir tous les lancements
+        # Au lieu de limiter au mois, prendre toute l'année + les mois adjacents
+        start_year = year
+        end_year = year + 1
         
-        logger.info(f"Planning demandé pour {year}-{month:02d} ({first_day} à {last_day})")
+        # Date de début: début de l'année courante
+        first_day = datetime(start_year, 1, 1)
+        # Date de fin: fin de l'année suivante pour couvrir large
+        last_day = datetime(end_year, 12, 31)
         
-        # Récupération des lancements du mois avec toutes les relations
+        logger.info(f"Planning demandé pour {year}-{month:02d}, période élargie: {first_day} à {last_day}")
+        
+        # CORRECTION: Récupération de TOUS les lancements dans la plage élargie
         lancements = Lancement.objects.select_related(
             'affaire', 'atelier', 'categorie', 'collaborateur'
         ).filter(
+            # Plage élargie pour charger plus de données
             date_lancement__range=[first_day, last_day]
         ).order_by('date_lancement')
         
-        logger.info(f"🔍 {lancements.count()} lancements trouvés pour le mois {month}/{year}")
+        logger.info(f"🔍 {lancements.count()} lancements trouvés pour la période {first_day.strftime('%Y-%m-%d')} à {last_day.strftime('%Y-%m-%d')}")
         
-        # Préparer les données pour JavaScript/FullCalendar
+        # CORRECTION: Préparer TOUTES les données, pas seulement le mois courant
         lancements_data = []
         for lancement in lancements:
             try:
@@ -392,13 +397,18 @@ def lancement_planning(request):
             except (ValueError, TypeError):
                 poids_total = 0.0
                 
+            # CORRECTION: Validation des données essentielles
+            if not lancement.date_lancement:
+                logger.warning(f"⚠️ Lancement {lancement.id} sans date de lancement, ignoré")
+                continue
+                
             # Préparer les données avec gestion des valeurs nulles
             lancement_data = {
                 'id': lancement.id,
                 'num_lanc': lancement.num_lanc or f'L-{lancement.id}',
                 'date_lancement': lancement.date_lancement.strftime('%Y-%m-%d'),
                 'affaire_code': lancement.affaire.code_affaire if lancement.affaire else 'N/A',
-                'client': lancement.affaire.client if lancement.affaire else 'N/A',
+                'client': getattr(lancement.affaire, 'client', 'N/A') if lancement.affaire else 'N/A',
                 'atelier_nom': lancement.atelier.nom_atelier if lancement.atelier else 'Aucun atelier',
                 'atelier_id': lancement.atelier.id if lancement.atelier else None,
                 'collaborateur_nom': lancement.collaborateur.get_full_name() if lancement.collaborateur else 'Aucun',
@@ -418,16 +428,29 @@ def lancement_planning(request):
             lancements_data.append(lancement_data)
             logger.debug(f"✅ Lancement {lancement.num_lanc} ajouté aux données")
         
+        # CORRECTION: Statistiques seulement pour le mois demandé (pas toute la période)
+        # Calculer les dates du mois demandé pour les stats
+        month_start = datetime(year, month, 1)
+        if month == 12:
+            month_end = datetime(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            month_end = datetime(year, month + 1, 1) - timedelta(days=1)
+        
+        # Filtrer les lancements du mois pour les statistiques
+        lancements_month = lancements.filter(
+            date_lancement__range=[month_start, month_end]
+        )
+        
         # Statistiques du mois (corrigées)
-        total_month = lancements.count()
-        en_cours_month = lancements.filter(statut='en_cours').count()
-        termines_month = lancements.filter(statut='termine').count()
-        planifies_month = lancements.filter(statut='planifie').count()
-        en_attente_month = lancements.filter(statut='en_attente').count()
+        total_month = lancements_month.count()
+        en_cours_month = lancements_month.filter(statut='en_cours').count()
+        termines_month = lancements_month.filter(statut='termine').count()
+        planifies_month = lancements_month.filter(statut='planifie').count()
+        en_attente_month = lancements_month.filter(statut='en_attente').count()
         
         # Calcul du poids total du mois (corrigé)
         poids_total_month = 0
-        for lancement in lancements:
+        for lancement in lancements_month:
             try:
                 poids_total_month += float(lancement.poids_debitage or 0) + float(lancement.poids_assemblage or 0)
             except (ValueError, TypeError):
@@ -442,16 +465,21 @@ def lancement_planning(request):
             'poids_total_month': round(poids_total_month, 2)
         }
         
-        logger.info(f"📊 Statistiques: {stats}")
+        logger.info(f"📊 Statistiques mois {month}/{year}: {stats}")
         
         # Données pour les filtres
         ateliers = Atelier.objects.all().order_by('nom_atelier')
         collaborateurs = Collaborateur.objects.filter(is_active=True).order_by('nom_collaborateur')
         
-        # Sérialisation JSON sécurDjangoJSONEncoderisée
+        # CORRECTION: Sérialisation JSON sécurisée avec gestion d'erreurs
         try:
-            lancements_json = json.dumps(lancements_data, ensure_ascii=False, cls=DjangoJSONEncoder) 
+            lancements_json = json.dumps(lancements_data, ensure_ascii=False, cls=DjangoJSONEncoder)
             logger.info(f"✅ JSON sérialisé: {len(lancements_json)} caractères pour {len(lancements_data)} lancements")
+            
+            # Validation du JSON généré
+            if lancements_json == '[]' or len(lancements_json) < 10:
+                logger.warning(f"⚠️ JSON potentiellement vide: '{lancements_json}'")
+            
         except Exception as e:
             logger.error(f"❌ Erreur sérialisation JSON: {e}")
             lancements_json = '[]'
@@ -459,10 +487,11 @@ def lancement_planning(request):
         # Calcul du total de lancements en DB pour debug
         total_lancements_db = Lancement.objects.count()
         
+        # CORRECTION: Utiliser month_start pour l'affichage
         context = {
-            'lancements': lancements,
+            'lancements': lancements,  # Tous les lancements pour le JS
             'lancements_json': lancements_json,
-            'current_month': first_day,
+            'current_month': month_start,  # Pour l'affichage du mois
             'year': year,
             'month': month,
             'stats': stats,
@@ -471,13 +500,16 @@ def lancement_planning(request):
             'can_create': request.user.has_perm('lancements.add_lancement'),
             'debug_info': {
                 'total_lancements_db': total_lancements_db,
-                'lancements_month': total_month,
+                'lancements_period': lancements.count(),  # Total sur la période élargie
+                'lancements_month': total_month,  # Total sur le mois demandé
                 'lancements_json_length': len(lancements_json),
-                'date_range': f"{first_day.strftime('%Y-%m-%d')} à {last_day.strftime('%Y-%m-%d')}"
+                'date_range_period': f"{first_day.strftime('%Y-%m-%d')} à {last_day.strftime('%Y-%m-%d')}",
+                'date_range_month': f"{month_start.strftime('%Y-%m-%d')} à {month_end.strftime('%Y-%m-%d')}",
+                'lancements_data_count': len(lancements_data)
             }
         }
         
-        logger.info(f"✅ Context préparé avec {len(lancements_data)} lancements")
+        logger.info(f"✅ Context préparé avec {len(lancements_data)} lancements (période complète), stats sur {total_month} lancements (mois {month})")
         return render(request, 'lancements/planning.html', context)
         
     except Exception as e:
@@ -491,6 +523,7 @@ def lancement_planning(request):
 def get_lancements_data(request):
     """
     API endpoint pour récupérer les données des lancements en JSON (pour le calendrier)
+    CORRIGÉ: Gestion améliorée des plages de dates et des erreurs
     """
     try:
         start_date = request.GET.get('start')
@@ -503,31 +536,49 @@ def get_lancements_data(request):
             'affaire', 'atelier', 'collaborateur', 'categorie'
         )
         
-        # Filtrage par dates si spécifié
+        # CORRECTION: Gestion intelligente des plages de dates
         if start_date and end_date:
             try:
                 start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
                 end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+                
+                # Vérifier que la plage n'est pas trop grande (limite de sécurité)
+                days_diff = (end_date_obj - start_date_obj).days
+                if days_diff > 1095:  # Plus de 3 ans
+                    logger.warning(f"⚠️ Plage de dates très large: {days_diff} jours")
+                    # Limiter à 2 ans maximum
+                    end_date_obj = start_date_obj + timedelta(days=730)
+                
                 lancements_query = lancements_query.filter(
                     date_lancement__range=[start_date_obj, end_date_obj]
                 )
-                logger.info(f"🔍 Filtrage par dates {start_date_obj} - {end_date_obj}")
+                logger.info(f"🔍 Filtrage par dates {start_date_obj} - {end_date_obj} ({days_diff} jours)")
+                
             except ValueError as e:
                 logger.warning(f"⚠️ Format de date invalide: start={start_date}, end={end_date}, erreur: {e}")
-                # Continuer sans filtre de dates
+                # CORRECTION: En cas d'erreur de dates, prendre une plage par défaut
+                today = timezone.now().date()
+                start_date_obj = today.replace(day=1)  # Début du mois
+                if today.month == 12:
+                    end_date_obj = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+                else:
+                    end_date_obj = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+                
+                lancements_query = lancements_query.filter(
+                    date_lancement__range=[start_date_obj, end_date_obj]
+                )
+                logger.info(f"🔧 Utilisation des dates par défaut: {start_date_obj} - {end_date_obj}")
         else:
-            # Si pas de dates spécifiées, prendre le mois courant par défaut
+            # CORRECTION: Si pas de dates, prendre une plage par défaut plus large
             today = timezone.now().date()
-            first_day = today.replace(day=1)
-            if today.month == 12:
-                last_day = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
-            else:
-                last_day = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+            # Prendre 6 mois avant et 6 mois après la date courante
+            start_date_obj = today - timedelta(days=180)
+            end_date_obj = today + timedelta(days=180)
             
             lancements_query = lancements_query.filter(
-                date_lancement__range=[first_day, last_day]
+                date_lancement__range=[start_date_obj, end_date_obj]
             )
-            logger.info(f"🔍 Aucune date spécifiée, utilisation du mois courant {first_day} - {last_day}")
+            logger.info(f"🔍 Aucune date spécifiée, utilisation d'une plage par défaut: {start_date_obj} - {end_date_obj}")
         
         # Récupération des lancements
         lancements = lancements_query.order_by('date_lancement')
@@ -537,6 +588,11 @@ def get_lancements_data(request):
         events = []
         for lancement in lancements:
             try:
+                # CORRECTION: Validation des données essentielles
+                if not lancement.date_lancement:
+                    logger.warning(f"⚠️ Lancement {lancement.id} sans date de lancement, ignoré")
+                    continue
+                
                 # Calcul du poids total avec gestion des erreurs
                 try:
                     poids_total = float(lancement.poids_debitage or 0) + float(lancement.poids_assemblage or 0)
@@ -552,7 +608,7 @@ def get_lancements_data(request):
                     'extendedProps': {
                         'num_lanc': lancement.num_lanc or f'L-{lancement.id}',
                         'affaire_code': lancement.affaire.code_affaire if lancement.affaire else 'N/A',
-                        'client': lancement.affaire.client if lancement.affaire else 'N/A',
+                        'client': getattr(lancement.affaire, 'client', 'N/A') if lancement.affaire else 'N/A',
                         'atelier_nom': lancement.atelier.nom_atelier if lancement.atelier else 'Aucun atelier',
                         'atelier_id': lancement.atelier.id if lancement.atelier else None,
                         'collaborateur_nom': lancement.collaborateur.get_full_name() if lancement.collaborateur else 'Aucun',
@@ -587,7 +643,8 @@ def get_lancements_data(request):
                 'start_date': start_date,
                 'end_date': end_date,
                 'query_count': lancements.count(),
-                'processed_events': len(events)
+                'processed_events': len(events),
+                'date_range_used': f"{start_date_obj} à {end_date_obj}" if 'start_date_obj' in locals() else 'N/A'
             }
         }
         

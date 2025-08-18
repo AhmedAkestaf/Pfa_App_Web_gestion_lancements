@@ -94,23 +94,31 @@ def atelier_detail(request, pk):
         atelier=atelier
     ).select_related('categorie')
     
-    # Récupération des collaborateurs affectés à l'atelier (sans filtrer par date_fin_affectation)
+    # Récupération des collaborateurs affectés à l'atelier
     collaborateurs_affectes = atelier.collaborateuratelier_set.select_related('collaborateur')
+    
+    # Compter les lancements en cours pour cet atelier
+    from apps.lancements.models import Lancement  # Ajoutez cette import en haut du fichier
+    lancements_en_cours_count = Lancement.objects.filter(
+        atelier=atelier,
+        statut='en_cours'
+    ).count()
     
     # Vérification des permissions
     can_update = request.user.has_permission('ateliers', 'update')
     can_delete = request.user.has_permission('ateliers', 'delete')
+
     
     context = {
         'atelier': atelier,
         'atelier_categories': atelier_categories,
         'collaborateurs_affectes': collaborateurs_affectes,
+        'lancements_en_cours_count': lancements_en_cours_count, 
         'can_update': can_update,
         'can_delete': can_delete,
     }
     
     return render(request, 'ateliers/detail.html', context)
-
 
 @login_required
 def atelier_create(request):
@@ -330,22 +338,31 @@ def categorie_detail(request, pk):
         categorie=categorie
     ).select_related('atelier')
     
-    # Récupération des collaborateurs compétents (sans tri par date_certification)
+    # Récupération des collaborateurs compétents
     collaborateurs_competents = CollaborateurCategorie.objects.filter(
         categorie=categorie
     ).select_related('collaborateur').order_by('collaborateur__nom_collaborateur', 'collaborateur__prenom_collaborateur')
     
-    # Récupération des lancements récents (10 derniers)
-    lancements_recents = []
-    lancements_count = 0
-    try:
-        if hasattr(categorie, 'lancement_set'):
-            lancements_recents = categorie.lancement_set.select_related(
-                'affaire', 'atelier', 'collaborateur'
-            ).order_by('-date_lancement')[:10]
-            lancements_count = categorie.lancement_set.count()
-    except:
-        pass
+    # Import du modèle Lancement
+    from apps.lancements.models import Lancement
+    
+    # Récupération des lancements récents (10 derniers) pour cette catégorie
+    lancements_recents = Lancement.objects.filter(
+        categorie=categorie
+    ).select_related(
+        'affaire', 'atelier', 'collaborateur'
+    ).order_by('-date_lancement')[:10]
+    
+    # Compter tous les lancements pour cette catégorie
+    lancements_count = Lancement.objects.filter(categorie=categorie).count()
+    
+    # Statistiques par statut (optionnel)
+    lancements_stats = {
+        'en_cours': Lancement.objects.filter(categorie=categorie, statut='en_cours').count(),
+        'planifie': Lancement.objects.filter(categorie=categorie, statut='planifie').count(),
+        'termine': Lancement.objects.filter(categorie=categorie, statut='termine').count(),
+        'en_attente': Lancement.objects.filter(categorie=categorie, statut='en_attente').count(),
+    }
     
     # Vérification des permissions
     can_update = request.user.has_permission('categories', 'update')
@@ -357,12 +374,12 @@ def categorie_detail(request, pk):
         'collaborateurs_competents': collaborateurs_competents,
         'lancements_recents': lancements_recents,
         'lancements_count': lancements_count,
+        'lancements_stats': lancements_stats,  
         'can_update': can_update,
         'can_delete': can_delete,
     }
     
     return render(request, 'categories/detail.html', context)
-
 
 @login_required
 def categorie_create(request):

@@ -101,22 +101,21 @@
     border-left: 4px solid #17a2b8;
 }
 
-/* Styles pour le debug (à retirer en production) */
-.debug-info {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 5px;
-    padding: 10px;
-    margin-bottom: 15px;
-    font-size: 0.875rem;
-}
-
+/* CORRECTION: Styles pour garantir l'affichage correct */
 #calendar {
     min-height: 500px;
+    width: 100%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#calendar.calendar-ready {
+    opacity: 1;
 }
 
 .fc {
     min-height: 500px;
+    width: 100%;
 }
 
 .loading-spinner {
@@ -134,12 +133,30 @@
 .fc-daygrid-event-harness {
     position: relative;
 }
+
+/* Debug info styles */
+.debug-info {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 15px;
+    font-size: 0.875rem;
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <!-- Données JSON pour JavaScript -->
-<script type="application/json" id="lancements-json">{{ lancements_json|safe }}</script>
+<script type="application/json" id="initial-lancements-data">
+{
+  "lancements": {{ lancements_json|safe }},
+  "api_url": "{% url 'lancements:api_data' %}",
+  "current_year": {{ year|default:"new Date().getFullYear()" }},
+  "current_month": {{ month|default:"new Date().getMonth() + 1" }},
+  "debug_enabled": true
+}
+</script>
 
 <!-- Informations de debug -->
 {% if debug_info %}
@@ -151,6 +168,7 @@
     {% if debug_info.lancements_json_length <= 2 %}
         <span class="badge bg-warning">⚠️ JSON vide ou invalide détecté</span>
     {% endif %}
+    <br><small>Période: {{ debug_info.date_range }}</small>
     <br><small>URL API: {% url 'lancements:api_data' %}</small>
 </div>
 {% endif %}
@@ -224,7 +242,7 @@
                             <p class="mt-2 text-center">Chargement du planning...</p>
                         </div>
                     </div>
-                    <div id="calendar" style="display: none;"></div>
+                    <div id="calendar"></div>
                     <div id="calendar-error" class="alert alert-danger" style="display: none;">
                         <h5><i class="fas fa-exclamation-triangle"></i> Erreur de chargement</h5>
                         <p id="error-message">Une erreur s'est produite lors du chargement du calendrier.</p>
@@ -419,393 +437,373 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('=== Initialisation du planning ===');
+    console.log('=== Initialisation du planning SOLUTION COMPLÈTE ===');
     
     // Variables globales
-    let calendar;
+    let CONFIG = null;
+    let calendar = null;
     let allEvents = [];
-    let isNavigating = false;
-    let navigationTimeout = null;
+    let isLoading = false;
+    let initializationAttempts = 0;
+    const MAX_INIT_ATTEMPTS = 3;
     
-    // Configuration de l'URL API
-    const API_URL = '{% url "lancements:api_data" %}';
-    console.log('URL API:', API_URL);
+    // ========================================================================================
+    // SECTION 1: CONFIGURATION ET CHARGEMENT DES DONNÉES
+    // ========================================================================================
     
-    // Debounce pour éviter les appels multiples
-    function debounce(func, delay) {
-        let timeoutId;
-        return function (...args) {
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => func.apply(this, args), delay);
+    function loadConfig() {
+        try {
+            const configElement = document.getElementById('initial-lancements-data');
+            if (configElement && configElement.textContent) {
+                CONFIG = JSON.parse(configElement.textContent);
+                console.log('✅ Configuration chargée:', CONFIG);
+                return true;
+            }
+        } catch (e) {
+            console.error('❌ Erreur parsing configuration:', e);
+        }
+        
+        // Configuration par défaut
+        CONFIG = {
+            lancements: [],
+            api_url: '/lancements/api/data/',
+            current_year: new Date().getFullYear(),
+            current_month: new Date().getMonth() + 1,
+            debug_enabled: true
         };
+        return false;
     }
     
-    // Fonctions utilitaires
-    function showError(message) {
-        console.error('Erreur:', message);
-        const loadingEl = document.getElementById('calendar-loading');
-        const errorEl = document.getElementById('calendar-error');
-        const errorMsg = document.getElementById('error-message');
-        
-        if (loadingEl) loadingEl.style.display = 'none';
-        if (errorEl) {
-            errorEl.style.display = 'block';
-            if (errorMsg) errorMsg.textContent = message;
+    async function loadAllLancements(startDate = null, endDate = null) {
+        if (isLoading) {
+            console.log('📡 Chargement déjà en cours, abandon...');
+            return [];
         }
-    }
-    
-    function hideLoadingShowCalendar() {
-        const loadingEl = document.getElementById('calendar-loading');
-        const calendarEl = document.getElementById('calendar');
-        const errorEl = document.getElementById('calendar-error');
         
-        if (loadingEl) loadingEl.style.display = 'none';
-        if (errorEl) errorEl.style.display = 'none';
-        if (calendarEl) calendarEl.style.display = 'block';
-    }
-    
-    // Fonction pour charger les données via AJAX avec cache
-    let dataCache = new Map();
-    
-    async function loadLancementsData(start = null, end = null, useCache = true) {
-        const cacheKey = `${start}-${end}`;
-        
-        if (useCache && dataCache.has(cacheKey)) {
-            console.log('📦 Utilisation du cache pour:', cacheKey);
-            return dataCache.get(cacheKey);
-        }
+        isLoading = true;
+        console.log('📡 Chargement des lancements...', { startDate, endDate });
         
         try {
-            console.log('Chargement des données via API...');
-            
             const params = new URLSearchParams();
-            if (start) params.append('start', start);
-            if (end) params.append('end', end);
             
-            const url = `${API_URL}${params.toString() ? '?' + params.toString() : ''}`;
-            console.log('URL finale:', url);
+            if (!startDate && !endDate) {
+                const now = new Date();
+                const startOfYear = new Date(now.getFullYear(), 0, 1);
+                const endOfYear = new Date(now.getFullYear() + 1, 11, 31);
+                
+                startDate = startOfYear.toISOString().split('T')[0];
+                endDate = endOfYear.toISOString().split('T')[0];
+                
+                console.log('📅 Chargement de toute l\'année:', startDate, 'à', endDate);
+            }
             
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // Timeout 10s
+            if (startDate) params.append('start', startDate);
+            if (endDate) params.append('end', endDate);
+            
+            const url = `${CONFIG.api_url}?${params.toString()}`;
+            console.log('🌐 URL API complète:', url);
             
             const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                signal: controller.signal
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Cache-Control': 'no-cache'
+                }
             });
-            
-            clearTimeout(timeoutId);
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             const data = await response.json();
-            console.log('Données API reçues:', data);
+            console.log('📊 Données reçues:', data);
             
             if (data.success && Array.isArray(data.events)) {
-                dataCache.set(cacheKey, data.events);
+                console.log('✅ Lancements chargés:', data.events.length);
                 return data.events;
+            } else if (data.error) {
+                console.error('❌ Erreur API:', data.error);
+                return [];
             } else {
-                console.warn('Données API invalides:', data);
+                console.warn('⚠️ Format de réponse inattendu:', data);
                 return [];
             }
             
         } catch (error) {
-            if (error.name === 'AbortError') {
-                console.warn('Requête API annulée (timeout)');
-            } else {
-                console.error('Erreur lors du chargement API:', error);
-            }
-            // Fallback vers les données Django
-            return getDjangoData();
+            console.error('❌ Erreur lors du chargement:', error);
+            return getFallbackData();
+        } finally {
+            isLoading = false;
         }
     }
     
-    // Fonction fallback pour récupérer les données depuis Django
-    function getDjangoData() {
-        try {
-            console.log('Tentative de récupération des données Django...');
-            const lancementsJson = document.getElementById('lancements-json');
-            
-            if (!lancementsJson || !lancementsJson.textContent.trim()) {
-                console.warn('Élément lancements-json non trouvé ou vide');
-                return [];
-            }
-            
-            const jsonText = lancementsJson.textContent.trim();
-            
-            if (jsonText === '[]' || jsonText === '') {
-                console.log('Données Django vides');
-                return [];
-            }
-            
-            const data = JSON.parse(jsonText);
-            console.log('Données Django parsées:', Array.isArray(data) ? data.length + ' éléments' : 'Format invalide');
-            
-            return Array.isArray(data) ? data : [];
-            
-        } catch (e) {
-            console.error('Erreur lors du parsing des données Django:', e);
-            return [];
+    function getFallbackData() {
+        console.log('🔄 Utilisation des données fallback...');
+        
+        if (CONFIG.lancements && Array.isArray(CONFIG.lancements)) {
+            console.log('📋 Données fallback trouvées:', CONFIG.lancements.length);
+            return CONFIG.lancements;
         }
+        
+        console.log('📋 Aucune donnée fallback disponible');
+        return [];
     }
     
-    // Transformation des données pour FullCalendar
-    function transformDataForCalendar(lancements) {
+    function transformToCalendarEvents(lancements) {
         if (!Array.isArray(lancements)) {
-            console.error('lancements n\'est pas un tableau:', typeof lancements);
+            console.error('❌ lancements n\'est pas un tableau:', typeof lancements);
             return [];
         }
         
-        console.log('Transformation de', lancements.length, 'lancements');
+        console.log('🔄 Transformation de', lancements.length, 'lancements');
         
-        return lancements.map((lancement, index) => {
+        const events = lancements.map((lancement, index) => {
             try {
+                if (!lancement.date_lancement) {
+                    console.warn('⚠️ Lancement sans date:', lancement);
+                    return null;
+                }
+                
                 return {
-                    id: lancement.id?.toString() || `temp-${index}`,
+                    id: (lancement.id || `temp-${index}`).toString(),
                     title: lancement.num_lanc || `L-${lancement.id || index}`,
                     start: lancement.date_lancement,
-                    className: ['lancement-' + (lancement.statut || 'planifie')],
+                    className: `lancement-${lancement.statut || 'planifie'}`,
                     extendedProps: {
-                        ...lancement,
                         num_lanc: lancement.num_lanc || `L-${lancement.id || index}`,
-                        statut_display: lancement.statut_display || lancement.statut || 'Planifié',
-                        atelier_nom: lancement.atelier_nom || 'Aucun atelier',
-                        collaborateur_nom: lancement.collaborateur_nom || 'Aucun collaborateur',
                         affaire_code: lancement.affaire_code || 'N/A',
                         client: lancement.client || 'N/A',
+                        atelier_nom: lancement.atelier_nom || 'Aucun atelier',
+                        atelier_id: lancement.atelier_id,
+                        collaborateur_nom: lancement.collaborateur_nom || 'Aucun collaborateur',
+                        collaborateur_id: lancement.collaborateur_id,
+                        statut: lancement.statut || 'planifie',
+                        statut_display: lancement.statut_display || 'Planifié',
+                        poids_total: parseFloat(lancement.poids_total || 0),
                         sous_livrable: lancement.sous_livrable || 'Pas de description',
-                        poids_total: lancement.poids_total || 0
+                        date_reception: lancement.date_reception || '',
+                        observations: lancement.observations || ''
                     }
                 };
             } catch (e) {
-                console.error('Erreur transformation lancement:', e, lancement);
+                console.error('❌ Erreur transformation:', e, lancement);
                 return null;
             }
         }).filter(event => event !== null);
+        
+        console.log('✅ Événements transformés:', events.length);
+        return events;
     }
-
-    // Chargement différé des données par période
-    const deferredDataLoad = debounce(async function(dateInfo) {
-        if (isNavigating) return;
-        
-        isNavigating = true;
-        console.log('🔄 Chargement différé pour:', dateInfo.startStr, 'à', dateInfo.endStr);
-        
-        try {
-            const startDate = dateInfo.start.toISOString().split('T')[0];
-            const endDate = dateInfo.end.toISOString().split('T')[0];
-            
-            const lancements = await loadLancementsData(startDate, endDate);
-            const events = transformDataForCalendar(lancements);
-            
-            if (calendar && events.length > 0) {
-                console.log('📊 Mise à jour avec', events.length, 'événements');
-                
-                // Supprimer les événements existants et ajouter les nouveaux
-                calendar.removeAllEvents();
-                
-                // Ajouter les nouveaux événements un par un pour éviter les conflits
-                setTimeout(() => {
-                    events.forEach((event, index) => {
-                        setTimeout(() => {
-                            if (calendar) {
-                                calendar.addEvent(event);
-                            }
-                        }, index * 10); // Délai de 10ms entre chaque ajout
-                    });
-                    
-                    setTimeout(() => {
-                        isNavigating = false;
-                    }, events.length * 10 + 100);
-                }, 50);
-            } else {
-                isNavigating = false;
-            }
-        } catch (error) {
-            console.error('Erreur lors du chargement différé:', error);
-            isNavigating = false;
-        }
-    }, 300);
-
-    // Initialisation du calendrier FullCalendar
-    function initializeCalendar(initialEvents) {
+    
+    // ========================================================================================
+    // SECTION 2: INITIALISATION DU CALENDRIER - SOLUTION PRINCIPALE
+    // ========================================================================================
+    
+    function initializeCalendar(events = []) {
         const calendarEl = document.getElementById('calendar');
         
         if (!calendarEl) {
-            showError('Élément #calendar non trouvé dans le DOM!');
-            return;
+            console.error('❌ Élément #calendar non trouvé');
+            return false;
         }
-
+        
+        console.log('🗓️ Initialisation calendrier avec', events.length, 'événements');
+        
         try {
-            console.log('Initialisation du calendrier avec', initialEvents.length, 'événements');
+            // Détruire l'ancien calendrier si existant
+            if (calendar) {
+                calendar.destroy();
+                calendar = null;
+            }
             
             calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'fr',
                 height: 'auto',
                 headerToolbar: false,
-                events: initialEvents,
+                events: events,
                 
-                // Configuration optimisée
+                // Configuration d'affichage
                 eventDisplay: 'block',
                 dayMaxEvents: 3,
                 moreLinkClick: 'popover',
                 
-                // Performance
-                eventDidMount: function(info) {
-                    const props = info.event.extendedProps;
-                    info.el.title = `${props.num_lanc}
-Affaire: ${props.affaire_code}
-Client: ${props.client}
-Atelier: ${props.atelier_nom}
-Statut: ${props.statut_display}
-Poids: ${props.poids_total} kg`;
+                // SOLUTION PRINCIPALE: Callbacks pour forcer le bon rendu
+                loading: function(isLoading) {
+                    console.log('📊 Calendar loading state:', isLoading);
                 },
                 
+                viewDidMount: function(view) {
+                    console.log('📅 Vue montée:', view.type);
+                    // SOLUTION 1: Forcer le recalcul des dimensions
+                    requestAnimationFrame(() => {
+                        if (calendar) {
+                            calendar.updateSize();
+                        }
+                    });
+                },
+                
+                eventDidMount: function(info) {
+                    const props = info.event.extendedProps;
+                    info.el.title = [
+                        `${props.num_lanc}`,
+                        `Affaire: ${props.affaire_code}`,
+                        `Client: ${props.client}`,
+                        `Atelier: ${props.atelier_nom}`,
+                        `Statut: ${props.statut_display}`,
+                        `Poids: ${props.poids_total} kg`
+                    ].join('\n');
+                },
+                
+                // Gestion des événements
                 eventClick: function(info) {
-                    console.log('Clic sur événement:', info.event.extendedProps);
+                    console.log('👆 Clic sur événement:', info.event.title);
                     showLancementDetails(info.event);
                 },
                 
+                // Rendu personnalisé des événements
                 eventContent: function(arg) {
                     const props = arg.event.extendedProps;
-                    const statusColors = {
-                        'planifie': '#6c757d',
-                        'en_cours': '#ffc107',
-                        'termine': '#28a745',
-                        'en_attente': '#17a2b8'
+                    const colors = {
+                        'planifie': { bg: '#6c757d', text: 'white' },
+                        'en_cours': { bg: '#ffc107', text: '#212529' },
+                        'termine': { bg: '#28a745', text: 'white' },
+                        'en_attente': { bg: '#17a2b8', text: 'white' }
                     };
                     
-                    const color = statusColors[props.statut] || '#6c757d';
-                    const textColor = (props.statut === 'en_cours') ? '#212529' : 'white';
+                    const color = colors[props.statut] || colors['planifie'];
                     
                     return {
-                        html: `<div style="font-size: 0.75rem; padding: 2px 4px; background-color: ${color}; color: ${textColor}; border-radius: 3px; overflow: hidden;">
-                            <div style="font-weight: bold;">${props.num_lanc}</div>
-                            <div style="font-size: 0.6rem;">${(props.atelier_nom || 'Sans atelier').substring(0, 15)}</div>
+                        html: `<div style="
+                            font-size: 0.75rem; 
+                            padding: 2px 4px; 
+                            background-color: ${color.bg}; 
+                            color: ${color.text}; 
+                            border-radius: 3px; 
+                            overflow: hidden;
+                            cursor: pointer;
+                        ">
+                            <div style="font-weight: bold;">${arg.event.title}</div>
+                            <div style="font-size: 0.6rem; opacity: 0.9;">
+                                ${(props.atelier_nom || '').substring(0, 15)}
+                            </div>
                         </div>`
                     };
                 },
                 
-                // Gestion des changements de dates avec debounce
+                // Navigation
                 datesSet: function(dateInfo) {
-                    console.log('Changement de dates:', dateInfo.start, 'à', dateInfo.end);
                     updateMonthDisplay();
+                    console.log('📅 Période affichée:', dateInfo.startStr, 'à', dateInfo.endStr);
                     
-                    // Charger les données pour cette période si nécessaire
-                    if (!isNavigating) {
-                        deferredDataLoad(dateInfo);
-                    }
-                },
-                
-                loading: function(isLoading) {
-                    console.log('FullCalendar loading:', isLoading);
-                    if (isLoading && !isNavigating) {
-                        // Optionnel: afficher un indicateur de chargement
-                    }
+                    // SOLUTION 2: Forcer le recalcul après changement de date
+                    setTimeout(() => {
+                        if (calendar) {
+                            calendar.updateSize();
+                        }
+                    }, 50);
                 }
             });
             
+            // SOLUTION PRINCIPALE: Séquence de rendu optimisée
+            console.log('🎯 Début du rendu du calendrier...');
+            
+            // Étape 1: Rendu initial
             calendar.render();
-            hideLoadingShowCalendar();
             
-            console.log('✅ Calendrier rendu avec succès');
+            // Étape 2: Attendre que le DOM soit stabilisé
+            requestAnimationFrame(() => {
+                console.log('🔄 Premier requestAnimationFrame');
+                
+                // Étape 3: Forcer l'affichage du calendrier
+                showCalendar();
+                
+                // Étape 4: Deuxième passage pour stabiliser
+                requestAnimationFrame(() => {
+                    console.log('🔄 Deuxième requestAnimationFrame');
+                    
+                    if (calendar) {
+                        // Forcer le recalcul des dimensions
+                        calendar.updateSize();
+                        
+                        // Marquer le calendrier comme prêt
+                        calendarEl.classList.add('calendar-ready');
+                        
+                        console.log('✅ Calendrier complètement initialisé');
+                        
+                        // SOLUTION 3: Vérification finale après un délai
+                        setTimeout(() => {
+                            if (calendar) {
+                                calendar.updateSize();
+                                console.log('🔧 Vérification finale effectuée');
+                            }
+                        }, 200);
+                    }
+                });
+            });
             
-            // Sauvegarder les événements pour les filtres
-            allEvents = initialEvents;
+            // Sauvegarder pour les filtres
+            allEvents = events;
+            return true;
             
         } catch (e) {
-            console.error('❌ Erreur lors de l\'initialisation du calendrier:', e);
+            console.error('❌ Erreur initialisation calendrier:', e);
             showError('Erreur lors de l\'initialisation du calendrier: ' + e.message);
+            return false;
         }
     }
-
-    // Navigation du calendrier avec protection contre les clics multiples
-    function setupNavigation() {
-        console.log('Configuration de la navigation...');
+    
+    // ========================================================================================
+    // SECTION 3: FONCTIONS D'AFFICHAGE - SOLUTION AMÉLIORÉE
+    // ========================================================================================
+    
+    function showCalendar() {
+        const loading = document.getElementById('calendar-loading');
+        const calendarEl = document.getElementById('calendar');
+        const error = document.getElementById('calendar-error');
         
-        const prevButton = document.getElementById('prevMonth');
-        const nextButton = document.getElementById('nextMonth');
-        const todayButton = document.getElementById('todayBtn');
-        const refreshButton = document.getElementById('refreshData');
-
-        if (prevButton) {
-            prevButton.addEventListener('click', debounce(function(e) {
-                e.preventDefault();
-                if (!isNavigating && calendar) {
-                    console.log('👈 Mois précédent');
-                    calendar.prev();
-                }
-            }, 200));
-            console.log('✅ Bouton précédent configuré');
+        console.log('🎭 Affichage du calendrier...');
+        
+        // Masquer loading et erreur
+        if (loading) {
+            loading.style.display = 'none';
+            console.log('✅ Loading masqué');
         }
-
-        if (nextButton) {
-            nextButton.addEventListener('click', debounce(function(e) {
-                e.preventDefault();
-                if (!isNavigating && calendar) {
-                    console.log('👉 Mois suivant');
-                    calendar.next();
-                }
-            }, 200));
-            console.log('✅ Bouton suivant configuré');
-        }
-
-        if (todayButton) {
-            todayButton.addEventListener('click', debounce(function(e) {
-                e.preventDefault();
-                if (!isNavigating && calendar) {
-                    console.log('🎯 Retour à aujourd\'hui');
-                    calendar.today();
-                }
-            }, 200));
-            console.log('✅ Bouton aujourd\'hui configuré');
+        if (error) {
+            error.style.display = 'none';
+            console.log('✅ Erreur masquée');
         }
         
-        if (refreshButton) {
-            refreshButton.addEventListener('click', debounce(function(e) {
-                e.preventDefault();
-                console.log('🔄 Actualisation des données');
-                dataCache.clear(); // Vider le cache
-                location.reload();
-            }, 500));
-            console.log('✅ Bouton actualiser configuré');
+        // Afficher le calendrier
+        if (calendarEl) {
+            calendarEl.style.display = 'block';
+            console.log('✅ Calendrier affiché');
+            
+            // SOLUTION: Forcer le reflow du DOM
+            calendarEl.offsetHeight;
+            
+            // Déclencher un événement de redimensionnement
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+                console.log('🔄 Événement resize déclenché');
+            }, 10);
         }
     }
-
-    // Changement de vue
-    function setupViewToggle() {
-        console.log('Configuration du toggle de vue...');
+    
+    function showError(message) {
+        console.error('💥 Erreur:', message);
+        const loading = document.getElementById('calendar-loading');
+        const error = document.getElementById('calendar-error');
+        const errorMsg = document.getElementById('error-message');
+        const calendarEl = document.getElementById('calendar');
         
-        document.querySelectorAll('.btn-view').forEach(button => {
-            button.addEventListener('click', debounce(function(e) {
-                e.preventDefault();
-                if (isNavigating) return;
-                
-                const view = this.dataset.view;
-                console.log('🔄 Changement de vue:', view);
-                
-                // Mettre à jour l'état visuel des boutons
-                document.querySelectorAll('.btn-view').forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
-                
-                // Changer la vue du calendrier
-                if (calendar) {
-                    calendar.changeView(view);
-                }
-            }, 200));
-        });
-        
-        console.log('✅ Toggle de vue configuré');
+        if (loading) loading.style.display = 'none';
+        if (calendarEl) calendarEl.style.display = 'none';
+        if (error) error.style.display = 'block';
+        if (errorMsg) errorMsg.textContent = message;
     }
-
-    // Mise à jour de l'affichage du mois
+    
     function updateMonthDisplay() {
         const monthTitle = document.getElementById('currentMonth');
         if (!monthTitle || !calendar) return;
@@ -815,85 +813,152 @@ Poids: ${props.poids_total} kg`;
             'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
             'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
         ];
-        const monthDisplay = monthNames[currentDate.getMonth()] + ' ' + currentDate.getFullYear();
-        monthTitle.textContent = monthDisplay;
+        monthTitle.textContent = monthNames[currentDate.getMonth()] + ' ' + currentDate.getFullYear();
     }
-
-    // Configuration des filtres
-    function setupFilters() {
-        console.log('Configuration des filtres...');
+    
+    // ========================================================================================
+    // SECTION 4: CONTRÔLES ET INTERACTIONS
+    // ========================================================================================
+    
+    function setupControls() {
+        console.log('🎮 Configuration des contrôles...');
         
-        const applyFiltersBtn = document.getElementById('applyFilters');
-        const clearFiltersBtn = document.getElementById('clearFilters');
-
-        if (applyFiltersBtn) {
-            applyFiltersBtn.addEventListener('click', debounce(function(e) {
+        // Navigation mensuelle
+        const prevBtn = document.getElementById('prevMonth');
+        const nextBtn = document.getElementById('nextMonth');
+        const todayBtn = document.getElementById('todayBtn');
+        
+        if (prevBtn) {
+            prevBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                console.log('🔍 Application des filtres');
-                applyFilters();
-            }, 300));
-            console.log('✅ Bouton appliquer filtres configuré');
+                if (calendar) {
+                    calendar.prev();
+                    // Forcer le recalcul après navigation
+                    setTimeout(() => calendar.updateSize(), 50);
+                }
+            });
         }
-
-        if (clearFiltersBtn) {
-            clearFiltersBtn.addEventListener('click', debounce(function(e) {
+        
+        if (nextBtn) {
+            nextBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                console.log('🗑️ Effacement des filtres');
-                clearFilters();
-            }, 300));
-            console.log('✅ Bouton effacer filtres configuré');
+                if (calendar) {
+                    calendar.next();
+                    // Forcer le recalcul après navigation
+                    setTimeout(() => calendar.updateSize(), 50);
+                }
+            });
         }
+        
+        if (todayBtn) {
+            todayBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (calendar) {
+                    calendar.today();
+                    // Forcer le recalcul après navigation
+                    setTimeout(() => calendar.updateSize(), 50);
+                }
+            });
+        }
+        
+        // Actualisation
+        const refreshBtn = document.getElementById('refreshData');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                location.reload();
+            });
+        }
+        
+        // Changement de vue
+        document.querySelectorAll('.btn-view').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const view = btn.dataset.view;
+                
+                document.querySelectorAll('.btn-view').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                if (calendar) {
+                    calendar.changeView(view);
+                    // Forcer le recalcul après changement de vue
+                    setTimeout(() => calendar.updateSize(), 100);
+                }
+            });
+        });
+        
+        // Filtres
+        const applyBtn = document.getElementById('applyFilters');
+        const clearBtn = document.getElementById('clearFilters');
+        
+        if (applyBtn) {
+            applyBtn.addEventListener('click', applyFilters);
+        }
+        
+        if (clearBtn) {
+            clearBtn.addEventListener('click', clearFilters);
+        }
+        
+        console.log('✅ Contrôles configurés');
     }
-
+    
+    // ========================================================================================
+    // SECTION 5: SYSTÈME DE FILTRES
+    // ========================================================================================
+    
     function applyFilters() {
         const atelierId = document.getElementById('filterAtelier')?.value || '';
         const statut = document.getElementById('filterStatut')?.value || '';
         const collaborateurId = document.getElementById('filterCollaborateur')?.value || '';
-
-        console.log('🔍 Filtres appliqués:', { atelierId, statut, collaborateurId });
-
+        
+        console.log('🔍 Application des filtres:', { atelierId, statut, collaborateurId });
+        
         const filteredEvents = allEvents.filter(event => {
             const props = event.extendedProps;
-            let show = true;
             
-            if (atelierId && props.atelier_id != atelierId) show = false;
-            if (statut && props.statut !== statut) show = false;
-            if (collaborateurId && props.collaborateur_id != collaborateurId) show = false;
+            if (atelierId && props.atelier_id != atelierId) return false;
+            if (statut && props.statut !== statut) return false;
+            if (collaborateurId && props.collaborateur_id != collaborateurId) return false;
             
-            return show;
+            return true;
         });
-
+        
         console.log('📊 Événements filtrés:', filteredEvents.length, '/', allEvents.length);
-
+        
         if (calendar) {
             calendar.removeAllEvents();
-            filteredEvents.forEach((event, index) => {
-                setTimeout(() => {
-                    if (calendar) {
-                        calendar.addEvent(event);
-                    }
-                }, index * 5);
-            });
+            filteredEvents.forEach(event => calendar.addEvent(event));
+            
+            // SOLUTION: Forcer le rendu après application des filtres
+            setTimeout(() => {
+                calendar.updateSize();
+                calendar.render();
+            }, 50);
         }
     }
-
+    
     function clearFilters() {
         const form = document.getElementById('filterForm');
-        if (form) form.reset();
+        if (form) {
+            form.reset();
+        }
         
         if (calendar && allEvents.length > 0) {
             calendar.removeAllEvents();
-            allEvents.forEach((event, index) => {
-                setTimeout(() => {
-                    if (calendar) {
-                        calendar.addEvent(event);
-                    }
-                }, index * 5);
-            });
+            allEvents.forEach(event => calendar.addEvent(event));
+            
+            // SOLUTION: Forcer le rendu après suppression des filtres
+            setTimeout(() => {
+                calendar.updateSize();
+                calendar.render();
+            }, 50);
         }
     }
-
-    // Affichage des détails d'un lancement
+    
+    // ========================================================================================
+    // SECTION 6: MODAL DES DÉTAILS
+    // ========================================================================================
+    
     function showLancementDetails(event) {
         const props = event.extendedProps;
         console.log('📋 Affichage détails:', props.num_lanc);
@@ -901,11 +966,11 @@ Poids: ${props.poids_total} kg`;
         const modalTitle = document.getElementById('modalTitle');
         const modalContent = document.getElementById('modalContent');
         const viewDetailsBtn = document.getElementById('viewDetailsBtn');
-
+        
         if (modalTitle) modalTitle.textContent = `Lancement ${props.num_lanc}`;
-        if (viewDetailsBtn) {
-            const detailUrl = "{% url 'lancements:detail' 0 %}".replace('0', event.id);
-            viewDetailsBtn.href = detailUrl;
+        
+        if (viewDetailsBtn && event.id) {
+            viewDetailsBtn.href = `/lancements/${event.id}/`;
         }
         
         if (modalContent) {
@@ -931,11 +996,20 @@ Poids: ${props.poids_total} kg`;
                         
                         <h6><i class="fas fa-calendar me-2"></i>Date de lancement</h6>
                         <p>${formatDate(event.start)}</p>
+                        
+                        ${props.date_reception ? `
+                        <h6><i class="fas fa-calendar-check me-2"></i>Date de réception</h6>
+                        <p>${formatDate(props.date_reception)}</p>
+                        ` : ''}
                     </div>
                 </div>
                 <hr>
                 <h6><i class="fas fa-clipboard me-2"></i>Description</h6>
                 <p>${props.sous_livrable}</p>
+                ${props.observations ? `
+                <h6><i class="fas fa-sticky-note me-2"></i>Observations</h6>
+                <p>${props.observations}</p>
+                ` : ''}
             `;
         }
         
@@ -946,7 +1020,7 @@ Poids: ${props.poids_total} kg`;
             modal.show();
         }
     }
-
+    
     function getStatusColor(status) {
         const colors = {
             'planifie': 'secondary',
@@ -956,141 +1030,198 @@ Poids: ${props.poids_total} kg`;
         };
         return colors[status] || 'secondary';
     }
-
+    
     function formatDate(date) {
         if (!date) return 'N/A';
         try {
-            return new Date(date).toLocaleDateString('fr-FR');
+            if (typeof date === 'string') {
+                return new Date(date).toLocaleDateString('fr-FR');
+            }
+            return date.toLocaleDateString('fr-FR');
         } catch (e) {
             return date.toString();
         }
     }
-
-    // Fonction d'initialisation principale
-    async function init() {
+    
+    // ========================================================================================
+    // SECTION 7: FONCTION PRINCIPALE - SOLUTION ROBUSTE
+    // ========================================================================================
+    
+    async function initializePlanning() {
+        initializationAttempts++;
+        console.log(`🚀 Tentative d'initialisation #${initializationAttempts}...`);
+        
         try {
-            console.log('🚀 Début de l\'initialisation du planning...');
-            
-            // Vérifier les dépendances
-            if (!checkDependencies()) {
-                return;
+            // Étape 1: Vérifications préliminaires
+            if (typeof FullCalendar === 'undefined') {
+                throw new Error('FullCalendar non chargé');
             }
             
-            // Vérifier que les éléments DOM existent
+            // Étape 2: Chargement de la configuration
+            if (!loadConfig()) {
+                console.warn('⚠️ Configuration par défaut utilisée');
+            }
+            
+            // Étape 3: Attendre que le DOM soit complètement stable
+            if (document.readyState !== 'complete') {
+                console.log('⏳ Attente du chargement complet de la page...');
+                await new Promise(resolve => {
+                    const checkReady = () => {
+                        if (document.readyState === 'complete') {
+                            resolve();
+                        } else {
+                            setTimeout(checkReady, 10);
+                        }
+                    };
+                    checkReady();
+                });
+            }
+            
+            // Étape 4: Vérifier que l'élément calendrier existe et est prêt
             const calendarEl = document.getElementById('calendar');
             if (!calendarEl) {
-                throw new Error('Élément #calendar non trouvé dans le DOM');
+                throw new Error('Élément #calendar non trouvé');
             }
             
-            console.log('✅ Éléments DOM trouvés');
-            
-            // Essayer de charger les données initiales
-            console.log('📡 Tentative de chargement des données initiales...');
-            
-            // D'abord essayer les données Django (plus rapide)
-            let lancements = getDjangoData();
-            
-            if (!lancements || lancements.length === 0) {
-                console.log('📡 Aucune donnée Django, tentative via API...');
-                lancements = await loadLancementsData();
+            // Attendre que l'élément ait des dimensions
+            let dimensions = calendarEl.getBoundingClientRect();
+            let waitTime = 0;
+            while ((dimensions.width === 0 || dimensions.height === 0) && waitTime < 2000) {
+                console.log('⏳ Attente des dimensions du calendrier...');
+                await new Promise(resolve => setTimeout(resolve, 100));
+                dimensions = calendarEl.getBoundingClientRect();
+                waitTime += 100;
             }
             
-            console.log('📊 Données initiales:', lancements?.length || 0, 'lancements');
+            console.log('📐 Dimensions du calendrier:', dimensions);
             
+            // Étape 5: Chargement des données
+            console.log('📡 Chargement des données...');
+            let lancements = getFallbackData();
+            console.log('📋 Données fallback:', lancements.length);
+            
+            // Charger des données fraîches si nécessaire
             if (!lancements || lancements.length === 0) {
-                console.log('⚠️ Aucune donnée disponible');
-                hideLoadingShowCalendar();
-                const calendarEl = document.getElementById('calendar');
-                if (calendarEl) {
-                    
-                    // Initialiser quand même le calendrier vide
-                    initializeCalendar([]);
-                    
-                    // Ajouter un message informatif
-                    setTimeout(() => {
+                console.log('📡 Chargement via API...');
+                lancements = await loadAllLancements();
+            }
+            
+            // Étape 6: Transformation des données
+            const events = transformToCalendarEvents(lancements);
+            console.log('🎯 Événements finaux:', events.length);
+            
+            // Étape 7: Initialisation du calendrier
+            console.log('🗓️ Initialisation du calendrier...');
+            const success = initializeCalendar(events);
+            
+            if (!success) {
+                throw new Error('Échec de l\'initialisation du calendrier');
+            }
+            
+            // Étape 8: Configuration des contrôles
+            setupControls();
+            
+            console.log('✅ Planning initialisé avec succès!');
+            
+            // Étape 9: Mise à jour en arrière-plan
+            setTimeout(async () => {
+                try {
+                    console.log('🔄 Actualisation en arrière-plan...');
+                    const freshData = await loadAllLancements();
+                    if (freshData.length !== lancements.length) {
+                        console.log('📊 Nouvelles données disponibles');
+                        const freshEvents = transformToCalendarEvents(freshData);
+                        allEvents = freshEvents;
                         if (calendar) {
-                            const viewEl = calendarEl.querySelector('.fc-view-harness');
-                            if (viewEl) {
-                                const infoDiv = document.createElement('div');
-                                infoDiv.className = 'alert alert-info text-center m-3';
-                                infoDiv.innerHTML = `
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Aucun lancement trouvé</strong><br>
-                                    <small>Aucun lancement n'est programmé pour cette période.</small>
-                                `;
-                                viewEl.appendChild(infoDiv);
-                            }
+                            calendar.removeAllEvents();
+                            freshEvents.forEach(event => calendar.addEvent(event));
+                            setTimeout(() => {
+                                calendar.updateSize();
+                            }, 100);
                         }
-                    }, 500);
+                    }
+                } catch (e) {
+                    console.log('⚠️ Erreur actualisation arrière-plan:', e);
                 }
-            } else {
-                // Transformer et initialiser le calendrier
-                const events = transformDataForCalendar(lancements);
-                console.log('🔄 Événements transformés:', events.length);
-                
-                if (events.length > 0) {
-                    initializeCalendar(events);
-                } else {
-                    console.warn('⚠️ Aucun événement valide après transformation');
-                    initializeCalendar([]);
-                }
-            }
+            }, 3000);
             
-            // Configurer les contrôles (toujours, même sans données)
-            setupNavigation();
-            setupViewToggle();
-            setupFilters();
-            
-            console.log('✅ Planning initialisé avec succès');
+            return true;
             
         } catch (error) {
-            console.error('❌ Erreur lors de l\'initialisation:', error);
-            showError('Erreur lors de l\'initialisation du planning: ' + error.message);
-        }
-    }
-    
-    // Vérification des dépendances
-    function checkDependencies() {
-        const issues = [];
-        
-        if (typeof FullCalendar === 'undefined') {
-            issues.push('FullCalendar n\'est pas chargé');
-        }
-        
-        if (typeof bootstrap === 'undefined') {
-            console.warn('⚠️ Bootstrap JS non détecté - certaines fonctionnalités peuvent ne pas marcher');
-        }
-        
-        if (issues.length > 0) {
-            console.error('❌ Dépendances manquantes:', issues);
-            showError('Dépendances manquantes: ' + issues.join(', '));
-            return false;
-        }
-        
-        console.log('✅ Toutes les dépendances sont chargées');
-        return true;
-    }
-    
-    // Nettoyage à la fermeture de la page
-    window.addEventListener('beforeunload', function() {
-        if (calendar) {
-            console.log('🧹 Nettoyage du calendrier...');
-            try {
-                calendar.destroy();
-            } catch (e) {
-                console.warn('Erreur lors du nettoyage:', e);
+            console.error(`❌ Erreur initialisation (tentative ${initializationAttempts}):`, error);
+            
+            // Tentative de récupération
+            if (initializationAttempts < MAX_INIT_ATTEMPTS) {
+                console.log(`🔄 Nouvelle tentative dans 1 seconde...`);
+                setTimeout(() => {
+                    initializePlanning();
+                }, 1000);
+                return false;
+            } else {
+                console.error('💥 Échec définitif de l\'initialisation');
+                showError('Erreur fatale: ' + error.message);
+                return false;
             }
         }
-        
-        // Annuler tous les timeouts en cours
-        if (navigationTimeout) {
-            clearTimeout(navigationTimeout);
+    }
+    
+    // ========================================================================================
+    // SECTION 8: ÉCOUTEURS D'ÉVÉNEMENTS ET OPTIMISATIONS
+    // ========================================================================================
+    
+    // Gestion du redimensionnement
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            if (calendar) {
+                console.log('🔄 Redimensionnement détecté, mise à jour...');
+                calendar.updateSize();
+            }
+        }, 150);
+    });
+    
+    // Gestion de la visibilité de la page
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && calendar) {
+            console.log('👁️ Page redevenue visible, actualisation...');
+            setTimeout(() => {
+                calendar.updateSize();
+            }, 100);
         }
     });
     
-    // Lancer l'initialisation
-    console.log('🏁 Démarrage de l\'initialisation...');
-    init();
+    // Nettoyage avant fermeture
+    window.addEventListener('beforeunload', () => {
+        if (calendar) {
+            try {
+                calendar.destroy();
+                console.log('🧹 Calendrier nettoyé');
+            } catch (e) {
+                console.warn('⚠️ Erreur nettoyage calendrier:', e);
+            }
+        }
+    });
+    
+    // ========================================================================================
+    // SECTION 9: LANCEMENT DE L'INITIALISATION
+    // ========================================================================================
+    
+    console.log('🎬 Démarrage de l\'initialisation du planning...');
+    
+    // SOLUTION FINALE: Lancement avec délai optimal
+    // Ce délai permet de s'assurer que tout le DOM et les styles sont prêts
+    setTimeout(() => {
+        initializePlanning();
+    }, 150);
+    
+    // Fallback de sécurité si l'initialisation échoue
+    setTimeout(() => {
+        if (!calendar || initializationAttempts === 0) {
+            console.log('🆘 Fallback de sécurité activé');
+            initializePlanning();
+        }
+    }, 2000);
 });
 </script>
 {% endblock %}
