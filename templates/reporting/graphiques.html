@@ -140,6 +140,33 @@
     height: 8px;
 }
 
+/* Style pour les légendes personnalisées */
+.affaire-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.affaire-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    background: #f8f9fa;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    border: 1px solid #dee2e6;
+}
+
+.affaire-color-box {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
 @media (max-width: 768px) {
     .chart-container {
         height: 250px;
@@ -181,9 +208,10 @@
         "values": [{% for affaire in top_affaires %}{{ affaire.poids_total|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
         "colors": ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7"]
     },
-    "evolution": {
-        "labels": [{% for period in evolution_periods %}"{{ period.label|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
-        "values": [{% for period in evolution_periods %}{{ period.poids_total|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}]
+    "categories": {
+        "labels": [{% for cat in repartition_categories %}"{{ cat.categorie__nom_categorie|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+        "values": [{% for cat in repartition_categories %}{{ cat.poids_total|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
+        "colors": ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"]
     }
 }
 </script>
@@ -228,39 +256,44 @@
 
             <!-- Contrôles de filtre -->
             <div class="filter-controls">
-                <div class="row g-3 align-items-center">
-                    <div class="col-md-3">
-                        <label for="periode" class="form-label">Période d'analyse</label>
-                        <select class="form-select" id="periode" onchange="updateCharts()">
-                            <option value="7">7 derniers jours</option>
-                            <option value="30" selected>30 derniers jours</option>
-                            <option value="90">3 derniers mois</option>
-                            <option value="365">12 derniers mois</option>
-                        </select>
+                <form method="GET" id="filterForm">
+                    {% csrf_token %}
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label for="date_debut" class="form-label">Date de début</label>
+                            <input type="date" class="form-control" id="date_debut" name="date_debut" 
+                                   value="{{ date_debut|date:'Y-m-d' }}" onchange="updateCharts()">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_fin" class="form-label">Date de fin</label>
+                            <input type="date" class="form-control" id="date_fin" name="date_fin" 
+                                   value="{{ date_fin|date:'Y-m-d' }}" onchange="updateCharts()">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-filter me-2"></i>Appliquer les filtres
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="exportDropdown" data-bs-toggle="dropdown">
+                                    <i class="fas fa-download me-2"></i>Exporter
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="exportDashboard('excel')">
+                                        <i class="fas fa-file-excel me-2"></i>Excel
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportDashboard('pdf')">
+                                        <i class="fas fa-file-pdf me-2"></i>PDF
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportDashboard('csv')">
+                                        <i class="fas fa-file-csv me-2"></i>CSV
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <label for="atelier_filter" class="form-label">Atelier</label>
-                        <select class="form-select" id="atelier_filter" onchange="updateCharts()">
-                            <option value="">Tous les ateliers</option>
-                            {% for atelier in ateliers %}
-                                <option value="{{ atelier.id }}">{{ atelier.nom_atelier }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="type_analyse" class="form-label">Type d'analyse</label>
-                        <select class="form-select" id="type_analyse" onchange="updateCharts()">
-                            <option value="production">Production</option>
-                            <option value="performance">Performance</option>
-                            <option value="planning">Planning</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button class="btn btn-primary w-100" onclick="exportDashboard()">
-                            <i class="fas fa-download me-2"></i>Exporter
-                        </button>
-                    </div>
-                </div>
+                </form>
             </div>
 
             <!-- Métriques rapides -->
@@ -312,12 +345,12 @@
                         <div class="px-3 pb-3">
                             <div class="legend-custom">
                                 <div class="legend-item">
-                                    <span class="legend-color" style="background-color: #dc3545;"></span>
-                                    <span>Poids Assemblage</span>
-                                </div>
-                                <div class="legend-item">
                                     <span class="legend-color" style="background-color: #28a745;"></span>
                                     <span>Poids Débitage</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background-color: #dc3545;"></span>
+                                    <span>Poids Assemblage</span>
                                 </div>
                             </div>
                         </div>
@@ -337,7 +370,7 @@
                             <canvas id="poidsAffaireChart"></canvas>
                         </div>
                         <div class="px-3 pb-3">
-                            <div class="legend-custom" id="affaires-legend">
+                            <div class="affaire-legend" id="affaires-legend">
                                 <!-- Legend will be populated by JavaScript -->
                             </div>
                         </div>
@@ -345,32 +378,24 @@
                 </div>
             </div>
 
-            <!-- Deuxième ligne de graphiques -->
+            <!-- Troisième ligne - Nouvelle analyse par catégories -->
             <div class="row">
-                <!-- Évolution temporelle -->
                 <div class="col-12">
                     <div class="chart-card">
                         <div class="chart-header">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-chart-line me-2"></i>
-                                    Évolution de la Production
-                                </h5>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-light" onclick="switchTimeView('daily')">Jour</button>
-                                    <button type="button" class="btn btn-light active" onclick="switchTimeView('weekly')">Semaine</button>
-                                    <button type="button" class="btn btn-light" onclick="switchTimeView('monthly')">Mois</button>
-                                </div>
-                            </div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-tags me-2"></i>
+                                Répartition par Catégories de Production
+                            </h5>
                         </div>
                         <div class="chart-container">
-                            <canvas id="evolutionChart"></canvas>
+                            <canvas id="categoriesChart"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Troisième ligne - Détails par atelier -->
+            <!-- Quatrième ligne - Détails par atelier -->
             <div class="row">
                 <div class="col-lg-8">
                     <div class="data-table-card">
@@ -451,117 +476,63 @@
 
                         <div class="insight-item">
                             <h6 class="text-warning">
-                                <i class="fas fa-clock me-1"></i>
-                                Délai Moyen
+                                <i class="fas fa-users me-1"></i>
+                                Top Collaborateur
                             </h6>
                             <p class="mb-0 small">
-                                Les lancements sont traités en moyenne en {{ dashboard_stats.delai_moyen|default:0 }} jours.
+                                {% if top_collaborateur %}
+                                    {{ top_collaborateur.nom_collaborateur }} avec {{ top_collaborateur.poids_total|floatformat:1 }}kg traités
+                                {% else %}
+                                    Aucun collaborateur actif
+                                {% endif %}
                             </p>
                         </div>
 
                         <div class="insight-item">
                             <h6 class="text-info">
-                                <i class="fas fa-chart-line me-1"></i>
-                                Tendance
+                                <i class="fas fa-chart-pie me-1"></i>
+                                Affaire Dominante
                             </h6>
                             <p class="mb-0 small">
-                                {% if trend == 'up' %}
-                                    Production en hausse de {{ trend_percentage|floatformat:1 }}% ce mois
-                                {% elif trend == 'down' %}
-                                    Production en baisse de {{ trend_percentage|floatformat:1 }}% ce mois
+                                {% if top_affaire %}
+                                    {{ top_affaire.code_affaire }} représente {{ top_affaire.pourcentage|floatformat:1 }}% du volume
                                 {% else %}
-                                    Production stable ce mois
+                                    Répartition équilibrée
                                 {% endif %}
                             </p>
                         </div>
 
                         <div class="insight-item">
                             <h6 class="text-success">
-                                <i class="fas fa-target me-1"></i>
-                                Objectif
+                                <i class="fas fa-calendar-check me-1"></i>
+                                Période d'analyse
                             </h6>
                             <p class="mb-0 small">
-                                {{ dashboard_stats.completion_rate|floatformat:1|default:0 }}% de l'objectif mensuel atteint
+                                Du {{ date_debut|date:"d/m/Y" }} au {{ date_fin|date:"d/m/Y" }}
+                                ({{ jours_analyse }} jour{{ jours_analyse|pluralize }})
                             </p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Graphiques additionnels en modal -->
+            <!-- Boutons d'action -->
             <div class="row mt-4">
                 <div class="col-12 text-center">
-                    <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#detailedChartsModal">
-                        <i class="fas fa-expand-arrows-alt me-2"></i>Graphiques Détaillés
-                    </button>
-                    <button class="btn btn-outline-success me-2" onclick="exportCharts()">
-                        <i class="fas fa-download me-2"></i>Exporter les Graphiques
-                    </button>
+                    <div class="btn-group me-3" role="group">
+                        <button class="btn btn-outline-success" onclick="exportCharts('png')">
+                            <i class="fas fa-image me-2"></i>Exporter PNG
+                        </button>
+                        <button class="btn btn-outline-success" onclick="exportCharts('pdf')">
+                            <i class="fas fa-file-pdf me-2"></i>Exporter PDF
+                        </button>
+                    </div>
                     <a href="{% url 'reporting:rapports_list' %}" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left me-2"></i>Retour aux Rapports
                     </a>
                 </div>
             </div>
         </main>
-    </div>
-</div>
-
-<!-- Modal pour graphiques détaillés -->
-<div class="modal fade" id="detailedChartsModal" tabindex="-1" aria-labelledby="detailedChartsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="detailedChartsModalLabel">
-                    <i class="fas fa-chart-bar me-2"></i>Analyses Détaillées
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <ul class="nav nav-tabs" id="chartTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="collaborateurs-tab" data-bs-toggle="tab" 
-                                data-bs-target="#collaborateurs" type="button" role="tab">
-                            <i class="fas fa-users me-1"></i>Collaborateurs
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="categories-tab" data-bs-toggle="tab" 
-                                data-bs-target="#categories" type="button" role="tab">
-                            <i class="fas fa-tags me-1"></i>Catégories
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="planning-tab" data-bs-toggle="tab" 
-                                data-bs-target="#planning" type="button" role="tab">
-                            <i class="fas fa-calendar me-1"></i>Planning
-                        </button>
-                    </li>
-                </ul>
-                <div class="tab-content mt-3" id="chartTabsContent">
-                    <div class="tab-pane fade show active" id="collaborateurs" role="tabpanel">
-                        <div class="chart-container">
-                            <canvas id="detailedCollaborateurChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="categories" role="tabpanel">
-                        <div class="chart-container">
-                            <canvas id="categoriesChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="planning" role="tabpanel">
-                        <div class="chart-container">
-                            <canvas id="planningChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-                <button type="button" class="btn btn-primary" onclick="exportDetailedCharts()">
-                    <i class="fas fa-download me-2"></i>Exporter
-                </button>
-            </div>
-        </div>
     </div>
 </div>
 {% endblock %}
@@ -581,9 +552,10 @@ const colors = {
 };
 
 const affaireColors = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7"];
+const categorieColors = ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"];
 
 // Variables globales pour les graphiques
-let poidsCollaborateurChart, poidsAffaireChart, evolutionChart;
+let poidsCollaborateurChart, poidsAffaireChart, categoriesChart;
 
 // Récupération des données depuis le JSON
 function getChartData() {
@@ -599,7 +571,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeProgressBars() {
-    // Définir les largeurs des barres de progression dynamiquement
     document.querySelectorAll('.efficacite-bar').forEach(bar => {
         const efficacite = bar.getAttribute('data-efficacite') || 0;
         bar.style.width = efficacite + '%';
@@ -614,9 +585,9 @@ function populateAffairesLegend() {
         legendContainer.innerHTML = '';
         data.affaires.labels.forEach((label, index) => {
             const legendItem = document.createElement('div');
-            legendItem.className = 'legend-item';
+            legendItem.className = 'affaire-legend-item';
             legendItem.innerHTML = `
-                <span class="legend-color" style="background-color: ${affaireColors[index % affaireColors.length]};"></span>
+                <div class="affaire-color-box" style="background-color: ${affaireColors[index % affaireColors.length]};"></div>
                 <span>${label}</span>
             `;
             legendContainer.appendChild(legendItem);
@@ -627,7 +598,7 @@ function populateAffairesLegend() {
 function initializeCharts() {
     const data = getChartData();
     
-    // Graphique collaborateurs (barres empilées)
+    // Graphique collaborateurs (barres empilées) avec noms en bas
     const ctx1 = document.getElementById('poidsCollaborateurChart').getContext('2d');
     const collaborateursData = {
         labels: data.collaborateurs.labels,
@@ -654,7 +625,13 @@ function initializeCharts() {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { stacked: true },
+                x: { 
+                    stacked: true,
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 0
+                    }
+                },
                 y: { 
                     stacked: true,
                     beginAtZero: true,
@@ -709,28 +686,26 @@ function initializeCharts() {
         }
     });
 
-    // Graphique d'évolution temporelle
-    const ctx3 = document.getElementById('evolutionChart').getContext('2d');
-    const evolutionData = {
-        labels: data.evolution.labels,
+    // Graphique des catégories (barres horizontales)
+    const ctx3 = document.getElementById('categoriesChart').getContext('2d');
+    const categoriesData = {
+        labels: data.categories.labels,
         datasets: [{
-            label: 'Production (kg)',
-            data: data.evolution.values,
-            borderColor: colors.primary,
-            backgroundColor: colors.primary + '20',
-            fill: true,
-            tension: 0.4
+            label: 'Poids par Catégorie (kg)',
+            data: data.categories.values,
+            backgroundColor: categorieColors
         }]
     };
 
-    evolutionChart = new Chart(ctx3, {
-        type: 'line',
-        data: evolutionData,
+    categoriesChart = new Chart(ctx3, {
+        type: 'bar',
+        data: categoriesData,
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            indexAxis: 'y', // Barres horizontales
             scales: {
-                y: {
+                x: {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
@@ -740,7 +715,14 @@ function initializeCharts() {
                 }
             },
             plugins: {
-                legend: { display: false }
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed.x + ' kg';
+                        }
+                    }
+                }
             }
         }
     });
@@ -748,44 +730,16 @@ function initializeCharts() {
 
 // Fonctions utilitaires
 function updateCharts() {
-    const periode = document.getElementById('periode').value;
-    const atelier = document.getElementById('atelier_filter').value;
-    const type = document.getElementById('type_analyse').value;
-    
-    // Ici, vous feriez un appel AJAX pour récupérer les nouvelles données
-    // et mettre à jour les graphiques
-    console.log('Mise à jour avec:', periode, atelier, type);
-    
-    // Simulation de mise à jour
-    setTimeout(() => {
-        refreshData();
-    }, 500);
+    document.getElementById('filterForm').submit();
 }
 
 function refreshData() {
-    // Animation de rechargement
     document.querySelectorAll('.chart-container').forEach(container => {
         container.style.opacity = '0.5';
         setTimeout(() => {
             container.style.opacity = '1';
         }, 1000);
     });
-}
-
-function switchTimeView(view) {
-    // Mise à jour des boutons actifs
-    document.querySelectorAll('.btn-group .btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
-    
-    // Mise à jour du graphique d'évolution
-    updateEvolutionChart(view);
-}
-
-function updateEvolutionChart(view) {
-    // Logique pour changer la vue temporelle
-    console.log('Vue temporelle changée:', view);
 }
 
 function fullscreen() {
@@ -796,118 +750,288 @@ function fullscreen() {
     }
 }
 
-function exportDashboard() {
-    // Logique d'export du tableau de bord
-    const format = prompt('Format d\'export (png, pdf, excel):');
-    if (format) {
-        window.open(`/reporting/export/dashboard/?format=${format}`, '_blank');
+// Fonctions d'export
+function exportDashboard(format) {
+    if (!format) {
+        format = 'excel'; // format par défaut
+    }
+    
+    // Récupération des dates actuelles
+    const dateDebut = document.getElementById('date_debut').value;
+    const dateFin = document.getElementById('date_fin').value;
+    
+    // Construction de l'URL d'export
+    const exportUrl = `/reporting/export/process/`;
+    
+    // Création d'un formulaire temporaire pour l'export
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = exportUrl;
+    form.target = '_blank';
+    
+    // Ajout du token CSRF
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfToken) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken.value;
+        form.appendChild(csrfInput);
+    } else {
+        // Récupération du token CSRF depuis les cookies
+        const csrfTokenValue = getCookie('csrftoken');
+        if (csrfTokenValue) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfTokenValue;
+            form.appendChild(csrfInput);
+        }
+    }
+    
+    // Paramètres d'export
+    const params = {
+        'format': format,
+        'date_debut': dateDebut,
+        'date_fin': dateFin,
+        'include_stats': 'on',
+        'detailed_data': 'on'
+    };
+    
+    // Ajout des paramètres au formulaire
+    Object.keys(params).forEach(key => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = params[key];
+        form.appendChild(input);
+    });
+    
+    // Soumission du formulaire
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+    
+    // Message de confirmation
+    showNotification('Export en cours...', 'info');
+}
+
+function exportCharts(format) {
+    if (!format) {
+        format = 'png';
+    }
+    
+    if (format === 'png') {
+        exportChartsAsPNG();
+    } else if (format === 'pdf') {
+        exportChartsAsPDF();
     }
 }
 
-function exportCharts() {
-    // Export de tous les graphiques
-    window.open('/reporting/export/charts/', '_blank');
+function exportChartsAsPNG() {
+    // Export des graphiques en PNG
+    const charts = [
+        { chart: poidsCollaborateurChart, name: 'poids_collaborateurs' },
+        { chart: poidsAffaireChart, name: 'poids_affaires' },
+        { chart: categoriesChart, name: 'categories' }
+    ];
+    
+    charts.forEach((item, index) => {
+        if (item.chart) {
+            setTimeout(() => {
+                const url = item.chart.toBase64Image();
+                const link = document.createElement('a');
+                link.download = `graphique_${item.name}.png`;
+                link.href = url;
+                link.click();
+            }, index * 500); // Délai pour éviter les conflits
+        }
+    });
+    
+    showNotification('Export des graphiques terminé', 'success');
 }
 
-function exportDetailedCharts() {
-    // Export des graphiques détaillés du modal
-    window.open('/reporting/export/detailed-charts/', '_blank');
+function exportChartsAsPDF() {
+    // Pour l'export PDF, on utilise la fonction d'export backend
+    const dateDebut = document.getElementById('date_debut').value;
+    const dateFin = document.getElementById('date_fin').value;
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/reporting/export/process/';
+    form.target = '_blank';
+    
+    // Token CSRF
+    const csrfTokenValue = getCookie('csrftoken');
+    if (csrfTokenValue) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfTokenValue;
+        form.appendChild(csrfInput);
+    }
+    
+    const params = {
+        'format': 'pdf',
+        'date_debut': dateDebut,
+        'date_fin': dateFin,
+        'include_graphics': 'on',
+        'include_stats': 'on'
+    };
+    
+    Object.keys(params).forEach(key => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = params[key];
+        form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+    
+    showNotification('Export PDF en cours...', 'info');
 }
 
-// Initialisation des graphiques détaillés dans le modal
-document.getElementById('detailedChartsModal').addEventListener('shown.bs.modal', function() {
-    // Initialiser les graphiques détaillés uniquement quand le modal s'ouvre
-    initializeDetailedCharts();
-});
+// Fonction utilitaire pour récupérer les cookies
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
 
-function initializeDetailedCharts() {
-    // Graphiques détaillés pour le modal
-    const data = getChartData();
+// Fonction pour afficher les notifications
+function showNotification(message, type = 'info') {
+    // Suppression des anciennes notifications
+    const existingAlerts = document.querySelectorAll('.alert.position-fixed');
+    existingAlerts.forEach(alert => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    });
+
+    // Création d'une notification Bootstrap
+    const alertDiv = document.createElement('div');
+    const alertClass = type === 'error' ? 'danger' : type;
+    alertDiv.className = `alert alert-${alertClass} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = `
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 500px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    `;
     
-    // Graphique collaborateurs détaillé
-    const ctx1 = document.getElementById('detailedCollaborateurChart');
-    if (ctx1) {
-        new Chart(ctx1.getContext('2d'), {
-            type: 'horizontalBar',
-            data: {
-                labels: data.collaborateurs.labels,
-                datasets: [
-                    {
-                        label: 'Poids Débitage',
-                        data: data.collaborateurs.debitage,
-                        backgroundColor: colors.success
-                    },
-                    {
-                        label: 'Poids Assemblage',
-                        data: data.collaborateurs.assemblage,
-                        backgroundColor: colors.danger
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { beginAtZero: true }
+    alertDiv.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Suppression automatique après 5 secondes
+    setTimeout(() => {
+        if (alertDiv && alertDiv.parentNode) {
+            alertDiv.classList.remove('show');
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
                 }
-            }
-        });
+            }, 150);
+        }
+    }, 5000);
+}
+
+// Version améliorée de la fonction d'export avec gestion d'erreurs
+function exportDashboard(format) {
+    if (!format) {
+        format = 'excel';
     }
     
-    // Graphique catégories
-    const ctx2 = document.getElementById('categoriesChart');
-    if (ctx2) {
-        new Chart(ctx2.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: ['Débitage', 'Assemblage', 'Finition', 'Contrôle'],
-                datasets: [{
-                    label: 'Production par Catégorie',
-                    data: [45, 35, 15, 5],
-                    backgroundColor: [colors.primary, colors.success, colors.warning, colors.info]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true }
-                }
-            }
-        });
+    // Validation des dates
+    const dateDebut = document.getElementById('date_debut').value;
+    const dateFin = document.getElementById('date_fin').value;
+    
+    if (!dateDebut || !dateFin) {
+        showNotification('Veuillez sélectionner une période d\'analyse valide', 'error');
+        return;
     }
     
-    // Graphique planning
-    const ctx3 = document.getElementById('planningChart');
-    if (ctx3) {
-        new Chart(ctx3.getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
-                datasets: [{
-                    label: 'Charge de travail planifiée',
-                    data: [80, 90, 85, 75, 95, 60, 40],
-                    borderColor: colors.primary,
-                    backgroundColor: colors.primary + '20',
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { 
-                        beginAtZero: true,
-                        max: 100,
-                        ticks: {
-                            callback: function(value) {
-                                return value + '%';
-                            }
-                        }
-                    }
-                }
+    if (new Date(dateDebut) > new Date(dateFin)) {
+        showNotification('La date de début doit être antérieure à la date de fin', 'error');
+        return;
+    }
+    
+    showNotification('Préparation de l\'export en cours...', 'info');
+    
+    // Construction de l'URL d'export
+    const exportUrl = `/reporting/export/process/`;
+    
+    // Création d'un formulaire temporaire pour l'export
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = exportUrl;
+    form.target = '_blank';
+    form.style.display = 'none';
+    
+    // Ajout du token CSRF
+    const csrfTokenValue = getCookie('csrftoken');
+    if (csrfTokenValue) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfTokenValue;
+        form.appendChild(csrfInput);
+    }
+    
+    // Paramètres d'export
+    const params = {
+        'format': format,
+        'date_debut': dateDebut,
+        'date_fin': dateFin,
+        'include_stats': 'on',
+        'detailed_data': format === 'excel' ? 'on' : ''
+    };
+    
+    // Ajout des paramètres au formulaire
+    Object.keys(params).forEach(key => {
+        if (params[key]) {  // Ne pas ajouter les valeurs vides
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = params[key];
+            form.appendChild(input);
+        }
+    });
+    
+    // Soumission du formulaire
+    document.body.appendChild(form);
+    
+    try {
+        form.submit();
+        showNotification(`Export ${format.toUpperCase()} lancé avec succès`, 'success');
+    } catch (error) {
+        showNotification('Erreur lors du lancement de l\'export', 'error');
+        console.error('Export error:', error);
+    } finally {
+        // Nettoyage
+        setTimeout(() => {
+            if (form.parentNode) {
+                document.body.removeChild(form);
             }
-        });
+        }, 1000);
     }
 }
 

@@ -449,8 +449,105 @@ function generateQuickReport(type) {
 }
 
 function downloadRapport(rapportId) {
-    window.open(`/reporting/rapport/${rapportId}/download/`, '_blank');
+    // Menu déroulant pour choisir le format
+    const formats = [
+        { value: 'pdf', label: 'PDF', icon: 'fas fa-file-pdf' },
+        { value: 'excel', label: 'Excel', icon: 'fas fa-file-excel' },
+        { value: 'csv', label: 'CSV', icon: 'fas fa-file-csv' }
+    ];
+    
+    // Créer un menu contextuel
+    let menuHtml = '<div class="dropdown-menu show" style="position: fixed; z-index: 9999;">';
+    formats.forEach(format => {
+        menuHtml += `
+            <a class="dropdown-item" href="#" onclick="downloadRapportFormat('${rapportId}', '${format.value}')">
+                <i class="${format.icon} me-2"></i>${format.label}
+            </a>
+        `;
+    });
+    menuHtml += '</div>';
+    
+    // Afficher le menu (ou utiliser directement Excel par défaut)
+    downloadRapportFormat(rapportId, 'excel');
 }
+
+function downloadRapportFormat(rapportId, format) {
+    // Récupérer les dates du rapport via une requête AJAX ou utiliser les dates par défaut
+    fetch(`/reporting/rapport/${rapportId}/`)
+        .then(response => response.text())
+        .then(html => {
+            // Parser pour extraire les dates (méthode simple)
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Alternative : faire l'export directement via l'URL de téléchargement
+            window.open(`/reporting/rapport/${rapportId}/download/${format}/`, '_blank');
+        })
+        .catch(() => {
+            // Fallback : utiliser l'URL directe
+            window.open(`/reporting/rapport/${rapportId}/download/${format}/`, '_blank');
+        });
+}
+// Fonction utilitaire pour afficher les notifications
+function showNotification(message, type = 'info') {
+    // Suppression des anciennes notifications
+    const existingAlerts = document.querySelectorAll('.alert.position-fixed');
+    existingAlerts.forEach(alert => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    });
+
+    // Création d'une notification Bootstrap
+    const alertDiv = document.createElement('div');
+    const alertClass = type === 'error' ? 'danger' : type;
+    alertDiv.className = `alert alert-${alertClass} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = `
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 500px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    `;
+    
+    alertDiv.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Suppression automatique après 5 secondes
+    setTimeout(() => {
+        if (alertDiv && alertDiv.parentNode) {
+            alertDiv.classList.remove('show');
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 150);
+        }
+    }, 5000);
+}
+
+// Fonction utilitaire pour récupérer les cookies
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 
 function deleteRapport(rapportId) {
     if (confirm('Êtes-vous sûr de vouloir supprimer ce rapport ?')) {
