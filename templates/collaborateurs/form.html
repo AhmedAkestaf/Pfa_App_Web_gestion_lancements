@@ -3,6 +3,13 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'collaborateurs:list' %}">Collaborateurs</a>
+    </li>
+    <li class="breadcrumb-item active">Nouveau</li>
+{% endblock %}
+
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
 {% endblock %}

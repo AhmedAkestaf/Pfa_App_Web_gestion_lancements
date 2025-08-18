@@ -1,7 +1,18 @@
 {% extends 'base/base.html' %}
 {% load static %}
 
+
 {% block title %}Supprimer {{ collaborateur.get_full_name }}{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'collaborateurs:list' %}">Collaborateurs</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'collaborateurs:detail' collaborateur.pk %}">{{ collaborateur.get_full_name }}</a>
+    </li>
+    <li class="breadcrumb-item active">Supprimer</li>
+{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/style.css' %}">

@@ -2,6 +2,9 @@
 {% load static %}
 
 {% block title %}Liste des Collaborateurs{% endblock %}
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item active">Collaborateurs</li>
+{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/style_collaborateurs.css' %}">

@@ -3,6 +3,14 @@
 
 {% block title %}{{ categorie.nom_categorie }} - Détails{% endblock %}
 
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'ateliers:categorie_list' %}">Catégories</a>
+    </li>
+    <li class="breadcrumb-item active">{{ categorie.nom_categorie }}</li>
+{% endblock %}
+
+
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
 {% endblock %}
