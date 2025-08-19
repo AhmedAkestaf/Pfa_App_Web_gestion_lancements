@@ -10,6 +10,13 @@ from .utils.permissions import permission_required, get_permission_matrix
 import json
 from django.http import JsonResponse
 from django.db import transaction , models
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from django.views.generic import ListView
+from django.utils.decorators import method_decorator
+from .models import Notification, Activite
+from django.core.paginator import Paginator
+from django.db.models import Q
 
 
 def dashboard(request):
@@ -735,3 +742,350 @@ def affaires_export(request):
         ])
     
     return response
+
+
+@login_required
+@require_POST
+def marquer_notification_lue_alt(request, notification_id):
+    """Marque une notification comme lue"""
+    try:
+        # CORRECTION: Récupérer le bon utilisateur
+        if hasattr(request.user, 'collaborateur'):
+            collaborateur = request.user.collaborateur
+        else:
+            collaborateur = request.user  # Si AUTH_USER_MODEL = Collaborateur
+        
+        notification = get_object_or_404(
+            Notification, 
+            id=notification_id,
+            destinataire=collaborateur
+        )
+        
+        notification.marquer_comme_lu()
+        
+        # Compter les notifications restantes
+        nb_restantes = Notification.objects.filter(
+            destinataire=collaborateur, 
+            lu=False
+        ).count()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Notification marquée comme lue',
+            'nb_notifications_restantes': nb_restantes
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erreur: {str(e)}'
+        })
+
+
+@login_required
+@require_POST
+def marquer_toutes_notifications_lues(request):
+    """Marque toutes les notifications comme lues"""
+    try:
+        if hasattr(request.user, 'collaborateur'):
+            collaborateur = request.user.collaborateur
+        else:
+            collaborateur = request.user
+        
+        notifications_non_lues = Notification.objects.filter(
+            destinataire=collaborateur,
+            lu=False
+        )
+        
+        count = notifications_non_lues.count()
+        
+        # Marquer toutes comme lues
+        from django.utils import timezone
+        notifications_non_lues.update(
+            lu=True,
+            date_lecture=timezone.now()
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{count} notifications marquées comme lues',
+            'nb_notifications_restantes': 0
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erreur: {str(e)}'
+        })
+
+
+@login_required
+def get_notifications_json(request):
+    """Récupère les notifications en JSON pour mise à jour dynamique"""
+    try:
+        if hasattr(request.user, 'collaborateur'):
+            collaborateur = request.user.collaborateur
+        else:
+            collaborateur = request.user
+        
+        notifications = Notification.objects.filter(
+            destinataire=collaborateur,
+            lu=False
+        ).order_by('-date_creation')[:10]
+        
+        notifications_data = []
+        for notif in notifications:
+            notifications_data.append({
+                'id': notif.id,
+                'titre': notif.titre,
+                'message': notif.message,
+                'type': notif.type_notification,
+                'icon_class': notif.get_icon_class(),
+                'time_ago': notif.get_time_ago(),
+                'url_action': notif.url_action,
+                'date_creation': notif.date_creation.isoformat(),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'notifications': notifications_data,
+            'count': len(notifications_data)
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erreur: {str(e)}'
+        })
+
+
+@login_required
+def get_activites_recentes_json(request):
+    """Récupère les activités récentes en JSON"""
+    try:
+        activites = Activite.objects.select_related(
+            'utilisateur', 'content_type'
+        ).order_by('-date_creation')[:15]
+        
+        activites_data = []
+        for activite in activites:
+            utilisateur_nom = "Système"
+            if activite.utilisateur:
+                if hasattr(activite.utilisateur, 'get_full_name'):
+                    utilisateur_nom = activite.utilisateur.get_full_name()
+                else:
+                    utilisateur_nom = str(activite.utilisateur)
+            
+            activites_data.append({
+                'id': activite.id,
+                'utilisateur': utilisateur_nom,
+                'action': activite.get_action_display(),
+                'module': activite.get_module_display(),
+                'description': activite.description,
+                'icon_class': activite.get_icon_class(),
+                'time_ago': activite.get_time_ago(),
+                'date_creation': activite.date_creation.isoformat(),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'activites': activites_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erreur: {str(e)}'
+        })
+
+
+
+# ========== VUES POUR LES PAGES NOTIFICATIONS ==========
+
+@method_decorator(login_required, name='dispatch')
+class NotificationsListView(ListView):
+    """Vue liste des notifications utilisateur"""
+    model = Notification
+    template_name = 'notifications/list.html'
+    context_object_name = 'notifications'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        collaborateur = self.request.user.collaborateur if hasattr(self.request.user, 'collaborateur') else self.request.user
+        
+        # Filtres
+        filter_type = self.request.GET.get('type', '')
+        filter_status = self.request.GET.get('status', '')
+        search = self.request.GET.get('search', '')
+        
+        queryset = Notification.objects.filter(
+            destinataire=collaborateur
+        ).order_by('-date_creation')
+        
+        if filter_type:
+            queryset = queryset.filter(type_notification=filter_type)
+        
+        if filter_status == 'non_lues':
+            queryset = queryset.filter(lu=False)
+        elif filter_status == 'lues':
+            queryset = queryset.filter(lu=True)
+        
+        if search:
+            queryset = queryset.filter(
+                Q(titre__icontains=search) |
+                Q(message__icontains=search)
+            )
+        
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        collaborateur = self.request.user.collaborateur if hasattr(self.request.user, 'collaborateur') else self.request.user
+        
+        # Statistiques
+        context['stats'] = {
+            'total': Notification.objects.filter(destinataire=collaborateur).count(),
+            'non_lues': Notification.objects.filter(destinataire=collaborateur, lu=False).count(),
+            'lues': Notification.objects.filter(destinataire=collaborateur, lu=True).count(),
+        }
+        
+        # Filtres actuels
+        context['filter_type'] = self.request.GET.get('type', '')
+        context['filter_status'] = self.request.GET.get('status', '')
+        context['search'] = self.request.GET.get('search', '')
+        
+        # Types de notifications disponibles
+        context['types_notification'] = Notification.NOTIFICATION_TYPES
+        
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
+class ActivitesListView(ListView):
+    """Vue liste des activités système"""
+    model = Activite
+    template_name = 'activites/list.html'
+    context_object_name = 'activites'
+    paginate_by = 50
+    
+    def get_queryset(self):
+        # Filtres
+        filter_module = self.request.GET.get('module', '')
+        filter_action = self.request.GET.get('action', '')
+        filter_user = self.request.GET.get('user', '')
+        search = self.request.GET.get('search', '')
+        
+        queryset = Activite.objects.select_related(
+            'utilisateur', 'content_type'
+        ).order_by('-date_creation')
+        
+        if filter_module:
+            queryset = queryset.filter(module=filter_module)
+        
+        if filter_action:
+            queryset = queryset.filter(action=filter_action)
+        
+        if filter_user:
+            queryset = queryset.filter(utilisateur_id=filter_user)
+        
+        if search:
+            queryset = queryset.filter(
+                Q(description__icontains=search)
+            )
+        
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Options pour les filtres
+        context['modules'] = Activite.MODULES
+        context['actions'] = Activite.ACTIONS
+        
+        # Utilisateurs actifs
+        from apps.collaborateurs.models import Collaborateur
+        context['utilisateurs'] = Collaborateur.objects.filter(
+            is_active=True
+        ).order_by('nom_collaborateur', 'prenom_collaborateur')
+        
+        # Filtres actuels
+        context['filter_module'] = self.request.GET.get('module', '')
+        context['filter_action'] = self.request.GET.get('action', '')
+        context['filter_user'] = self.request.GET.get('user', '')
+        context['search'] = self.request.GET.get('search', '')
+        
+        return context
+
+
+# ========== VUES POUR LE DASHBOARD AMÉLIORÉ ==========
+
+def dashboard_with_stats(request):
+    """Vue dashboard améliorée avec statistiques en temps réel"""
+    
+    # Les stats sont déjà disponibles via le context processor
+    # On peut ajouter des stats spécifiques au dashboard ici
+    
+    context = {
+        'title': 'Tableau de bord',
+        'user': request.user,
+    }
+    
+    # Si l'utilisateur a des permissions, on peut ajouter des données spécifiques
+    if hasattr(request.user, 'user_role') and request.user.user_role:
+        # Données spécifiques selon le rôle
+        role_name = request.user.user_role.name
+        
+        if role_name in ['Admin', 'Manager']:
+            # Stats avancées pour les managers
+            from django.db.models import Sum, Avg
+            from apps.lancements.models import Lancement
+            
+            # Performances des ateliers
+            ateliers_performance = {}
+            from apps.ateliers.models import Atelier
+            
+            for atelier in Atelier.objects.all():
+                lancements_atelier = Lancement.objects.filter(atelier=atelier)
+                ateliers_performance[atelier.nom_atelier] = {
+                    'total_lancements': lancements_atelier.count(),
+                    'en_cours': lancements_atelier.filter(statut='en_cours').count(),
+                    'termines': lancements_atelier.filter(statut='termine').count(),
+                    'poids_total': lancements_atelier.aggregate(
+                        total=Sum('poids_debitage') + Sum('poids_assemblage')
+                    )['total'] or 0
+                }
+            
+            context['ateliers_performance'] = ateliers_performance
+    
+    return render(request, 'dashboard/dashboard.html', context)
+
+
+# ========== UTILITAIRES POUR LA CRÉATION DE NOTIFICATIONS ==========
+
+@login_required
+@require_POST
+def creer_notification_test(request):
+    """Créer une notification de test (pour développement)"""
+    if request.user.is_superuser:
+        from .signals import NotificationService
+        
+        collaborateur = request.user.collaborateur if hasattr(request.user, 'collaborateur') else request.user
+        
+        notification = NotificationService.creer_notification_individuelle(
+            utilisateur=collaborateur,
+            type_notif='info',
+            titre='Notification de test',
+            message='Ceci est une notification de test créée manuellement.',
+        )
+        
+        if notification:
+            return JsonResponse({
+                'success': True,
+                'message': 'Notification de test créée'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Non autorisé'
+    })

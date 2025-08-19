@@ -20,8 +20,8 @@
                 <!-- Dashboard -->
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'core:dashboard' %}">
-                        <i class="fas fa-home"></i>  Accueil
-                    </a> 
+                        <i class="fas fa-home"></i> Accueil
+                    </a>
                 </li>
                 
                 <!-- Gestion des données -->
@@ -61,22 +61,20 @@
                             <i class="fas fa-briefcase"></i> Affaires
                         </a></li>
                         {% endif %}
+                        
                         {% if can_view_collaborateurs or can_view_ateliers or can_view_categories %}
-                       <li><hr class="dropdown-divider"></li>
-                            <li><h6 class="dropdown-header">Associations</h6></li>
-
-                       <li><a class="dropdown-item" href="{% url 'associations:collaborateur_atelier_list' %}">
-                              <i class="fas fa-user-cog"></i> Affectations aux ateliers
-                              </a></li>
-
-                      <li><a class="dropdown-item" href="{% url 'associations:collaborateur_categorie_list' %}">
-                              <i class="fas fa-graduation-cap"></i> Compétences par catégorie
-                     </a></li>
-
-                     <li><a class="dropdown-item" href="{% url 'associations:atelier_categorie_list' %}">
-                               <i class="fas fa-cogs"></i> Catégories par atelier
-                    </a></li>
-                    {% endif %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header">Associations</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'associations:collaborateur_atelier_list' %}">
+                            <i class="fas fa-user-cog"></i> Affectations aux ateliers
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'associations:collaborateur_categorie_list' %}">
+                            <i class="fas fa-graduation-cap"></i> Compétences par catégorie
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'associations:atelier_categorie_list' %}">
+                            <i class="fas fa-cogs"></i> Catégories par atelier
+                        </a></li>
+                        {% endif %}
                     </ul>
                 </li>
                 
@@ -157,35 +155,88 @@
                 <li class="nav-item dropdown me-2">
                     <a class="nav-link position-relative" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-bell"></i>
+                        {% if nb_notifications_non_lues > 0 %}
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notification-count">
-                            3
+                            {{ nb_notifications_non_lues }}
                         </span>
+                        {% else %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="notification-count">
+                            0
+                        </span>
+                        {% endif %}
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end" style="width: 300px;" aria-labelledby="notificationsDropdown">
-                        <li><h6 class="dropdown-header">Notifications récentes</h6></li>
-                        <li><a class="dropdown-item" href="#">
-                            <small class="text-muted">Il y a 2 minutes</small><br>
-                            <strong>Nouveau lancement créé</strong><br>
-                            <small>Lancement LC-2024-001 créé par {{ user.get_full_name }}</small>
-                        </a></li>
-                        <li><a class="dropdown-item" href="#">
-                            <small class="text-muted">Il y a 1 heure</small><br>
-                            <strong>Lancement terminé</strong><br>
-                            <small>LC-2024-045 terminé en atelier débitage</small>
-                        </a></li>
-                        <li><a class="dropdown-item" href="#">
-                            <small class="text-muted">Il y a 3 heures</small><br>
-                            <strong>Nouveau collaborateur</strong><br>
-                            <small>Jean Dupont ajouté à l'équipe</small>
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-center" href="#">
-                            Voir toutes les notifications
-                        </a></li>
-                    </ul>
+                    <div class="dropdown-menu dropdown-menu-end p-0 notification-dropdown" aria-labelledby="notificationsDropdown">
+                        <!-- Header des notifications -->
+                        <div class="dropdown-header d-flex justify-content-between align-items-center bg-light">
+                            <h6 class="mb-0">
+                                <i class="fas fa-bell me-1"></i>Notifications
+                                <span class="badge bg-primary ms-1" id="notification-badge">{{ nb_notifications_non_lues|default:0 }}</span>
+                            </h6>
+                            <div class="dropdown-header-actions">
+                                <button class="btn btn-sm btn-link p-0" id="mark-all-read-btn" title="Tout marquer comme lu">
+                                    <i class="fas fa-check-double text-success"></i>
+                                </button>
+                                <a href="{% url 'core:notifications_list' %}" class="btn btn-sm btn-link p-0 ms-2" title="Voir toutes">
+                                    <i class="fas fa-list text-primary"></i>
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- Liste des notifications -->
+                        <div id="notifications-container">
+                            {% if notifications_non_lues %}
+                                {% for notification in notifications_non_lues %}
+                                <div class="notification-item border-bottom" data-notification-id="{{ notification.id }}">
+                                    <a href="{% if notification.url_action %}{{ notification.url_action }}{% else %}#{% endif %}" 
+                                       class="dropdown-item notification-link py-3"
+                                       data-notification-id="{{ notification.id }}">
+                                        <div class="d-flex align-items-start">
+                                            <div class="notification-icon me-2">
+                                                <i class="{{ notification.get_icon_class }}"></i>
+                                            </div>
+                                            <div class="notification-content flex-grow-1">
+                                                <div class="notification-title fw-bold text-truncate">
+                                                    {{ notification.titre }}
+                                                </div>
+                                                <div class="notification-message text-muted small">
+                                                    {{ notification.message|truncatewords:10 }}
+                                                </div>
+                                                <div class="notification-time text-muted small">
+                                                    <i class="fas fa-clock me-1"></i>Il y a {{ notification.get_time_ago }}
+                                                </div>
+                                            </div>
+                                            <div class="notification-actions">
+                                                <button class="btn btn-sm btn-link p-0 text-success mark-read-btn" 
+                                                        data-notification-id="{{ notification.id }}"
+                                                        title="Marquer comme lu">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="dropdown-item-text text-center py-4" id="no-notifications">
+                                    <div class="text-muted">
+                                        <i class="fas fa-bell-slash fa-2x mb-2"></i>
+                                        <p class="mb-0">Aucune nouvelle notification</p>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Footer des notifications -->
+                        <div class="dropdown-divider m-0"></div>
+                        <div class="dropdown-item-text text-center">
+                            <a href="{% url 'core:notifications_list' %}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-list me-1"></i>Voir toutes les notifications
+                            </a>
+                        </div>
+                    </div>
                 </li>
                 
-                <!-- Menu utilisateur CORRIGÉ -->
+                <!-- Menu utilisateur -->
                 {% if user.is_authenticated %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center" 
@@ -206,6 +257,14 @@
                         <li>
                             <a class="dropdown-item" href="{% url 'collaborateurs:profile' %}">
                                 <i class="fas fa-user me-2"></i> Mon profil
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'core:notifications_list' %}">
+                                <i class="fas fa-bell me-2"></i> Mes notifications
+                                {% if nb_notifications_non_lues > 0 %}
+                                <span class="badge bg-danger ms-1">{{ nb_notifications_non_lues }}</span>
+                                {% endif %}
                             </a>
                         </li>
                         <li>
@@ -241,3 +300,287 @@
         </div>
     </div>
 </nav>
+
+<style>
+.notification-dropdown {
+    width: 350px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+</style>
+<!-- Pass Django variables to JavaScript safely through data attributes -->
+<div id="django-data" 
+     data-nb-notifications="{{ nb_notifications_non_lues|default:0 }}"
+     data-mark-read-url-template="{% url 'core:notification_mark_read' notification_id=12345 %}"
+     data-mark-all-read-url="{% url 'core:notifications_mark_all_read' %}"
+     data-notifications-json-url="{% url 'core:notifications_json' %}"
+     data-csrf-token="{{ csrf_token }}"
+     style="display: none;">
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get Django data safely from data attributes
+    var djangoDataElement = document.getElementById('django-data');
+    var currentNotificationCount = parseInt(djangoDataElement.dataset.nbNotifications) || 0;
+    var markReadUrlTemplate = djangoDataElement.dataset.markReadUrlTemplate.replace('12345', '__ID__');
+    var markAllReadUrl = djangoDataElement.dataset.markAllReadUrl;
+    var notificationsJsonUrl = djangoDataElement.dataset.notificationsJsonUrl;
+    var csrfToken = djangoDataElement.dataset.csrfToken;
+    
+    // Variables globales pour les notifications
+    var notificationCheckInterval;
+
+    // Event delegation for notification clicks
+    document.addEventListener('click', function(event) {
+        // Handle notification link clicks
+        if (event.target.closest('.notification-link')) {
+            var link = event.target.closest('.notification-link');
+            var notificationId = link.dataset.notificationId;
+            if (notificationId) {
+                marquerNotificationLue(parseInt(notificationId));
+            }
+        }
+        
+        // Handle mark as read button clicks
+        if (event.target.closest('.mark-read-btn')) {
+            event.preventDefault();
+            event.stopPropagation();
+            var button = event.target.closest('.mark-read-btn');
+            var notificationId = button.dataset.notificationId;
+            if (notificationId) {
+                marquerNotificationLue(parseInt(notificationId));
+            }
+        }
+        
+        // Handle mark all read button
+        if (event.target.closest('#mark-all-read-btn')) {
+            event.preventDefault();
+            event.stopPropagation();
+            marquerToutesNotificationsLues();
+        }
+    });
+
+    // Fonction pour marquer une notification comme lue
+    function marquerNotificationLue(notificationId) {
+        var markReadUrl = markReadUrlTemplate.replace('__ID__', notificationId);
+        
+        fetch(markReadUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.success) {
+                var notificationElement = document.querySelector('[data-notification-id="' + notificationId + '"]');
+                if (notificationElement) {
+                    notificationElement.style.transition = 'opacity 0.3s ease';
+                    notificationElement.style.opacity = '0';
+                    setTimeout(function() {
+                        notificationElement.remove();
+                        updateNotificationCount(data.nb_notifications_restantes);
+                        
+                        if (data.nb_notifications_restantes === 0) {
+                            showNoNotificationsMessage();
+                        }
+                    }, 300);
+                }
+            } else {
+                console.error('Erreur:', data.message);
+            }
+        })
+        .catch(function(error) {
+            console.error('Erreur réseau:', error);
+        });
+    }
+
+    // Fonction pour marquer toutes les notifications comme lues
+    function marquerToutesNotificationsLues() {
+        fetch(markAllReadUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.success) {
+                var container = document.getElementById('notifications-container');
+                container.innerHTML = '';
+                
+                updateNotificationCount(0);
+                showNoNotificationsMessage();
+                
+                showNotificationToast('Toutes les notifications ont été marquées comme lues', 'success');
+            } else {
+                console.error('Erreur:', data.message);
+            }
+        })
+        .catch(function(error) {
+            console.error('Erreur réseau:', error);
+        });
+    }
+
+    // Fonction pour mettre à jour le compteur de notifications
+    function updateNotificationCount(count) {
+        currentNotificationCount = count;
+        var badge = document.getElementById('notification-count');
+        var headerBadge = document.getElementById('notification-badge');
+        
+        if (count > 0) {
+            badge.textContent = count;
+            badge.classList.remove('d-none');
+            headerBadge.textContent = count;
+        } else {
+            badge.classList.add('d-none');
+            headerBadge.textContent = '0';
+        }
+    }
+
+    // Fonction pour afficher le message "aucune notification"
+    function showNoNotificationsMessage() {
+        var container = document.getElementById('notifications-container');
+        container.innerHTML = '<div class="dropdown-item-text text-center py-4" id="no-notifications">' +
+            '<div class="text-muted">' +
+            '<i class="fas fa-bell-slash fa-2x mb-2"></i>' +
+            '<p class="mb-0">Aucune nouvelle notification</p>' +
+            '</div>' +
+            '</div>';
+    }
+
+    // Fonction pour afficher un toast de notification
+    function showNotificationToast(message, type) {
+        type = type || 'info';
+        
+        var toastContainer = document.getElementById('toast-container') || createToastContainer();
+        
+        var toastId = 'toast-' + Date.now();
+        var bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+        
+        var toastHtml = '<div class="toast ' + bgClass + ' text-white" id="' + toastId + '" role="alert" aria-live="assertive" aria-atomic="true">' +
+            '<div class="toast-header ' + bgClass + ' text-white border-0">' +
+            '<i class="fas fa-bell me-2"></i>' +
+            '<strong class="me-auto">Notification</strong>' +
+            '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>' +
+            '</div>' +
+            '<div class="toast-body">' + escapeHtml(message) + '</div>' +
+            '</div>';
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+        
+        var toastElement = document.getElementById(toastId);
+        if (typeof bootstrap !== 'undefined') {
+            var toast = new bootstrap.Toast(toastElement, {
+                delay: 3000
+            });
+            toast.show();
+            
+            toastElement.addEventListener('hidden.bs.toast', function() {
+                this.remove();
+            });
+        }
+    }
+
+    // Fonction pour créer le conteneur de toasts
+    function createToastContainer() {
+        var container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '9999';
+        document.body.appendChild(container);
+        return container;
+    }
+
+    // Fonction pour échapper le HTML
+    function escapeHtml(text) {
+        var map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    // Fonction pour vérifier les nouvelles notifications
+    function checkForNewNotifications() {
+        fetch(notificationsJsonUrl)
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.success && data.count !== currentNotificationCount) {
+                if (data.count > currentNotificationCount) {
+                    var difference = data.count - currentNotificationCount;
+                    showNotificationToast(difference + ' nouvelle(s) notification(s)', 'info');
+                }
+                
+                updateNotificationCount(data.count);
+                updateNotificationsList(data.notifications);
+            }
+        })
+        .catch(function(error) {
+            console.error('Erreur lors de la vérification des notifications:', error);
+        });
+    }
+
+    // Fonction pour mettre à jour la liste des notifications
+    function updateNotificationsList(notifications) {
+        var container = document.getElementById('notifications-container');
+        
+        if (!notifications || notifications.length === 0) {
+            showNoNotificationsMessage();
+            return;
+        }
+        
+        var html = '';
+        for (var i = 0; i < notifications.length; i++) {
+            var notification = notifications[i];
+            var urlAction = notification.url_action || '#';
+            var iconClass = notification.icon_class || 'fas fa-bell';
+            var truncatedMessage = notification.message && notification.message.length > 50 ? 
+                notification.message.substring(0, 50) + '...' : (notification.message || '');
+            
+            html += '<div class="notification-item border-bottom" data-notification-id="' + notification.id + '">' +
+                '<a href="' + escapeHtml(urlAction) + '" class="dropdown-item notification-link py-3" data-notification-id="' + notification.id + '">' +
+                '<div class="d-flex align-items-start">' +
+                '<div class="notification-icon me-2"><i class="' + escapeHtml(iconClass) + '"></i></div>' +
+                '<div class="notification-content flex-grow-1">' +
+                '<div class="notification-title fw-bold text-truncate">' + escapeHtml(notification.titre || '') + '</div>' +
+                '<div class="notification-message text-muted small">' + escapeHtml(truncatedMessage) + '</div>' +
+                '<div class="notification-time text-muted small">' +
+                '<i class="fas fa-clock me-1"></i>Il y a ' + escapeHtml(notification.time_ago || '') + '</div>' +
+                '</div>' +
+                '<div class="notification-actions">' +
+                '<button class="btn btn-sm btn-link p-0 text-success mark-read-btn" ' +
+                'data-notification-id="' + notification.id + '" title="Marquer comme lu">' +
+                '<i class="fas fa-check"></i></button>' +
+                '</div></div></a></div>';
+        }
+        
+        container.innerHTML = html;
+    }
+
+    // Démarrer la vérification périodique des notifications
+    notificationCheckInterval = setInterval(checkForNewNotifications, 30000);
+    
+    // Vérification immédiate après 1 seconde
+    setTimeout(checkForNewNotifications, 1000);
+
+    // Nettoyer l'interval quand on quitte la page
+    window.addEventListener('beforeunload', function() {
+        if (notificationCheckInterval) {
+            clearInterval(notificationCheckInterval);
+        }
+    });
+});
+</script>

@@ -34,3 +34,4 @@ class PermissionMiddleware:
         
         response = self.get_response(request)
         return response
+    

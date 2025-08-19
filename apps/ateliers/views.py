@@ -3,6 +3,8 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
+
+from apps.lancements.models import Lancement
 from .models import Atelier, AtelierCategorie, Categorie
 from apps.collaborateurs.models import Collaborateur
 from apps.core.models import Role
@@ -132,11 +134,11 @@ def atelier_create(request):
         # Récupération des données du formulaire
         nom_atelier = request.POST.get('nom_atelier')
         type_atelier = request.POST.get('type_atelier')
-        capacite_max = request.POST.get('capacite_max')
+       
         responsable_atelier_id = request.POST.get('responsable_atelier')
         
         # Validation basique
-        if not all([nom_atelier, type_atelier, capacite_max]):
+        if not all([nom_atelier, type_atelier]):
             messages.error(request, "Tous les champs obligatoires doivent être remplis.")
             return redirect('ateliers:create')
         
@@ -149,7 +151,6 @@ def atelier_create(request):
             atelier = Atelier.objects.create(
                 nom_atelier=nom_atelier,
                 type_atelier=type_atelier,
-                capacite_max=int(capacite_max),
                 responsable_atelier=responsable
             )
             
@@ -456,12 +457,8 @@ def categorie_edit(request, pk):
     # Statistiques pour l'affichage
     ateliers_count = AtelierCategorie.objects.filter(categorie=categorie).count()
     collaborateurs_count = CollaborateurCategorie.objects.filter(categorie=categorie).count()
-    lancements_count = 0
-    try:
-        if hasattr(categorie, 'lancement_set'):
-            lancements_count = categorie.lancement_set.count()
-    except:
-        pass
+    lancements_count = Lancement.objects.filter(categorie=categorie).count()
+  
     
     context = {
         'categorie': categorie,
@@ -528,19 +525,15 @@ def categorie_delete(request, pk):
         except Exception as e:
             messages.error(request, f"Erreur lors de la suppression : {str(e)}")
             return redirect('ateliers:categorie_detail', pk=pk)
-    
+     
     # Calculer les statistiques pour l'affichage
     stats = {
         'ateliers_count': AtelierCategorie.objects.filter(categorie=categorie).count(),
         'collaborateurs_count': CollaborateurCategorie.objects.filter(categorie=categorie).count(),
-        'lancements_count': 0,
+        'lancements_count': Lancement.objects.filter(categorie=categorie).count()
     }
     
-    try:
-        if hasattr(categorie, 'lancement_set'):
-            stats['lancements_count'] = categorie.lancement_set.count()
-    except:
-        pass
+  
     
     context = {
         'categorie': categorie,

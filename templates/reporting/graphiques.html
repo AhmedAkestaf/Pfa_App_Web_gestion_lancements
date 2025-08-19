@@ -750,70 +750,83 @@ function fullscreen() {
     }
 }
 
-// Fonctions d'export
+// Fonctions d'export - MODIFIÉES POUR UTILISER export_dashboard_data
 function exportDashboard(format) {
     if (!format) {
-        format = 'excel'; // format par défaut
+        format = 'excel';
     }
     
-    // Récupération des dates actuelles
+    // Validation des dates
     const dateDebut = document.getElementById('date_debut').value;
     const dateFin = document.getElementById('date_fin').value;
     
-    // Construction de l'URL d'export
-    const exportUrl = `/reporting/export/process/`;
+    if (!dateDebut || !dateFin) {
+        showNotification('Veuillez sélectionner une période d\'analyse valide', 'error');
+        return;
+    }
+    
+    if (new Date(dateDebut) > new Date(dateFin)) {
+        showNotification('La date de début doit être antérieure à la date de fin', 'error');
+        return;
+    }
+    
+    showNotification('Préparation de l\'export en cours...', 'info');
+    
+    // MODIFICATION : Utilisation de la nouvelle URL export_dashboard_data
+    const exportUrl = `{% url 'reporting:export_dashboard_data' %}`;
     
     // Création d'un formulaire temporaire pour l'export
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = exportUrl;
     form.target = '_blank';
+    form.style.display = 'none';
     
     // Ajout du token CSRF
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-    if (csrfToken) {
+    const csrfTokenValue = getCookie('csrftoken');
+    if (csrfTokenValue) {
         const csrfInput = document.createElement('input');
         csrfInput.type = 'hidden';
         csrfInput.name = 'csrfmiddlewaretoken';
-        csrfInput.value = csrfToken.value;
+        csrfInput.value = csrfTokenValue;
         form.appendChild(csrfInput);
-    } else {
-        // Récupération du token CSRF depuis les cookies
-        const csrfTokenValue = getCookie('csrftoken');
-        if (csrfTokenValue) {
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrfmiddlewaretoken';
-            csrfInput.value = csrfTokenValue;
-            form.appendChild(csrfInput);
-        }
     }
     
-    // Paramètres d'export
+    // Paramètres d'export spécifiques au dashboard
     const params = {
         'format': format,
         'date_debut': dateDebut,
-        'date_fin': dateFin,
-        'include_stats': 'on',
-        'detailed_data': 'on'
+        'date_fin': dateFin
     };
     
     // Ajout des paramètres au formulaire
     Object.keys(params).forEach(key => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = params[key];
-        form.appendChild(input);
+        if (params[key]) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = params[key];
+            form.appendChild(input);
+        }
     });
     
     // Soumission du formulaire
     document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
     
-    // Message de confirmation
-    showNotification('Export en cours...', 'info');
+    try {
+        form.submit();
+        showNotification(`Export dashboard ${format.toUpperCase()} lancé avec succès`, 'success');
+    } catch (error) {
+        showNotification('Erreur lors du lancement de l\'export', 'error');
+        console.error('Export error:', error);
+    } finally {
+        // Nettoyage
+        setTimeout(() => {
+            if (form.parentNode) {
+                document.body.removeChild(form);
+            }
+        }, 1000);
+    }
 }
 
 function exportCharts(format) {
@@ -852,14 +865,15 @@ function exportChartsAsPNG() {
 }
 
 function exportChartsAsPDF() {
-    // Pour l'export PDF, on utilise la fonction d'export backend
+    // Pour l'export PDF des graphiques, on utilise aussi export_dashboard_data
     const dateDebut = document.getElementById('date_debut').value;
     const dateFin = document.getElementById('date_fin').value;
     
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = '/reporting/export/process/';
+    form.action = `{% url 'reporting:export_dashboard_data' %}`;
     form.target = '_blank';
+    form.style.display = 'none';
     
     // Token CSRF
     const csrfTokenValue = getCookie('csrftoken');
@@ -874,9 +888,7 @@ function exportChartsAsPDF() {
     const params = {
         'format': 'pdf',
         'date_debut': dateDebut,
-        'date_fin': dateFin,
-        'include_graphics': 'on',
-        'include_stats': 'on'
+        'date_fin': dateFin
     };
     
     Object.keys(params).forEach(key => {
@@ -891,7 +903,7 @@ function exportChartsAsPDF() {
     form.submit();
     document.body.removeChild(form);
     
-    showNotification('Export PDF en cours...', 'info');
+    showNotification('Export PDF du dashboard en cours...', 'info');
 }
 
 // Fonction utilitaire pour récupérer les cookies
@@ -952,87 +964,6 @@ function showNotification(message, type = 'info') {
             }, 150);
         }
     }, 5000);
-}
-
-// Version améliorée de la fonction d'export avec gestion d'erreurs
-function exportDashboard(format) {
-    if (!format) {
-        format = 'excel';
-    }
-    
-    // Validation des dates
-    const dateDebut = document.getElementById('date_debut').value;
-    const dateFin = document.getElementById('date_fin').value;
-    
-    if (!dateDebut || !dateFin) {
-        showNotification('Veuillez sélectionner une période d\'analyse valide', 'error');
-        return;
-    }
-    
-    if (new Date(dateDebut) > new Date(dateFin)) {
-        showNotification('La date de début doit être antérieure à la date de fin', 'error');
-        return;
-    }
-    
-    showNotification('Préparation de l\'export en cours...', 'info');
-    
-    // Construction de l'URL d'export
-    const exportUrl = `/reporting/export/process/`;
-    
-    // Création d'un formulaire temporaire pour l'export
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = exportUrl;
-    form.target = '_blank';
-    form.style.display = 'none';
-    
-    // Ajout du token CSRF
-    const csrfTokenValue = getCookie('csrftoken');
-    if (csrfTokenValue) {
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = 'csrfmiddlewaretoken';
-        csrfInput.value = csrfTokenValue;
-        form.appendChild(csrfInput);
-    }
-    
-    // Paramètres d'export
-    const params = {
-        'format': format,
-        'date_debut': dateDebut,
-        'date_fin': dateFin,
-        'include_stats': 'on',
-        'detailed_data': format === 'excel' ? 'on' : ''
-    };
-    
-    // Ajout des paramètres au formulaire
-    Object.keys(params).forEach(key => {
-        if (params[key]) {  // Ne pas ajouter les valeurs vides
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = key;
-            input.value = params[key];
-            form.appendChild(input);
-        }
-    });
-    
-    // Soumission du formulaire
-    document.body.appendChild(form);
-    
-    try {
-        form.submit();
-        showNotification(`Export ${format.toUpperCase()} lancé avec succès`, 'success');
-    } catch (error) {
-        showNotification('Erreur lors du lancement de l\'export', 'error');
-        console.error('Export error:', error);
-    } finally {
-        // Nettoyage
-        setTimeout(() => {
-            if (form.parentNode) {
-                document.body.removeChild(form);
-            }
-        }, 1000);
-    }
 }
 
 // Auto-refresh des données toutes les 5 minutes

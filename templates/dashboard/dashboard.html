@@ -2,7 +2,7 @@
 {% load static %}
 {% load permission_tags %}
 
-{% block title %} Accueil - AIC Métallurgie{% endblock %}
+{% block title %}Accueil - AIC Métallurgie{% endblock %}
 
 {% block breadcrumb_items %}
 <li class="breadcrumb-item active"></li> 
@@ -31,20 +31,20 @@
         <div class="row">
             <!-- Lancements actifs -->
             {% has_permission 'lancements' 'read' as can_view_lancements %}
-            {% if can_view_lancements and stats.total_lancements %}
+            {% if can_view_lancements and stats_dashboard.total_lancements %}
             <div class="col-lg-3 col-6 dashboard-animate mb-4">
                 <div class="small-box bg-info">
                     <div class="inner">
-                        <h3>{{ stats.lancements_en_cours|default:0 }}</h3>
+                        <h3>{{ stats_dashboard.lancements_en_cours|default:0 }}</h3>
                         <p>Lancements actifs</p>
                         <small class="text-light opacity-75">
-                            Total: {{ stats.total_lancements }}
+                            Total: {{ stats_dashboard.total_lancements }}
                         </small>
                     </div>
                     <div class="icon">
                         <i class="fas fa-rocket"></i>
                     </div>
-                    <a href="#" class="small-box-footer">
+                    <a href="{% url 'lancements:list' %}" class="small-box-footer">
                         Plus d'infos <i class="fas fa-arrow-circle-right"></i>
                     </a>
                 </div>
@@ -53,14 +53,14 @@
             
             <!-- Collaborateurs -->
             {% has_permission 'collaborateurs' 'read' as can_view_collaborateurs %}
-            {% if can_view_collaborateurs and stats.total_collaborateurs %}
+            {% if can_view_collaborateurs and stats_dashboard.total_collaborateurs %}
             <div class="col-lg-3 col-6 dashboard-animate mb-4">
                 <div class="small-box bg-success">
                     <div class="inner">
-                        <h3>{{ stats.collaborateurs_actifs|default:0 }}</h3>
+                        <h3>{{ stats_dashboard.collaborateurs_actifs|default:0 }}</h3>
                         <p>Collaborateurs actifs</p>
                         <small class="text-light opacity-75">
-                            Total: {{ stats.total_collaborateurs }}
+                            Total: {{ stats_dashboard.total_collaborateurs }}
                         </small>
                     </div>
                     <div class="icon">
@@ -75,11 +75,11 @@
             
             <!-- Ateliers -->
             {% has_permission 'ateliers' 'read' as can_view_ateliers %}
-            {% if can_view_ateliers and stats.total_ateliers %}
+            {% if can_view_ateliers and stats_dashboard.total_ateliers %}
             <div class="col-lg-3 col-6 dashboard-animate mb-4">
                 <div class="small-box bg-warning">
                     <div class="inner">
-                        <h3>{{ stats.total_ateliers|default:0 }}</h3>
+                        <h3>{{ stats_dashboard.total_ateliers|default:0 }}</h3>
                         <p>Ateliers</p>
                         <small class="text-light opacity-75">
                             Actifs
@@ -88,7 +88,7 @@
                     <div class="icon">
                         <i class="fas fa-industry"></i>
                     </div>
-                    <a href="#" class="small-box-footer">
+                    <a href="{% url 'ateliers:list' %}" class="small-box-footer">
                         Plus d'infos <i class="fas fa-arrow-circle-right"></i>
                     </a>
                 </div>
@@ -97,20 +97,20 @@
             
             <!-- Affaires -->
             {% has_permission 'affaires' 'read' as can_view_affaires %}
-            {% if can_view_affaires and stats.total_affaires %}
+            {% if can_view_affaires and stats_dashboard.total_affaires %}
             <div class="col-lg-3 col-6 dashboard-animate mb-4">
                 <div class="small-box bg-danger">
                     <div class="inner">
-                        <h3>{{ stats.affaires_actives|default:0 }}</h3>
+                        <h3>{{ stats_dashboard.affaires_actives|default:0 }}</h3>
                         <p>Affaires actives</p>
                         <small class="text-light opacity-75">
-                            Total: {{ stats.total_affaires }}
+                            Total: {{ stats_dashboard.total_affaires }}
                         </small>
                     </div>
                     <div class="icon">
                         <i class="fas fa-briefcase"></i>
                     </div>
-                    <a href="#" class="small-box-footer">
+                    <a href="{% url 'core:affaires_list' %}" class="small-box-footer">
                         Plus d'infos <i class="fas fa-arrow-circle-right"></i>
                     </a>
                 </div>
@@ -156,7 +156,7 @@
                     <div class="col-md-3 mb-3">
                         <a href="{% url 'reporting:graphiques' %}" class="btn btn-info btn-lg w-100">
                             <i class="fas fa-chart-bar me-2"></i>
-                            <div> Tableau de bord</div>
+                            <div>Tableau de bord</div>
                             <small class="opacity-75">Consulter les graphiques et les statistiques</small>
                         </a>
                     </div>
@@ -176,51 +176,74 @@
         </div>
     </div>
     
-    <!-- Activité récente -->
+    <!-- Activité récente AMÉLIORÉE -->
     {% if can_view_lancements %}
     <div class="col-md-8 mt-4">
         <div class="card">
-            <div class="card-header bg-light">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i class="fas fa-clock me-2"></i>Activité récente
                 </h5>
+                <div class="card-header-actions">
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshActivities()" title="Actualiser">
+                        <i class="fas fa-sync-alt" id="refresh-icon"></i>
+                    </button>
+                    <a href="{% url 'core:activites_list' %}" class="btn btn-sm btn-outline-secondary ms-1" title="Voir toutes">
+                        <i class="fas fa-list"></i>
+                    </a>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="timeline">
-                    <div class="timeline-item">
-                        <div class="timeline-marker bg-success"></div>
-                        <div class="timeline-content">
-                            <h6 class="timeline-title">Lancement LC-2024-156 terminé</h6>
-                            <p class="timeline-text">Débitage terminé par Jean Dupont</p>
-                            <small class="text-muted">Il y a 2 heures</small>
+            <div class="card-body p-0">
+                <div class="timeline" id="activites-timeline">
+                    {% if activites_recentes %}
+                        {% for activite in activites_recentes %}
+                        <div class="timeline-item" data-activite-id="{{ activite.id }}">
+                            <div class="timeline-marker">
+                                <i class="{{ activite.get_icon_class }}"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <div class="timeline-header d-flex justify-content-between align-items-start">
+                                    <h6 class="timeline-title mb-1">
+                                        {{ activite.get_action_display }} - {{ activite.get_module_display }}
+                                    </h6>
+                                    <small class="text-muted timeline-time">
+                                        <i class="fas fa-clock me-1"></i>Il y a {{ activite.get_time_ago }}
+                                    </small>
+                                </div>
+                                <p class="timeline-text mb-1">{{ activite.description }}</p>
+                                {% if activite.utilisateur %}
+                                <div class="timeline-user">
+                                    <small class="text-muted">
+                                        <i class="fas fa-user me-1"></i>{{ activite.utilisateur.get_full_name }}
+                                    </small>
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="timeline-item">
-                        <div class="timeline-marker bg-info"></div>
-                        <div class="timeline-content">
-                            <h6 class="timeline-title">Nouveau lancement créé</h6>
-                            <p class="timeline-text">LC-2024-157 assigné à l'atelier assemblage</p>
-                            <small class="text-muted">Il y a 4 heures</small>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <div class="text-muted">
+                                <i class="fas fa-history fa-3x mb-3"></i>
+                                <p class="mb-0">Aucune activité récente</p>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="timeline-item">
-                        <div class="timeline-marker bg-warning"></div>
-                        <div class="timeline-content">
-                            <h6 class="timeline-title">Affaire AF-2024-89 mise à jour</h6>
-                            <p class="timeline-text">Date de livraison modifiée</p>
-                            <small class="text-muted">Hier à 16:30</small>
-                        </div>
-                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Indicateur de chargement -->
+                <div class="text-center py-3 d-none" id="activities-loading">
+                    <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                    <span class="text-muted">Actualisation en cours...</span>
                 </div>
             </div>
         </div>
     </div>
     {% endif %}
     
-    <!-- Informations utilisateur -->
+    <!-- Informations utilisateur et notifications récentes -->
     <div class="col-md-4 mt-4">
+        <!-- Informations utilisateur -->
         <div class="card">
             <div class="card-header bg-light">
                 <h5 class="mb-0">
@@ -245,6 +268,17 @@
                     </div>
                 </div>
                 
+                <!-- Notifications récentes de l'utilisateur -->
+                {% if nb_notifications_non_lues > 0 %}
+                <div class="alert alert-info mt-3" role="alert">
+                    <h6><i class="fas fa-bell me-2"></i>Notifications</h6>
+                    <p class="mb-2">Vous avez <strong>{{ nb_notifications_non_lues }}</strong> notification(s) non lue(s).</p>
+                    <a href="{% url 'core:notifications_list' %}" class="btn btn-sm btn-info">
+                        <i class="fas fa-list me-1"></i>Voir toutes
+                    </a>
+                </div>
+                {% endif %}
+                
                 <div class="d-grid gap-2 mt-3">
                     <a href="{% url 'collaborateurs:profile' %}" class="btn btn-outline-primary btn-sm">
                         <i class="fas fa-eye me-1"></i>Voir mon profil
@@ -252,6 +286,63 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Mes notifications récentes -->
+        {% if notifications_non_lues %}
+        <div class="card mt-3">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-bell me-2"></i>Mes dernières notifications
+                </h6>
+                <span class="badge bg-primary">{{ notifications_non_lues|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for notification in notifications_non_lues|slice:":5" %}
+                    <div class="list-group-item list-group-item-action notification-dashboard-item" 
+                         data-notification-id="{{ notification.id }}">
+                        <div class="d-flex align-items-start">
+                            <div class="notification-icon me-2">
+                                <i class="{{ notification.get_icon_class }}"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 text-truncate">{{ notification.titre }}</h6>
+                                <p class="mb-1 small text-muted">
+                                    {{ notification.message|truncatewords:8 }}
+                                </p>
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>Il y a {{ notification.get_time_ago }}
+                                </small>
+                            </div>
+                            <div class="notification-actions">
+                                <button class="btn btn-sm btn-link p-0 text-success" 
+                                        onclick="marquerNotificationLueDashboard('{{ notification.id }}')"
+                                        title="Marquer comme lu">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% if notification.url_action %}
+                        <div class="mt-2">
+                            <a href="{{ notification.url_action }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-external-link-alt me-1"></i>Voir
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    
+                    {% if notifications_non_lues|length > 5 %}
+                    <div class="list-group-item text-center">
+                        <a href="{% url 'core:notifications_list' %}" class="btn btn-sm btn-link">
+                            Voir {{ notifications_non_lues|length|add:"-5" }} autre(s) notification(s)
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
         
         <!-- Aide rapide -->
         <div class="card mt-3">
@@ -293,4 +384,367 @@
         </div>
     </div>
 </div>
+
+<!-- Scripts JavaScript pour le dashboard -->
+<script>
+// Variables globales
+let activitiesRefreshInterval;
+
+// Fonction pour actualiser les activités
+function refreshActivities() {
+    const refreshIcon = document.getElementById('refresh-icon');
+    const loadingIndicator = document.getElementById('activities-loading');
+    const timeline = document.getElementById('activites-timeline');
+    
+    // Animer l'icône
+    refreshIcon.classList.add('fa-spin');
+    loadingIndicator.classList.remove('d-none');
+    
+    fetch('/activites/json/')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateActivitiesTimeline(data.activites);
+        } else {
+            console.error('Erreur:', data.message);
+            showNotificationToast('Erreur lors de l\'actualisation', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erreur réseau:', error);
+        showNotificationToast('Erreur de connexion', 'error');
+    })
+    .finally(() => {
+        refreshIcon.classList.remove('fa-spin');
+        loadingIndicator.classList.add('d-none');
+    });
+}
+
+// Fonction pour mettre à jour la timeline des activités
+function updateActivitiesTimeline(activites) {
+    const timeline = document.getElementById('activites-timeline');
+    
+    if (activites.length === 0) {
+        timeline.innerHTML = `
+            <div class="text-center py-4">
+                <div class="text-muted">
+                    <i class="fas fa-history fa-3x mb-3"></i>
+                    <p class="mb-0">Aucune activité récente</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    activites.slice(0, 10).forEach(activite => {
+        html += `
+            <div class="timeline-item" data-activite-id="${activite.id}">
+                <div class="timeline-marker">
+                    <i class="${activite.icon_class}"></i>
+                </div>
+                <div class="timeline-content">
+                    <div class="timeline-header d-flex justify-content-between align-items-start">
+                        <h6 class="timeline-title mb-1">
+                            ${activite.action} - ${activite.module}
+                        </h6>
+                        <small class="text-muted timeline-time">
+                            <i class="fas fa-clock me-1"></i>Il y a ${activite.time_ago}
+                        </small>
+                    </div>
+                    <p class="timeline-text mb-1">${activite.description}</p>
+                    ${activite.utilisateur ? `
+                        <div class="timeline-user">
+                            <small class="text-muted">
+                                <i class="fas fa-user me-1"></i>${activite.utilisateur}
+                            </small>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    timeline.innerHTML = html;
+}
+
+// Fonction pour marquer une notification comme lue depuis le dashboard
+function marquerNotificationLueDashboard(notificationId) {
+    fetch(`/notifications/${notificationId}/mark-read/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Supprimer la notification du dashboard
+            const notificationElement = document.querySelector(`[data-notification-id="${notificationId}"]`);
+            if (notificationElement) {
+                notificationElement.style.transition = 'opacity 0.3s ease';
+                notificationElement.style.opacity = '0';
+                setTimeout(() => {
+                    notificationElement.remove();
+                    
+                    // Mettre à jour le compteur dans la navbar
+                    updateNotificationCount(data.nb_notifications_restantes);
+                    
+                    // Vérifier s'il ne reste plus de notifications dans le dashboard
+                    const remainingNotifications = document.querySelectorAll('.notification-dashboard-item').length - 1;
+                    if (remainingNotifications === 0) {
+                        // Recharger la section notifications ou masquer la carte
+                        const notificationCard = notificationElement.closest('.card');
+                        if (notificationCard) {
+                            notificationCard.style.transition = 'opacity 0.3s ease';
+                            notificationCard.style.opacity = '0.5';
+                            setTimeout(() => {
+                                notificationCard.remove();
+                            }, 300);
+                        }
+                    }
+                }, 300);
+            }
+            
+            showNotificationToast('Notification marquée comme lue', 'success');
+        } else {
+            console.error('Erreur:', data.message);
+            showNotificationToast('Erreur lors du marquage', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erreur réseau:', error);
+        showNotificationToast('Erreur de connexion', 'error');
+    });
+}
+
+// Fonction pour actualiser automatiquement le dashboard
+function autoRefreshDashboard() {
+    // Vérifier les nouvelles notifications
+    if (typeof checkForNewNotifications === 'function') {
+        checkForNewNotifications();
+    }
+    
+    // Actualiser les activités récentes
+    refreshActivities();
+}
+
+// Animation au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    // Animation des cartes statistiques
+    const dashboardCards = document.querySelectorAll('.dashboard-animate');
+    dashboardCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    // Animation de la timeline
+    const timelineItems = document.querySelectorAll('.timeline-item');
+    timelineItems.forEach((item, index) => {
+        item.style.opacity = '0';
+        item.style.transform = 'translateX(-30px)';
+        setTimeout(() => {
+            item.style.transition = 'all 0.3s ease';
+            item.style.opacity = '1';
+            item.style.transform = 'translateX(0)';
+        }, 500 + (index * 50));
+    });
+    
+    // Auto-refresh du dashboard toutes les 5 minutes
+    setInterval(autoRefreshDashboard, 300000);
+    
+    // Première actualisation après 10 secondes
+    setTimeout(() => {
+        refreshActivities();
+    }, 10000);
+});
+
+// Fonction utilitaire pour créer des notifications toast réutilisée
+if (typeof showNotificationToast === 'undefined') {
+    function showNotificationToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toast-container') || createToastContainer();
+        
+        const toastId = 'toast-' + Date.now();
+        const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+        
+        const toastHtml = `
+            <div class="toast ${bgClass} text-white" id="${toastId}" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header ${bgClass} text-white border-0">
+                    <i class="fas fa-bell me-2"></i>
+                    <strong class="me-auto">Dashboard</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+        
+        const toast = new bootstrap.Toast(document.getElementById(toastId), {
+            delay: 3000
+        });
+        toast.show();
+        
+        document.getElementById(toastId).addEventListener('hidden.bs.toast', function() {
+            this.remove();
+        });
+    }
+    
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '9999';
+        document.body.appendChild(container);
+        return container;
+    }
+}
+</script>
+
+<!-- CSS personnalisé pour le dashboard -->
+<style>
+/* Styles pour la timeline des activités */
+.timeline {
+    position: relative;
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.timeline-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+    padding-left: 0.5rem;
+    position: relative;
+}
+
+.timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 1.125rem;
+    top: 2.5rem;
+    bottom: -1.5rem;
+    width: 2px;
+    background-color: #e9ecef;
+}
+
+.timeline-item:last-child::before {
+    display: none;
+}
+
+.timeline-marker {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background-color: #fff;
+    border: 2px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.timeline-content {
+    flex: 1;
+    background-color: #f8f9fa;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    border-left: 4px solid #dee2e6;
+}
+
+.timeline-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.timeline-text {
+    font-size: 0.9rem;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+.timeline-time {
+    font-size: 0.8rem;
+}
+
+.timeline-user {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Hover effects */
+.timeline-item:hover .timeline-content {
+    background-color: #e9ecef;
+    border-left-color: #007bff;
+}
+
+.timeline-item:hover .timeline-marker {
+    border-color: #007bff;
+    background-color: #007bff;
+    color: white;
+}
+
+/* Styles pour les notifications dans le dashboard */
+.notification-dashboard-item {
+    transition: all 0.3s ease;
+}
+
+.notification-dashboard-item:hover {
+    background-color: #f8f9fa;
+}
+
+.notification-icon i {
+    width: 1.5rem;
+    text-align: center;
+}
+
+/* Animation pour les cartes */
+.dashboard-animate {
+    transition: all 0.3s ease;
+}
+
+.dashboard-animate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .timeline-content {
+        padding: 0.75rem;
+    }
+    
+    .timeline-marker {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.8rem;
+    }
+    
+    .timeline-title {
+        font-size: 0.9rem;
+    }
+    
+    .timeline-text {
+        font-size: 0.85rem;
+    }
+}
+</style>
 {% endblock %}

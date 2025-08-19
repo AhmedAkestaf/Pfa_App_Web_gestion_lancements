@@ -58,6 +58,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.core.middleware.PermissionMiddleware',
+    'apps.core.signals.ActivityMiddleware',
 ]
 
 ROOT_URLCONF = 'gestion_lancements.urls'
@@ -73,6 +74,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'apps.core.context_processors.user_permissions',
+                'apps.core.context_processors.notifications_and_activities', 
             ],
         },
     },
@@ -158,6 +160,15 @@ AUTH_USER_MODEL = 'collaborateurs.Collaborateur'
 LOGIN_URL = '/auth/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/auth/login/'
+
+
+MAX_NOTIFICATIONS_PER_USER = 100
+
+# Durée de conservation des notifications (en jours)
+NOTIFICATIONS_RETENTION_DAYS = 30
+
+# Durée de conservation des activités (en jours)  
+ACTIVITIES_RETENTION_DAYS = 180
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
