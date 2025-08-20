@@ -1,777 +1,314 @@
-<!-- Remplacez tout le contenu de votre fichier notifications/list.html par celui-ci -->
 {% extends 'base/base.html' %}
 {% load static %}
 
-{% block title %}Mes Notifications - AIC Métallurgie{% endblock %}
+{% block title %}Activités - AIC Métallurgie{% endblock %}
 
 {% block breadcrumb_items %}
-<li class="breadcrumb-item active">Notifications</li>
+<li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Accueil</a></li>
+<li class="breadcrumb-item active">Activités</li>
 {% endblock %}
 
 {% block content %}
 <div class="row">
-    <!-- En-tête avec statistiques -->
-    <div class="col-12 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-header bg-gradient-primary text-white">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">
-                        <i class="fas fa-bell me-2"></i>Mes Notifications
-                    </h4>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-light btn-sm hover-effect" onclick="marquerToutesNotificationsLues()">
-                            <i class="fas fa-check-double me-1"></i>Tout marquer comme lu
-                        </button>
-                        <button class="btn btn-light btn-sm hover-effect" onclick="window.location.reload()">
-                            <i class="fas fa-sync-alt me-1"></i>Actualiser
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div class="card-body bg-light">
-                <div class="row text-center">
-                    <div class="col-md-4">
-                        <div class="stat-card">
-                            <div class="stat-icon bg-primary">
-                                <i class="fas fa-list-alt"></i>
-                            </div>
-                            <div class="stat-content">
-                                <h3 class="stat-number text-primary" id="stat-total">{{ stats.total }}</h3>
-                                <p class="stat-label">Total</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="stat-card">
-                            <div class="stat-icon bg-warning">
-                                <i class="fas fa-exclamation-circle"></i>
-                            </div>
-                            <div class="stat-content">
-                                <h3 class="stat-number text-warning" id="stat-non-lues">{{ stats.non_lues }}</h3>
-                                <p class="stat-label">Non lues</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="stat-card">
-                            <div class="stat-icon bg-success">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                            <div class="stat-content">
-                                <h3 class="stat-number text-success" id="stat-lues">{{ stats.lues }}</h3>
-                                <p class="stat-label">Lues</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Filtres -->
-    <div class="col-12 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <form method="get" class="row g-3">
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold">
-                            <i class="fas fa-search me-1"></i>Rechercher
-                        </label>
-                        <input type="text" name="search" class="form-control form-control-modern" 
-                               value="{{ search }}" placeholder="Titre ou message...">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold">
-                            <i class="fas fa-tags me-1"></i>Type
-                        </label>
-                        <select name="type" class="form-select form-control-modern">
-                            <option value="">Tous les types</option>
-                            {% for type_code, type_label in types_notification %}
-                            <option value="{{ type_code }}" {% if filter_type == type_code %}selected{% endif %}>
-                                {{ type_label }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold">
-                            <i class="fas fa-filter me-1"></i>Statut
-                        </label>
-                        <select name="status" class="form-select form-control-modern">
-                            <option value="">Toutes</option>
-                            <option value="non_lues" {% if filter_status == 'non_lues' %}selected{% endif %}>
-                                Non lues
-                            </option>
-                            <option value="lues" {% if filter_status == 'lues' %}selected{% endif %}>
-                                Lues
-                            </option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">&nbsp;</label>
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-modern">
-                                <i class="fas fa-search me-1"></i>Filtrer
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Liste des notifications -->
     <div class="col-12">
-        <div class="card shadow-sm">
-            <div class="card-body p-0">
-                {% if notifications %}
-                <div class="notifications-list">
-                    {% for notification in notifications %}
-                    <div class="notification-item-modern {% if not notification.lu %}notification-unread-modern{% endif %}"
-                         data-notification-id="{{ notification.id }}">
-                        <div class="notification-content-wrapper">
-                            <!-- Indicateur de lecture -->
-                            <div class="read-indicator {% if not notification.lu %}unread{% endif %}"></div>
-                            
-                            <!-- Icône de type -->
-                            <div class="notification-type-icon-modern">
-                                <div class="icon-wrapper {{ notification.get_type_class }}">
-                                    <i class="{{ notification.get_icon_class }} fa-lg"></i>
-                                </div>
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-history me-2"></i>Journal des activités
+                </h3>
+            </div>
+            <div class="card-body">
+                <!-- Filtres -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-2">
+                                <label for="module" class="form-label">Module</label>
+                                <select class="form-control" id="module" name="module">
+                                    <option value="">Tous les modules</option>
+                                    {% for value, label in modules %}
+                                    <option value="{{ value }}" {% if filter_module == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
                             </div>
                             
-                            <!-- Contenu principal -->
-                            <div class="notification-main-content">
-                                <div class="notification-header">
-                                    <h6 class="notification-title-modern">
-                                        {{ notification.titre }}
-                                        {% if not notification.lu %}
-                                        <span class="badge badge-new">Nouveau</span>
-                                        {% endif %}
-                                    </h6>
-                                    <div class="notification-time-modern">
-                                        <i class="fas fa-clock me-1"></i>
-                                        <span class="time-ago">{{ notification.get_time_ago }}</span>
-                                        <small class="d-block text-muted">{{ notification.date_creation|date:"d/m/Y H:i" }}</small>
-                                    </div>
+                            <div class="col-md-2">
+                                <label for="action" class="form-label">Action</label>
+                                <select class="form-control" id="action" name="action">
+                                    <option value="">Toutes les actions</option>
+                                    {% for value, label in actions %}
+                                    <option value="{{ value }}" {% if filter_action == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-2">
+                                <label for="user" class="form-label">Utilisateur</label>
+                                <select class="form-control" id="user" name="user">
+                                    <option value="">Tous les utilisateurs</option>
+                                    {% for user in utilisateurs %}
+                                    <option value="{{ user.id }}" {% if filter_user == user.id|stringformat:'s' %}selected{% endif %}>
+                                        {{ user.get_full_name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label for="search" class="form-label">Recherche</label>
+                                <input type="text" class="form-control" id="search" name="search" 
+                                       value="{{ search }}" placeholder="Rechercher dans les descriptions...">
+                            </div>
+                            
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-search"></i> Filtrer
+                                </button>
+                                <a href="{% url 'core:activites_list' %}" class="btn btn-secondary">
+                                    <i class="fas fa-undo"></i> Reset
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Liste des activités -->
+                <div class="timeline-container">
+                    {% if activites %}
+                        <div class="timeline">
+                            {% for activite in activites %}
+                            <div class="timeline-item">
+                                <div class="timeline-marker">
+                                    <i class="{{ activite.get_icon_class }}"></i>
                                 </div>
-                                
-                                <p class="notification-message-modern">
-                                    {{ notification.message }}
-                                </p>
-                                
-                                <div class="notification-actions-modern">
-                                    {% if notification.url_action %}
-                                    <a href="{{ notification.url_action }}" class="btn btn-sm btn-primary btn-action">
-                                        <i class="fas fa-external-link-alt me-1"></i>Voir
-                                    </a>
-                                    {% endif %}
+                                <div class="timeline-content">
+                                    <div class="timeline-header d-flex justify-content-between align-items-start">
+                                        <h6 class="timeline-title mb-1">
+                                            {{ activite.get_action_display }} - {{ activite.get_module_display }}
+                                        </h6>
+                                        <small class="text-muted timeline-time">
+                                            <i class="fas fa-clock me-1"></i>{{ activite.date_creation|date:"d/m/Y H:i" }}
+                                            <span class="ms-2">(Il y a {{ activite.get_time_ago }})</span>
+                                        </small>
+                                    </div>
+                                    <p class="timeline-text mb-1">{{ activite.description }}</p>
                                     
-                                    {% if not notification.lu %}
-                                    <button class="btn btn-sm btn-outline-success btn-action" 
-                                            onclick="marquerNotificationLue('{{ notification.id }}')">
-                                        <i class="fas fa-check me-1"></i>Marquer comme lu
-                                    </button>
-                                    {% else %}
-                                    <div class="read-status">
-                                        <i class="fas fa-check-circle text-success me-1"></i>
-                                        <span class="text-success small">Lu le {{ notification.date_lecture|date:"d/m/Y H:i" }}</span>
+                                    <div class="row">
+                                        {% if activite.utilisateur %}
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-user me-1"></i>{{ activite.utilisateur.get_full_name }}
+                                            </small>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        {% if activite.adresse_ip %}
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-globe me-1"></i>{{ activite.adresse_ip }}
+                                            </small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    {% if activite.donnees_avant or activite.donnees_après %}
+                                    <div class="mt-2">
+                                        <button class="btn btn-sm btn-outline-info" type="button" 
+                                                data-bs-toggle="collapse" 
+                                                data-bs-target="#details-{{ activite.id }}" 
+                                                aria-expanded="false">
+                                            <i class="fas fa-info-circle"></i> Voir les détails
+                                        </button>
+                                        
+                                        <div class="collapse mt-2" id="details-{{ activite.id }}">
+                                            <div class="card card-body">
+                                                {% if activite.donnees_avant %}
+                                                <div class="mb-2">
+                                                    <strong>Données avant :</strong>
+                                                    <pre class="bg-light p-2 small">{{ activite.donnees_avant|pprint }}</pre>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                {% if activite.donnees_après %}
+                                                <div>
+                                                    <strong>Données après :</strong>
+                                                    <pre class="bg-light p-2 small">{{ activite.donnees_après|pprint }}</pre>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
                                     </div>
                                     {% endif %}
                                 </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+
+                        
+                    {% else %}
+                        <div class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="fas fa-history fa-3x mb-3"></i>
+                                <h5>Aucune activité trouvée</h5>
+                                <p>Il n'y a pas d'activité correspondant aux critères sélectionnés.</p>
                             </div>
                         </div>
-                    </div>
-                    {% endfor %}
+                    {% endif %}
                 </div>
-                {% else %}
-                <div class="empty-state">
-                    <div class="empty-icon">
-                        <i class="fas fa-bell-slash"></i>
-                    </div>
-                    <h4 class="empty-title">Aucune notification</h4>
-                    <p class="empty-message">Vous n'avez aucune notification correspondant aux critères sélectionnés.</p>
-                </div>
-                {% endif %}
             </div>
         </div>
-        
-        <!-- Pagination -->
-        {% if is_paginated %}
-        <nav aria-label="Navigation des notifications" class="mt-4">
-            <ul class="pagination justify-content-center pagination-modern">
-                {% if page_obj.has_previous %}
-                <li class="page-item">
-                    <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}">
-                        <i class="fas fa-angle-double-left"></i>
-                    </a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}">
-                        <i class="fas fa-angle-left"></i>
-                    </a>
-                </li>
-                {% endif %}
-                
-                <li class="page-item active">
-                    <span class="page-link">
-                        Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
-                    </span>
-                </li>
-                
-                {% if page_obj.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}">
-                        <i class="fas fa-angle-right"></i>
-                    </a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}">
-                        <i class="fas fa-angle-double-right"></i>
-                    </a>
-                </li>
-                {% endif %}
-            </ul>
-        </nav>
-        {% endif %}
     </div>
 </div>
 
-<!-- Toast Container -->
-<div class="toast-container position-fixed top-0 end-0 p-3" id="toast-container" style="z-index: 9999;"></div>
-
-<!-- Hidden form for CSRF token -->
-<form style="display: none;">
-    {% csrf_token %}
-</form>
-
-<!-- Hidden div to pass Django URLs to JavaScript -->
-<div id="django-notifications-data" 
-     data-mark-read-url-template="{% url 'core:notification_mark_read' notification_id=999999 %}"
-     data-mark-all-read-url="{% url 'core:notifications_mark_all_read' %}"
-     data-csrf-token="{{ csrf_token }}"
-     style="display: none;">
-</div>
-
+<!-- CSS pour la timeline -->
 <style>
-/* Gradient backgrounds */
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-}
-
-/* Modern stat cards */
-.stat-card {
-    display: flex;
-    align-items: center;
-    padding: 1.5rem;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    margin: 0.5rem;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-
-.stat-icon {
-    width: 3.5rem;
-    height: 3.5rem;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 1rem;
-}
-
-.stat-icon i {
-    font-size: 1.5rem;
-    color: white;
-}
-
-.stat-number {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 0.25rem;
-}
-
-.stat-label {
-    color: #6c757d;
-    font-weight: 500;
-    margin: 0;
-}
-
-/* Modern form controls */
-.form-control-modern, .form-select {
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    transition: all 0.2s ease;
-}
-
-.form-control-modern:focus, .form-select:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.15);
-}
-
-.btn-modern {
-    border-radius: 8px;
-    padding: 0.75rem 1.5rem;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-
-.hover-effect:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-
-/* Modern notifications list */
-.notifications-list {
-    padding: 0;
-}
-
-.notification-item-modern {
+.timeline-container {
     position: relative;
-    background: white;
-    border-bottom: 1px solid #e9ecef;
-    transition: all 0.3s ease;
-    overflow: hidden;
+    max-height: 800px;
+    overflow-y: auto;
 }
 
-.notification-item-modern:hover {
-    background: #f8f9fa;
-    transform: translateX(4px);
+.timeline {
+    position: relative;
+    padding: 1rem;
 }
 
-.notification-unread-modern {
-    background: linear-gradient(90deg, #e3f2fd 0%, #ffffff 100%);
-}
-
-.notification-content-wrapper {
+.timeline-item {
     display: flex;
     align-items: flex-start;
-    padding: 1.5rem;
+    margin-bottom: 2rem;
+    padding-left: 0.5rem;
     position: relative;
 }
 
-.read-indicator {
+.timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-item::before {
+    content: '';
     position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: transparent;
+    left: 1.125rem;
+    top: 2.5rem;
+    bottom: -2rem;
+    width: 2px;
+    background-color: #e9ecef;
 }
 
-.read-indicator.unread {
-    background: linear-gradient(180deg, #007bff 0%, #0056b3 100%);
+.timeline-item:last-child::before {
+    display: none;
 }
 
-.notification-type-icon-modern {
-    margin-right: 1rem;
-    margin-left: 0.5rem;
-}
-
-.icon-wrapper {
-    width: 3rem;
-    height: 3rem;
-    border-radius: 12px;
+.timeline-marker {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background-color: #fff;
+    border: 2px solid #e9ecef;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
+    margin-right: 1rem;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+    font-size: 0.9rem;
 }
 
-.icon-wrapper.info { background: linear-gradient(135deg, #17a2b8, #138496); }
-.icon-wrapper.success { background: linear-gradient(135deg, #28a745, #1e7e34); }
-.icon-wrapper.warning { background: linear-gradient(135deg, #ffc107, #e0a800); }
-.icon-wrapper.danger { background: linear-gradient(135deg, #dc3545, #c82333); }
-
-.notification-main-content {
+.timeline-content {
     flex: 1;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1.25rem;
+    border-left: 4px solid #dee2e6;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.notification-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 0.75rem;
-    gap: 1rem;
-}
-
-.notification-title-modern {
+.timeline-title {
+    font-size: 1rem;
     font-weight: 600;
-    color: #212529;
-    margin: 0;
-    flex: 1;
+    color: #495057;
 }
 
-.badge-new {
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    font-weight: 600;
-}
-
-.notification-time-modern {
-    text-align: right;
-    min-width: fit-content;
-}
-
-.time-ago {
-    font-size: 0.85rem;
-    color: #6c757d;
-    font-weight: 500;
-}
-
-.notification-message-modern {
+.timeline-text {
+    font-size: 0.95rem;
     color: #6c757d;
     line-height: 1.5;
-    margin-bottom: 1rem;
 }
 
-.notification-actions-modern {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
+.timeline-time {
+    font-size: 0.85rem;
 }
 
-.btn-action {
-    border-radius: 6px;
-    font-size: 0.875rem;
-    transition: all 0.2s ease;
+/* Couleurs selon le type d'action */
+.timeline-item:has(.fa-plus-circle) .timeline-marker {
+    border-color: #28a745;
+    background-color: #28a745;
+    color: white;
 }
 
-.btn-action:hover {
-    transform: translateY(-1px);
+.timeline-item:has(.fa-edit) .timeline-marker {
+    border-color: #ffc107;
+    background-color: #ffc107;
+    color: white;
 }
 
-.read-status {
-    display: flex;
-    align-items: center;
-    padding: 0.25rem 0.75rem;
-    background: #d4edda;
-    border-radius: 6px;
+.timeline-item:has(.fa-trash-alt) .timeline-marker {
+    border-color: #dc3545;
+    background-color: #dc3545;
+    color: white;
 }
 
-/* Empty state */
-.empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    color: #6c757d;
+.timeline-item:has(.fa-sign-in-alt) .timeline-marker,
+.timeline-item:has(.fa-sign-out-alt) .timeline-marker {
+    border-color: #17a2b8;
+    background-color: #17a2b8;
+    color: white;
 }
 
-.empty-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    opacity: 0.3;
-}
-
-.empty-title {
-    color: #495057;
-    margin-bottom: 0.5rem;
-}
-
-.empty-message {
-    margin: 0;
-}
-
-/* Modern pagination */
-.pagination-modern .page-link {
-    border-radius: 8px;
-    margin: 0 0.125rem;
-    border: 2px solid #e9ecef;
-    color: #007bff;
-    transition: all 0.2s ease;
-}
-
-.pagination-modern .page-link:hover {
-    background: #007bff;
+.timeline-item:has(.fa-user-cog) .timeline-marker {
     border-color: #007bff;
-    transform: translateY(-1px);
+    background-color: #007bff;
+    color: white;
 }
 
-.pagination-modern .page-item.active .page-link {
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    border-color: #007bff;
+/* Hover effects */
+.timeline-item:hover .timeline-content {
+    background-color: #e9ecef;
+    border-left-color: #007bff;
+    transform: translateX(2px);
+    transition: all 0.3s ease;
 }
 
-/* Responsive design */
+.timeline-item:hover .timeline-marker {
+    transform: scale(1.1);
+    transition: all 0.3s ease;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
-    .stat-card {
-        margin: 0.25rem;
+    .timeline-content {
         padding: 1rem;
     }
     
-    .stat-icon {
-        width: 2.5rem;
-        height: 2.5rem;
-        margin-right: 0.75rem;
-    }
-    
-    .stat-number {
-        font-size: 1.5rem;
-    }
-    
-    .notification-content-wrapper {
-        padding: 1rem;
-    }
-    
-    .notification-header {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    
-    .notification-time-modern {
-        text-align: left;
-    }
-    
-    .notification-actions-modern {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .btn-action {
+    .timeline-marker {
+        width: 2rem;
+        height: 2rem;
         font-size: 0.8rem;
     }
-}
-
-/* Toast styling */
-.toast {
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-
-.toast-header {
-    border-radius: 12px 12px 0 0;
+    
+    .timeline-title {
+        font-size: 0.9rem;
+    }
+    
+    .timeline-text {
+        font-size: 0.85rem;
+    }
 }
 </style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Get Django data safely from data attributes
-    var djangoDataElement = document.getElementById('django-notifications-data');
-    var csrfToken = djangoDataElement.dataset.csrfToken;
-    var markReadUrlTemplate = djangoDataElement.dataset.markReadUrlTemplate;
-    var markAllReadUrl = djangoDataElement.dataset.markAllReadUrl;
-    
-    console.log('URLs:', {
-        markReadTemplate: markReadUrlTemplate,
-        markAllRead: markAllReadUrl
-    });
-    
-    // Fonction pour marquer une notification comme lue
-    function marquerNotificationLue(notificationId) {
-        var markReadUrl = markReadUrlTemplate.replace('999999', notificationId);
-        console.log('Mark read URL:', markReadUrl);
-        
-        fetch(markReadUrl, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken,
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(function(response) {
-            console.log('Response status:', response.status);
-            return response.json();
-        })
-        .then(function(data) {
-            console.log('Response data:', data);
-            if (data.success) {
-                var notificationElement = document.querySelector('[data-notification-id="' + notificationId + '"]');
-                if (notificationElement) {
-                    // Animation de sortie
-                    notificationElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                    notificationElement.style.opacity = '0';
-                    notificationElement.style.transform = 'translateX(-20px)';
-                    
-                    // Mise à jour du contenu après l'animation
-                    setTimeout(function() {
-                        notificationElement.classList.remove('notification-unread-modern');
-                        
-                        // Mettre à jour l'indicateur de lecture
-                        var readIndicator = notificationElement.querySelector('.read-indicator');
-                        if (readIndicator) {
-                            readIndicator.classList.remove('unread');
-                        }
-                        
-                        // Mettre à jour le badge et le bouton
-                        var badge = notificationElement.querySelector('.badge-new');
-                        var button = notificationElement.querySelector('.btn-outline-success');
-                        
-                        if (badge) badge.remove();
-                        if (button) {
-                            button.outerHTML = 
-                                '<div class="read-status">' +
-                                '<i class="fas fa-check-circle text-success me-1"></i>' +
-                                '<span class="text-success small">Lu maintenant</span>' +
-                                '</div>';
-                        }
-                        
-                        // Réanimer l'élément
-                        notificationElement.style.opacity = '1';
-                        notificationElement.style.transform = 'translateX(0)';
-                        
-                        showNotificationToast('Notification marquée comme lue', 'success');
-                        updateStats(-1);
-                    }, 300);
-                }
-            } else {
-                console.error('Erreur:', data.message);
-                showNotificationToast('Erreur lors du marquage: ' + (data.message || 'Erreur inconnue'), 'error');
-            }
-        })
-        .catch(function(error) {
-            console.error('Erreur réseau:', error);
-            showNotificationToast('Erreur de connexion', 'error');
-        });
-    }
-    
-    // Fonction pour marquer toutes les notifications comme lues
-    function marquerToutesNotificationsLues() {
-        if (!confirm('Marquer toutes les notifications comme lues ?')) return;
-        
-        console.log('Mark all read URL:', markAllReadUrl);
-        
-        fetch(markAllReadUrl, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken,
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(function(response) {
-            console.log('Response status:', response.status);
-            return response.json();
-        })
-        .then(function(data) {
-            console.log('Response data:', data);
-            if (data.success) {
-                showNotificationToast('Toutes les notifications ont été marquées comme lues', 'success');
-                setTimeout(function() {
-                    location.reload();
-                }, 1000);
-            } else {
-                console.error('Erreur:', data.message);
-                showNotificationToast('Erreur lors du marquage: ' + (data.message || 'Erreur inconnue'), 'error');
-            }
-        })
-        .catch(function(error) {
-            console.error('Erreur réseau:', error);
-            showNotificationToast('Erreur de connexion', 'error');
-        });
-    }
-    
-    // Fonction pour mettre à jour les statistiques
-    function updateStats(delta) {
-        var nonLuesElement = document.getElementById('stat-non-lues');
-        var luesElement = document.getElementById('stat-lues');
-        
-        if (nonLuesElement && luesElement) {
-            var currentNonLues = parseInt(nonLuesElement.textContent);
-            var currentLues = parseInt(luesElement.textContent);
-            
-            var newNonLues = Math.max(0, currentNonLues + delta);
-            var newLues = currentLues - delta;
-            
-            // Animation des compteurs
-            animateNumber(nonLuesElement, currentNonLues, newNonLues);
-            animateNumber(luesElement, currentLues, newLues);
-        }
-    }
-    
-    // Animation des nombres
-    function animateNumber(element, from, to) {
-        var duration = 500;
-        var start = Date.now();
-        
-        function update() {
-            var now = Date.now();
-            var progress = Math.min((now - start) / duration, 1);
-            var current = Math.round(from + (to - from) * progress);
-            
-            element.textContent = current;
-            
-            if (progress < 1) {
-                requestAnimationFrame(update);
-            }
-        }
-        
-        update();
-    }
-    
-    // Fonction pour afficher un toast de notification
-    function showNotificationToast(message, type) {
-        type = type || 'info';
-        
-        var toastContainer = document.getElementById('toast-container');
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.id = 'toast-container';
-            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
-            toastContainer.style.zIndex = '9999';
-            document.body.appendChild(toastContainer);
-        }
-        
-        var toastId = 'toast-' + Date.now();
-        var bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
-        var icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
-        
-        var toastHtml = 
-            '<div class="toast ' + bgClass + ' text-white" id="' + toastId + '" role="alert" aria-live="assertive" aria-atomic="true">' +
-            '<div class="toast-header ' + bgClass + ' text-white border-0">' +
-            '<i class="fas ' + icon + ' me-2"></i>' +
-            '<strong class="me-auto">Notification</strong>' +
-            '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>' +
-            '</div>' +
-            '<div class="toast-body">' + escapeHtml(message) + '</div>' +
-            '</div>';
-        
-        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-        
-        var toastElement = document.getElementById(toastId);
-        if (typeof bootstrap !== 'undefined') {
-            var toast = new bootstrap.Toast(toastElement, {
-                delay: 3000
-            });
-            toast.show();
-            
-            toastElement.addEventListener('hidden.bs.toast', function() {
-                this.remove();
-            });
-        } else {
-            // Fallback si Bootstrap n'est pas disponible
-            setTimeout(function() {
-                var element = document.getElementById(toastId);
-                if (element) {
-                    element.remove();
-                }
-            }, 3000);
-        }
-    }
-    
-    // Fonction pour échapper le HTML
-    function escapeHtml(text) {
-        var map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        };
-        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-    }
-    
-    // Rendre les fonctions globales pour l'utilisation dans les attributs onclick
-    window.marquerNotificationLue = marquerNotificationLue;
-    window.marquerToutesNotificationsLues = marquerToutesNotificationsLues;
-});
-</script>
 {% endblock %}

@@ -1,0 +1,1809 @@
+/* ============================================================================
+   CUSTOM CSS - AIC MÉTALLURGIE - SYSTÈME GESTION LANCEMENTS
+   
+   Couleurs principales:
+   - Primary: #007bff (Bleu moderne)
+   - Secondary: #6c757d (Gris moderne)
+   - Success: #28a745 (Vert)
+   - Warning: #ffc107 (Jaune/Orange)
+   - Danger: #dc3545 (Rouge)
+   - Info: #17a2b8 (Cyan)
+   - Light backgrounds: #f8f9fa, #ffffff
+   ============================================================================ */
+
+/* ============================================================================
+   VARIABLES CSS GLOBALES
+   ============================================================================ */
+:root {
+    /* Couleurs principales */
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    
+    /* Couleurs de fond claires */
+    --light-bg: #f8f9fa;
+    --white-bg: #ffffff;
+    --card-bg: #ffffff;
+    --body-bg: #f4f6f9;
+    
+    /* Couleurs de texte */
+    --text-dark: #212529;
+    --text-muted: #6c757d;
+    --text-light: #ffffff;
+    
+    /* Ombres et bordures */
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 8px rgba(0,0,0,0.1);
+    --shadow-lg: 0 8px 16px rgba(0,0,0,0.15);
+    --shadow-xl: 0 12px 24px rgba(0,0,0,0.2);
+    
+    /* Rayons de bordure */
+    --border-radius: 8px;
+    --border-radius-lg: 12px;
+    --border-radius-xl: 16px;
+    
+    /* Transitions */
+    --transition-fast: 0.2s ease;
+    --transition-smooth: 0.3s ease;
+    --transition-slow: 0.5s ease;
+}
+
+/* ============================================================================
+   STYLES GLOBAUX - FOND CLAIR GARANTI
+   ============================================================================ */
+html {
+    font-size: 14px;
+    scroll-behavior: smooth;
+}
+
+body {
+    background-color: var(--body-bg) !important;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--text-dark);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* Force le fond blanc pour tous les conteneurs principaux */
+.container, 
+.container-fluid {
+    background-color: transparent;
+}
+
+/* ============================================================================
+   NAVIGATION - STYLE MODERNE ET CLAIR AVEC GAP
+   ============================================================================ */
+.navbar {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%) !important;
+    box-shadow: var(--shadow-md);
+    padding: 0.75rem 0;
+    border: none;
+}
+
+.navbar-brand {
+    font-weight: 600;
+    font-size: 1.2rem;
+    color: var(--text-light) !important;
+    display: flex;
+    align-items: center;
+    margin-right: 2rem; /* Gap ajouté après la marque */
+}
+
+.navbar-brand img {
+    transition: var(--transition-fast);
+}
+
+.navbar-brand:hover img {
+    transform: scale(1.05);
+}
+
+/* CORRECTION: Ajout de gap entre les éléments de navigation */
+.navbar-nav {
+    gap: 2.3rem; /* Gap entre les éléments du menu */
+    display: flex;
+    align-items: center;
+    margin-left: 80px;
+}
+
+.navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    margin: 0; /* Suppression des marges car on utilise gap */
+    transition: var(--transition-fast);
+}
+
+.navbar-nav .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-light) !important;
+    transform: translateY(-1px);
+}
+
+/* Gap pour la zone utilisateur */
+.navbar-nav.ms-auto {
+    margin-left: auto !important;
+    gap: 0.5rem;
+}
+
+.dropdown-menu {
+    background-color: var(--white-bg);
+    border: none;
+    box-shadow: var(--shadow-lg);
+    border-radius: var(--border-radius-lg);
+    padding: 0.5rem 0;
+    margin-top: 0.5rem;
+}
+
+.dropdown-item {
+    padding: 0.75rem 1.5rem;
+    color: var(--text-dark);
+    transition: var(--transition-fast);
+    border-radius: 0;
+}
+
+.dropdown-item:hover {
+    background-color: var(--light-bg);
+    color: var(--primary-color);
+    padding-left: 2rem;
+}
+
+.dropdown-item i {
+    width: 20px;
+    color: var(--text-muted);
+    transition: var(--transition-fast);
+}
+
+.dropdown-item:hover i {
+    color: var(--primary-color);
+}
+
+/* ============================================================================
+   CARTES ET CONTENEURS - DESIGN MODERNE CLAIR
+   ============================================================================ */
+.card {
+    background-color: var(--card-bg) !important;
+    border: none;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    transition: var(--transition-smooth);
+    overflow: hidden;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.card-header {
+    background: linear-gradient(135deg,#7c647a , var(--primary-color)) !important;
+    color: var(--text-light) !important;
+    border-bottom: 1px solid #e9ecef;
+    padding: 1rem 1.5rem;
+    font-weight: 600;
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0 !important;
+}
+
+.card-body {
+    padding: 1.5rem;
+    background-color: var(--white-bg);
+}
+
+.card-footer {
+    background-color: var(--light-bg);
+    border-top: 1px solid #e9ecef;
+    padding: 1rem 1.5rem;
+} 
+
+/* Cartes avec bordures colorées */
+.card.border-primary {
+    border-left: 4px solid var(--primary-color) !important;
+}
+
+.card.border-success {
+    border-left: 4px solid var(--success-color) !important;
+}
+
+.card.border-warning {
+    border-left: 4px solid var(--warning-color) !important;
+}
+
+.card.border-danger {
+    border-left: 4px solid var(--danger-color) !important;
+}
+
+.card.border-info {
+    border-left: 4px solid var(--info-color) !important;
+}
+
+/* ============================================================================
+   BOUTONS - STYLE MODERNE ET COHÉRENT
+   ============================================================================ */
+.btn {
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    padding: 0.625rem 1.25rem;
+    transition: var(--transition-fast);
+    border: none;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), #0056b3);
+    color: var(--text-light);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--success-color), #1e7e34);
+    color: var(--text-light);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, var(--warning-color), #e0a800);
+    color: var(--text-dark);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--danger-color), #c82333);
+    color: var(--text-light);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, var(--info-color), #138496);
+    color: var(--text-light);
+}
+
+.btn-lg {
+    padding: 0.875rem 1.75rem;
+    font-size: 1.1rem;
+    border-radius: var(--border-radius-lg);
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+/* ============================================================================
+   TABLEAUX - DESIGN MODERNE ET LISIBLE
+   ============================================================================ */
+.table {
+    background-color: var(--white-bg);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+.table thead th {
+    background-color: var(--text-dark) !important;
+    color: var(--text-light);
+    border: none;
+    padding: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.5px;
+}
+
+.table tbody tr {
+    transition: var(--transition-fast);
+}
+
+.table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+    transform: translateX(2px);
+}
+
+.table td {
+    padding: 1rem;
+    border-color: #f0f0f0;
+    vertical-align: middle;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* ============================================================================
+   FORMULAIRES - DESIGN MODERNE ET ACCESSIBLE
+   ============================================================================ */
+.form-control {
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius);
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    transition: var(--transition-fast);
+    background-color: var(--white-bg);
+    color: var(--text-dark);
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.1);
+    background-color: var(--white-bg);
+    color: var(--text-dark);
+}
+
+.form-select {
+    background-color: var(--white-bg);
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius);
+    color: var(--text-dark);
+}
+
+.form-label {
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.form-text {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+/* États de validation */
+.is-invalid {
+    border-color: var(--danger-color);
+}
+
+.is-valid {
+    border-color: var(--success-color);
+}
+
+.invalid-feedback {
+    color: var(--danger-color);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.valid-feedback {
+    color: var(--success-color);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* ============================================================================
+   BADGES ET LABELS - DESIGN COHÉRENT
+   ============================================================================ */
+.badge {
+    font-weight: 500;
+    border-radius: var(--border-radius);
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.badge.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+.badge.bg-success {
+    background-color: var(--success-color) !important;
+}
+
+.badge.bg-warning {
+    background-color: var(--warning-color) !important;
+    color: var(--text-dark) !important;
+}
+
+.badge.bg-danger {
+    background-color: var(--danger-color) !important;
+}
+
+.badge.bg-info {
+    background-color: var(--info-color) !important;
+}
+
+/* ============================================================================
+   ALERTS - DESIGN MODERNE
+   ============================================================================ */
+.alert {
+    border: none;
+    border-radius: var(--border-radius-lg);
+    padding: 1rem 1.5rem;
+    box-shadow: var(--shadow-sm);
+    background-color: var(--white-bg);
+}
+
+.alert-primary {
+    background-color: rgba(0, 123, 255, 0.1);
+    color: #004085;
+    border-left: 4px solid var(--primary-color);
+}
+
+.alert-success {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #155724;
+    border-left: 4px solid var(--success-color);
+}
+
+.alert-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #856404;
+    border-left: 4px solid var(--warning-color);
+}
+
+.alert-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #721c24;
+    border-left: 4px solid var(--danger-color);
+}
+
+.alert-info {
+    background-color: rgba(23, 162, 184, 0.1);
+    color: #0c5460;
+    border-left: 4px solid var(--info-color);
+}
+
+/* ============================================================================
+   BREADCRUMB - NAVIGATION CLAIRE
+   ============================================================================ */
+.breadcrumb {
+    background-color: transparent;
+    padding: 0.75rem 0;
+    margin-bottom: 0;
+}
+
+.breadcrumb-item {
+    font-size: 0.9rem;
+}
+
+.breadcrumb-item a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: var(--transition-fast);
+}
+
+.breadcrumb-item a:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+    color: var(--text-muted);
+}
+
+/* ============================================================================
+   PAGINATION - DESIGN MODERNE
+   ============================================================================ */
+.pagination {
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+.page-link {
+    background-color: var(--white-bg);
+    border: 1px solid #ddd;
+    color: var(--primary-color);
+    padding: 0.5rem 0.75rem;
+    margin: 0 2px;
+    border-radius: var(--border-radius);
+    transition: var(--transition-fast);
+}
+
+.page-link:hover {
+    background-color: var(--primary-color);
+    color: var(--text-light);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.page-item.active .page-link {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* ============================================================================
+   DASHBOARD - STYLES SPÉCIFIQUES
+   ============================================================================ */
+.dashboard-main-card {
+    background: linear-gradient(135deg, var(--primary-color), #0056b3);
+    color: var(--text-light);
+    border-radius: var(--border-radius-xl);
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.dashboard-particles::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='white' fill-opacity='0.03'%3E%3Cpath d='M20 20c0 0 0-8 0-8s8 0 8 0 0 8 0 8-8 0-8 0z'/%3E%3C/g%3E%3C/svg%3E") repeat;
+    animation: float 20s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes float {
+    0% { transform: translateX(-50px); }
+    100% { transform: translateX(50px); }
+}
+
+/* ============================================================================
+   CARTES STATISTIQUES - CORRECTION DU PLACEMENT "PLUS D'INFOS"
+   ============================================================================ */
+.small-box {
+    border-radius: var(--border-radius-lg);
+    position: relative;
+    display: block;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-md);
+    transition: var(--transition-smooth);
+    overflow: hidden;
+    background: var(--white-bg);
+    min-height: 120px; /* Hauteur minimale pour assurer l'espace */
+}
+
+.small-box:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-xl);
+}
+
+.small-box > .inner {
+    padding: 15px;
+    position: relative;
+    z-index: 2;
+    padding-bottom: 45px; /* Espace réservé pour le footer */
+}
+
+.small-box .icon {
+    position: absolute;
+    top: auto;
+    bottom: 45px; /* Ajusté pour laisser la place au footer */
+    right: 15px;
+    z-index: 1;
+    font-size: 70px;
+    opacity: 0.15;
+}
+
+
+/* CORRECTION: Repositionnement du footer "Plus d'infos" */
+.small-box .small-box-footer {
+    position: absolute; /* Changé de relative à absolute */
+    bottom: 0; /* Collé au bas de la carte */
+    left: 0;
+    right: 0;
+    text-align: center;
+    padding: 8px 0; /* Padding augmenté pour plus de visibilité */
+    color: var(--white-bg);
+    background-color: rgba(0, 0, 0, 0.15); /* Opacité augmentée */
+    text-decoration: none;
+    z-index: 10;
+    font-size: 13px; /* Taille légèrement augmentée */
+    font-weight: 500; /* Poids de police augmenté */
+    transition: var(--transition-fast);
+    border-radius: 0; /* Pas de border radius pour coller parfaitement */
+}
+
+.small-box .small-box-footer:hover {
+    background-color: rgba(0, 0, 0, 0.25); /* Opacité augmentée au hover */
+    color: var(--text-light);
+    text-decoration: none;
+}
+
+.bg-info {
+    background: linear-gradient(135deg, var(--info-color), #138496) !important;
+    color: var(--text-light);
+}
+
+.bg-success {
+    background: linear-gradient(135deg, var(--success-color), #1e7e34) !important;
+    color: var(--text-light);
+}
+
+.bg-warning {
+    background: linear-gradient(135deg, var(--warning-color), #e0a800) !important;
+    color: var(--text-light);
+}
+
+/* CORRECTION: Footer pour les cartes warning avec texte sombre */
+.bg-warning .small-box-footer {
+    color: var(--text-light) !important;
+}
+.small-box .inner,
+.small-box .icon {
+    color: #fff !important;
+}
+.small-box,
+.small-box *,
+.small-box .inner,
+.small-box .icon {
+    color: var(--text-light) !important;
+}
+
+.bg-warning .small-box-footer:hover {
+    color: var(--text-light) !important;
+}
+footer .text-muted {
+    color: #ffffff !important;
+}
+.bg-danger {
+    background: linear-gradient(135deg, var(--danger-color), #c82333) !important;
+    color: var(--text-light);
+}
+
+/* ============================================================================
+   NOTIFICATIONS - DESIGN MODERNE
+   ============================================================================ */
+.notification-dropdown {
+    width: 350px;
+    max-height: 500px;
+    overflow-y: auto;
+    background-color: var(--white-bg);
+}
+
+.notification-item {
+    transition: var(--transition-fast);
+    background-color: var(--white-bg);
+}
+
+.notification-item:hover {
+    background-color: var(--light-bg);
+    transform: translateX(3px);
+}
+
+.notification-link {
+    text-decoration: none;
+    color: var(--text-dark);
+}
+
+.notification-icon {
+    color: var(--primary-color);
+}
+
+/* ============================================================================
+   FOOTER - COULEUR DU TEXTE EN BLANC
+   ============================================================================ */
+footer {
+    background: linear-gradient(135deg, var(--text-dark), #495057) !important;
+    color: #ffffff !important;
+    margin-top: auto;
+}
+
+footer * {
+    color: #ffffff !important;
+}
+
+footer a {
+    color: rgba(255, 255, 255, 0.8) !important;
+    transition: var(--transition-fast);
+}
+
+footer a:hover {
+    color: #ffffff !important;
+    text-decoration: none;
+}
+
+footer p, footer div, footer span {
+    color: #ffffff !important;
+}
+
+/* ============================================================================
+   ACTIONS RAPIDES - CORRECTION DU CONTRASTE
+   ============================================================================ */
+
+/* CORRECTION: Assurer la lisibilité des titres sur fond coloré */
+.actions-card, .actions-rapides {
+    background-color: var(--white-bg) !important;
+    color: var(--text-dark) !important;
+}
+
+.actions-card h5, .actions-rapides h5 {
+    color: var(--primary-color) !important;
+    background-color: transparent !important;
+    padding: 0.5rem 0;
+}
+
+/* Cartes d'action colorées avec texte lisible */
+.action-card {
+    color: var(--text-light) !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); /* Ombre pour améliorer la lisibilité */
+}
+
+.action-card h6, .action-card p, .action-card span {
+    color: var(--text-light) !important;
+}
+
+/* Pour les cartes avec fond jaune/warning */
+.action-card.bg-warning, .action-card.bg-warning * {
+    color: var(--text-dark) !important;
+    text-shadow: none;
+}
+
+/* ============================================================================
+   TOAST NOTIFICATIONS - DESIGN MODERNE
+   ============================================================================ */
+.toast {
+    border: none;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    background-color: var(--white-bg);
+}
+
+.toast-header {
+    background-color: var(--light-bg);
+    border-bottom: none;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+}
+
+.toast-body {
+    padding: 1rem;
+    background-color: var(--white-bg);
+    color: var(--text-dark);
+}
+
+/* ============================================================================
+   MODALS - DESIGN COHÉRENT
+   ============================================================================ */
+.modal-content {
+    border: none;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-xl);
+    background-color: var(--white-bg);
+}
+
+.modal-header {
+    background-color: var(--primary-color);
+    color: var(--text-light);
+    border-bottom: none;
+    padding: 1.5rem;
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+}
+
+.modal-body {
+    padding: 1.5rem;
+    background-color: var(--white-bg);
+    color: var(--text-dark);
+}
+
+.modal-footer {
+    background-color: var(--light-bg);
+    border-top: none;
+    padding: 1rem 1.5rem;
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN - ADAPTATIONS MOBILES
+   ============================================================================ */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .table td,
+    .table th {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .dashboard-main-card {
+        padding: 1.5rem;
+    }
+    
+    .small-box .icon {
+        font-size: 50px;
+        bottom: 45px; /* Ajusté pour mobile */
+        right: 10px;
+    }
+    
+    /* Gap navbar réduit sur mobile */
+    .navbar-nav {
+        gap: 0.5rem;
+    }
+    
+    .navbar-brand {
+        margin-right: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .btn-group .btn {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+    
+    /* Small-box adaptations pour très petit écran */
+    .small-box .inner {
+        padding-bottom: 35px;
+    }
+    
+    .small-box .icon {
+        bottom: 35px;
+        font-size: 40px;
+    }
+    
+    .small-box .small-box-footer {
+        padding: 6px 0;
+        font-size: 12px;
+    }
+}
+
+/* ============================================================================
+   UTILITIES - CLASSES UTILITAIRES PERSONNALISÉES
+   ============================================================================ */
+.bg-light-custom {
+    background-color: var(--light-bg) !important;
+}
+
+.text-primary-custom {
+    color: var(--primary-color) !important;
+}
+
+.border-primary-custom {
+    border-color: var(--primary-color) !important;
+}
+
+.shadow-custom {
+    box-shadow: var(--shadow-md) !important;
+}
+
+.rounded-custom {
+    border-radius: var(--border-radius-lg) !important;
+}
+
+.transition-smooth {
+    transition: var(--transition-smooth) !important;
+}
+
+/* Classes d'animation */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+.slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================================================
+   PRINT STYLES - OPTIMISATION POUR L'IMPRESSION
+   ============================================================================ */
+@media print {
+    body {
+        background-color: white !important;
+        color: black !important;
+    }
+    
+    .navbar,
+    .btn,
+    .card-header,
+    .modal,
+    .toast,
+    .sidebar {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #ddd !important;
+        box-shadow: none !important;
+    }
+    
+    .table {
+        border-collapse: collapse !important;
+    }
+    
+    .table td,
+    .table th {
+        border: 1px solid #ddd !important;
+        background-color: transparent !important;
+    }
+}
+
+/* ============================================================================
+   DARK MODE PREVENTION - FORCE LIGHT MODE
+   ============================================================================ */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: var(--body-bg) !important;
+        color: var(--text-dark) !important;
+    }
+    
+    .card,
+    .modal-content,
+    .dropdown-menu,
+    .form-control,
+    .form-select {
+        background-color: var(--white-bg) !important;
+        color: var(--text-dark) !important;
+    }
+    
+    .table {
+        background-color: var(--white-bg) !important;
+        color: var(--text-dark) !important;
+    }
+}
+
+/* ============================================================================
+   SCROLLBAR CUSTOMIZATION - STYLE MODERNE
+   ============================================================================ */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--light-bg);
+    border-radius: var(--border-radius);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: var(--border-radius);
+    transition: var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
+}
+
+/* ============================================================================
+   FOCUS STYLES - ACCESSIBILITÉ
+   ============================================================================ */
+*:focus {
+    outline: none !important;
+}
+
+button:focus,
+.btn:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25) !important;
+}
+
+/* ============================================================================
+   LOADING STATES - INDICATEURS DE CHARGEMENT
+   ============================================================================ */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(0, 123, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--primary-color);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.btn-loading::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 1s ease-in-out infinite;
+}
+
+/* ============================================================================
+   CUSTOM COMPONENTS - COMPOSANTS SPÉCIFIQUES AUX TEMPLATES
+   ============================================================================ */
+
+/* Timeline component */
+.timeline-item {
+    position: relative;
+    padding-left: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+}
+
+.timeline-item::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 12px;
+    bottom: -1.5rem;
+    width: 2px;
+    background-color: #e9ecef;
+}
+
+.timeline-item:last-child::after {
+    display: none;
+}
+
+/* Weight display component */
+.weight-display {
+    background: linear-gradient(135deg, var(--success-color), #20c997);
+    color: var(--text-light);
+    padding: 1rem;
+    border-radius: var(--border-radius-lg);
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Status indicators */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-indicator.status-planifie {
+    background-color: rgba(108, 117, 125, 0.1);
+    color: var(--secondary-color);
+}
+
+.status-indicator.status-en_cours {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #856404;
+}
+
+.status-indicator.status-termine {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #155724;
+}
+
+.status-indicator.status-en_attente {
+    background-color: rgba(23, 162, 184, 0.1);
+    color: #0c5460;
+}
+
+/* Avatar component */
+.avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: var(--text-light);
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+/* Info rows for detail pages */
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 600;
+    color: var(--text-muted);
+    flex: 0 0 30%;
+}
+
+.info-value {
+    flex: 1;
+    color: var(--text-dark);
+    text-align: right;
+}
+
+/* ============================================================================
+   LANCEMENTS - STYLES SPÉCIFIQUES
+   ============================================================================ */
+
+/* Header sections pour les pages */
+.lancements-header,
+.create-header,
+.edit-header,
+.delete-header,
+.planning-header {
+    color: var(--text-light);
+    padding: 2rem;
+    border-radius: var(--border-radius-xl);
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+}
+
+.lancements-header {
+    background: linear-gradient(135deg, #e83e8c, #fd7e14);
+}
+
+.create-header {
+    background: linear-gradient(135deg, var(--success-color), #20c997);
+}
+
+.edit-header {
+    background: linear-gradient(135deg, var(--warning-color), #fd7e14);
+}
+
+.delete-header {
+    background: linear-gradient(135deg, var(--danger-color), #c82333);
+}
+
+.planning-header {
+    background: linear-gradient(135deg, var(--info-color), var(--primary-color));
+}
+
+/* Effet de particules pour les headers */
+.lancements-header::before,
+.create-header::before,
+.edit-header::before,
+.delete-header::before,
+.planning-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    transform: translate(30px, -30px);
+}
+
+/* Cartes de filtres et recherche */
+.filters-card {
+    background-color: var(--white-bg);
+    border: none;
+    box-shadow: var(--shadow-md);
+    border-radius: var(--border-radius-lg);
+}
+
+/* Indicateurs de lancement */
+.lancement-card {
+    transition: var(--transition-smooth);
+    background-color: var(--white-bg);
+    border-left: 4px solid transparent;
+}
+
+.lancement-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-left-color: #e83e8c;
+}
+
+.lancement-num {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 0.9rem;
+    background: var(--light-bg);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius);
+    color: var(--text-dark);
+}
+
+.weight-indicator {
+    background: linear-gradient(90deg, var(--success-color), var(--info-color));
+    color: var(--text-light);
+    padding: 0.25rem 0.5rem;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.priority-high {
+    border-left-color: var(--danger-color) !important;
+}
+
+.priority-medium {
+    border-left-color: var(--warning-color) !important;
+}
+
+.priority-low {
+    border-left-color: var(--success-color) !important;
+}
+
+/* États vides */
+.empty-state {
+    padding: 4rem 2rem;
+    text-align: center;
+    background-color: var(--white-bg);
+    border-radius: var(--border-radius-lg);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+}
+
+/* ============================================================================
+   FORMULAIRES - STYLES AVANCÉS
+   ============================================================================ */
+
+/* Sections de formulaire */
+.form-section {
+    border-left: 4px solid var(--primary-color);
+    padding-left: 1.5rem;
+    margin-bottom: 2rem;
+    background-color: var(--white-bg);
+    border-radius: 0 var(--border-radius-lg) var(--border-radius-lg) 0;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.form-section h5 {
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+.form-section.success {
+    border-left-color: var(--success-color);
+}
+
+.form-section.success h5 {
+    color: var(--success-color);
+}
+
+.form-section.warning {
+    border-left-color: var(--warning-color);
+}
+
+.form-section.warning h5 {
+    color: var(--warning-color);
+}
+
+.form-section.danger {
+    border-left-color: var(--danger-color);
+}
+
+.form-section.danger h5 {
+    color: var(--danger-color);
+}
+
+/* Champs obligatoires */
+.required-field label::after {
+    content: ' *';
+    color: var(--danger-color);
+    font-weight: bold;
+}
+
+/* Calculatrice de poids */
+.weight-calculator {
+    background: var(--light-bg);
+    padding: 1.5rem;
+    border-radius: var(--border-radius-lg);
+    border-left: 4px solid var(--info-color);
+    margin-bottom: 1rem;
+}
+
+.total-weight {
+    background: linear-gradient(135deg, #fd7e14, #e83e8c);
+    color: var(--text-light);
+    padding: 1rem;
+    border-radius: var(--border-radius-lg);
+    text-align: center;
+    font-weight: bold;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Texte d'aide */
+.help-text {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+/* Indicateurs de changement */
+.change-indicator {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    padding: 0.5rem;
+    border-radius: var(--border-radius);
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: #856404;
+}
+
+/* Informations en lecture seule */
+.readonly-info {
+    background: #e9ecef;
+    padding: 0.75rem;
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--secondary-color);
+    color: var(--text-dark);
+}
+
+/* ============================================================================
+   SIDEBAR ET ACTIONS STICKY
+   ============================================================================ */
+.sticky-actions {
+    position: sticky;
+    top: 20px;
+    z-index: 10;
+}
+
+.action-buttons .card {
+    margin-bottom: 1rem;
+}
+
+.action-buttons .btn {
+    margin-bottom: 0.5rem;
+}
+
+/* ============================================================================
+   CALENDRIER ET PLANNING
+   ============================================================================ */
+.calendar-card {
+    background-color: var(--white-bg);
+    border: none;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    min-height: 600px;
+}
+
+.calendar-controls {
+    background: var(--light-bg);
+    padding: 1rem;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 1rem;
+}
+
+.view-toggle button {
+    border: 1px solid #dee2e6;
+    background: var(--white-bg);
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    margin: 0 0.25rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    color: var(--text-dark);
+}
+
+.view-toggle button.active {
+    background: var(--primary-color);
+    color: var(--text-light);
+    border-color: var(--primary-color);
+}
+
+.view-toggle button:hover:not(.active) {
+    background: var(--light-bg);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.month-navigation {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.month-navigation h4 {
+    margin: 0;
+    color: var(--text-dark);
+    min-width: 200px;
+    text-align: center;
+}
+
+/* Légende du calendrier */
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin: 0.5rem 0;
+    color: var(--text-dark);
+}
+
+.legend-color {
+    width: 20px;
+    height: 15px;
+    border-radius: 3px;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+}
+
+/* Cartes statistiques */
+.stats-card {
+    border-left: 4px solid var(--info-color);
+    background-color: var(--white-bg);
+}
+
+/* FullCalendar customizations */
+#calendar {
+    min-height: 500px;
+    width: 100%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background-color: var(--white-bg);
+}
+
+#calendar.calendar-ready {
+    opacity: 1;
+}
+
+.fc {
+    background-color: var(--white-bg);
+    color: var(--text-dark);
+}
+
+.fc-header-toolbar {
+    background-color: var(--light-bg);
+    padding: 1rem;
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+}
+
+.fc-button {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--text-light) !important;
+}
+
+.fc-button:hover {
+    background-color: #0056b3 !important;
+    border-color: #0056b3 !important;
+}
+
+.fc-event {
+    border-radius: 4px !important;
+    border: none !important;
+    padding: 2px 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+
+.fc-event:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+/* États des lancements dans le calendrier */
+.fc-event.lancement-planifie {
+    background-color: var(--secondary-color) !important;
+    color: var(--text-light) !important;
+}
+
+.fc-event.lancement-en_cours {
+    background-color: var(--warning-color) !important;
+    color: var(--text-dark) !important;
+}
+
+.fc-event.lancement-termine {
+    background-color: var(--success-color) !important;
+    color: var(--text-light) !important;
+}
+
+.fc-event.lancement-en_attente {
+    background-color: var(--info-color) !important;
+    color: var(--text-light) !important;
+}
+
+.fc-daygrid-day {
+    background-color: var(--white-bg);
+    border-color: #e9ecef;
+}
+
+.fc-daygrid-day:hover {
+    background-color: var(--light-bg);
+}
+
+.fc-day-today {
+    background-color: rgba(0, 123, 255, 0.05) !important;
+}
+
+.loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: var(--text-muted);
+}
+
+/* ============================================================================
+   ÉTATS DE CONFIRMATION ET SUPPRESSION
+   ============================================================================ */
+.warning-card {
+    border: 2px solid var(--danger-color);
+    background: rgba(220, 53, 69, 0.05);
+    border-radius: var(--border-radius-lg);
+}
+
+.warning-card .card-body {
+    background: rgba(220, 53, 69, 0.05);
+}
+
+.danger-icon {
+    font-size: 4rem;
+    color: var(--danger-color);
+    opacity: 0.7;
+}
+
+.confirmation-box {
+    background: #fff3cd;
+    border: 2px solid var(--warning-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius-lg);
+    margin: 1rem 0;
+}
+
+.consequences-list {
+    background: rgba(220, 53, 69, 0.05);
+    border-left: 4px solid var(--danger-color);
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+}
+
+.consequences-list ul {
+    margin-bottom: 0;
+    color: var(--text-dark);
+}
+
+.consequences-list li {
+    margin-bottom: 0.5rem;
+}
+
+/* Résumé des éléments */
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.summary-row:last-child {
+    border-bottom: none;
+}
+
+.summary-label {
+    font-weight: 600;
+    color: var(--text-muted);
+    flex: 0 0 35%;
+    font-size: 0.9rem;
+}
+
+.summary-value {
+    color: var(--text-dark);
+    flex: 1;
+    text-align: right;
+}
+
+/* ============================================================================
+   DEBUG ET DÉVELOPPEMENT
+   ============================================================================ */
+.debug-info {
+    background: var(--light-bg);
+    border: 1px solid #dee2e6;
+    border-radius: var(--border-radius);
+    padding: 10px;
+    margin-bottom: 15px;
+    font-size: 0.875rem;
+    color: var(--text-dark);
+}
+
+.debug-info .badge {
+    margin-right: 0.5rem;
+}
+
+/* ============================================================================
+   ANIMATIONS ET TRANSITIONS PERSONNALISÉES
+   ============================================================================ */
+.dashboard-animate {
+    animation: slideInUp 0.6s ease-out;
+}
+
+.fade-in-up {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+.bounce-in {
+    animation: bounceIn 0.8s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes bounceIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.3);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+    70% {
+        transform: scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Effet de pulse pour les éléments importants */
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
+    }
+}
+
+/* ============================================================================
+   OPTIMISATIONS PERFORMANCE
+   ============================================================================ */
+.card,
+.btn,
+.form-control,
+.table {
+    will-change: transform, box-shadow;
+}
+
+/* Désactiver les transitions sur les éléments cachés */
+[hidden],
+.d-none {
+    transition: none !important;
+    animation: none !important;
+}
+
+/* ============================================================================
+   CORRECTIONS SPÉCIFIQUES BOOTSTRAP
+   ============================================================================ */
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    background-color: var(--white-bg);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--text-light);
+}
+
+.form-control::placeholder {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.dropdown-divider {
+    border-top-color: #f0f0f0;
+}
+
+.list-group-item {
+    background-color: var(--white-bg);
+    border-color: #f0f0f0;
+    color: var(--text-dark);
+}
+
+.list-group-item:hover {
+    background-color: var(--light-bg);
+}
+
+/* ============================================================================
+   CLASSES UTILITAIRES ÉTENDUES
+   ============================================================================ */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, var(--primary-color), #0056b3) !important;
+    color: var(--text-light);
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, var(--success-color), #1e7e34) !important;
+    color: var(--text-light);
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, var(--warning-color), #e0a800) !important;
+    color: var(--text-dark);
+}
+
+.bg-gradient-danger {
+    background: linear-gradient(135deg, var(--danger-color), #c82333) !important;
+    color: var(--text-light);
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, var(--info-color), #138496) !important;
+    color: var(--text-light);
+}
+
+.text-shadow {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.border-dashed {
+    border-style: dashed !important;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* ============================================================================
+   FIN DU FICHIER CSS
+   ============================================================================ */
