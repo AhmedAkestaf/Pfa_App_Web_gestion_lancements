@@ -1,0 +1,1006 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - AIC Métallurgie{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Styles pour le guide technique */
+.guide-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.guide-nav {
+    position: sticky;
+    top: 20px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    padding: 2rem;
+    border: 1px solid #e3f2fd;
+}
+
+.guide-content {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    padding: 3rem;
+    border: 1px solid #e3f2fd;
+}
+
+.section-nav-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    color: #546e7a;
+    text-decoration: none;
+    border-radius: 12px;
+    margin-bottom: 0.75rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid transparent;
+}
+
+.section-nav-item:hover {
+    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+    color: #1976d2;
+    transform: translateX(8px);
+    border-color: #bbdefb;
+}
+
+.section-nav-item.active {
+    background: linear-gradient(135deg, #1976d2 0%, #7b1fa2 100%);
+    color: white;
+    transform: scale(1.02);
+    box-shadow: 0 4px 15px rgba(25, 118, 210, 0.3);
+}
+
+.section-nav-item i {
+    margin-right: 1rem;
+    width: 24px;
+    font-size: 1.1rem;
+}
+
+.guide-section {
+    display: none;
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.guide-section.active {
+    display: block;
+}
+
+@keyframes fadeInUp {
+    from { 
+        opacity: 0; 
+        transform: translateY(30px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+.code-block {
+    background: linear-gradient(135deg, #263238 0%, #37474f 100%);
+    color: #e0f2f1;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 0.9rem;
+    overflow-x: auto;
+    border: 1px solid #455a64;
+    position: relative;
+}
+
+.code-block::before {
+    content: "CODE";
+    position: absolute;
+    top: 8px;
+    right: 15px;
+    background: #4caf50;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+.procedure-step {
+    background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%);
+    border-left: 6px solid #4caf50;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 0 12px 12px 0;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.1);
+}
+
+.warning-box {
+    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+    border: 2px solid #ffb74d;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.warning-box::before {
+    content: "⚠️";
+    position: absolute;
+    top: -5px;
+    right: 15px;
+    font-size: 2rem;
+    opacity: 0.3;
+}
+
+.info-box {
+    background: linear-gradient(135deg, #e3f2fd 0%, #e1f5fe 100%);
+    border: 2px solid #64b5f6;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.info-box::before {
+    content: "ℹ️";
+    position: absolute;
+    top: -5px;
+    right: 15px;
+    font-size: 2rem;
+    opacity: 0.3;
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.feature-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 2px solid #dee2e6;
+    transition: transform 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.btn-export {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.btn-export:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+@media print {
+    .guide-nav { display: none; }
+    .col-lg-3 { display: none; }
+    .col-lg-9 { width: 100%; }
+    .guide-section { display: block !important; }
+    .guide-container { max-width: none; }
+}
+</style>
+{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Accueil</a></li>
+<li class="breadcrumb-item active">{{ title }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="guide-container">
+    <div class="row">
+        <!-- Navigation des sections -->
+        <div class="col-lg-3 mb-4">
+            <div class="guide-nav">
+                <h5 class="mb-4 fw-bold text-primary">
+                    <i class="fas fa-book-open me-2"></i>
+                    Sections du Guide
+                </h5>
+                
+                <a href="#" class="section-nav-item active" data-section="overview">
+                    <i class="fas fa-home"></i>
+                    <div>
+                        <div class="fw-bold">Vue d'ensemble</div>
+                        <small class="opacity-75">Architecture système</small>
+                    </div>
+                </a>
+                
+                <a href="#" class="section-nav-item" data-section="collaborateurs">
+                    <i class="fas fa-users"></i>
+                    <div>
+                        <div class="fw-bold">Collaborateurs</div>
+                        <small class="opacity-75">Gestion du personnel</small>
+                    </div>
+                </a>
+                
+                <a href="#" class="section-nav-item" data-section="ateliers">
+                    <i class="fas fa-industry"></i>
+                    <div>
+                        <div class="fw-bold">Ateliers</div>
+                        <small class="opacity-75">Espaces de production</small>
+                    </div>
+                </a>
+                
+                <a href="#" class="section-nav-item" data-section="categories">
+                    <i class="fas fa-tags"></i>
+                    <div>
+                        <div class="fw-bold">Catégories</div>
+                        <small class="opacity-75">Classification des travaux</small>
+                    </div>
+                </a>
+                
+                <a href="#" class="section-nav-item" data-section="affaires">
+                    <i class="fas fa-briefcase"></i>
+                    <div>
+                        <div class="fw-bold">Affaires</div>
+                        <small class="opacity-75">Projets clients</small>
+                    </div>
+                </a>
+                
+                <a href="#" class="section-nav-item" data-section="lancements">
+                    <i class="fas fa-rocket"></i>
+                    <div>
+                        <div class="fw-bold">Lancements</div>
+                        <small class="opacity-75">Gestion production</small>
+                    </div>
+                </a>
+                
+                <a href="#" class="section-nav-item" data-section="reporting">
+                    <i class="fas fa-chart-line"></i>
+                    <div>
+                        <div class="fw-bold">Rapports</div>
+                        <small class="opacity-75">Analytics & Export</small>
+                    </div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Contenu principal -->
+        <div class="col-lg-9">
+            <div class="guide-content">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="fw-bold text-primary">
+                        <i class="fas fa-book-open me-3"></i>
+                        Guide Technique AIC Métallurgie
+                    </h2>
+                    <div>
+                        <button class="btn btn-outline-primary btn-sm me-2" onclick="printGuide()">
+                            <i class="fas fa-print me-1"></i>Imprimer
+                        </button>
+                        <button class="btn btn-export btn-sm" onclick="exportPDF()">
+                            <i class="fas fa-file-pdf me-1"></i>Export PDF
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Section Vue d'ensemble -->
+                <div id="overview" class="guide-section active">
+                    <h3 class="mb-4"><i class="fas fa-home text-primary me-3"></i>Vue d'ensemble du système</h3>
+                    <p class="lead">Le système de gestion des lancements AIC Métallurgie est une application Django modulaire conçue pour optimiser l'ensemble des opérations de production métallurgique.</p>
+                    
+                    <h4 class="mt-4 mb-3">🏗️ Architecture du projet</h4>
+                    <div class="code-block">
+GESTION_LANCEMENTS/
+├── apps/
+│   ├── collaborateurs/    # Gestion du personnel et rôles
+│   ├── ateliers/         # Gestion des espaces de production
+│   ├── categories/       # Classification des types de travaux
+│   ├── affaires/         # Gestion des projets clients
+│   ├── lancements/       # Cœur de la gestion de production
+│   ├── core/            # Fonctionnalités centrales et permissions
+│   └── reporting/       # Rapports, graphiques et exports
+├── templates/           # Interface utilisateur
+├── static/             # Ressources CSS/JS/Images
+└── database/           # Données SQLite
+                    </div>
+                    
+                    <div class="info-box">
+                        <h5><i class="fas fa-server me-2"></i>Prérequis techniques</h5>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <ul class="mb-0">
+                                    <li>Python 3.8+ avec Django 4.x</li>
+                                    <li>Base de données SQLite/PostgreSQL</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="mb-0">
+                                    <li>Interface Bootstrap 5</li>
+                                    <li>Système de permissions avancé</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <h5 class="text-success"><i class="fas fa-shield-alt me-2"></i>Sécurité</h5>
+                            <p>Système de rôles et permissions granulaires pour contrôler l'accès aux fonctionnalités.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h5 class="text-info"><i class="fas fa-chart-bar me-2"></i>Analytics</h5>
+                            <p>Rapports détaillés et graphiques pour analyser les performances de production.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section Collaborateurs -->
+                <div id="collaborateurs" class="guide-section">
+                    <h3 class="mb-4"><i class="fas fa-users text-primary me-3"></i>Gestion des collaborateurs</h3>
+                    
+                    <h4 class="mb-3">👤 Création d'un collaborateur</h4>
+                    <div class="procedure-step">
+                        <strong><i class="fas fa-plus-circle me-2"></i>Procédure de création :</strong>
+                        <ol class="mt-3 mb-2">
+                            <li>Accédez au menu <strong>"Collaborateurs"</strong> → <strong>"Ajouter"</strong></li>
+                            <li>Remplissez les champs obligatoires (nom, prénom, email)</li>
+                            <li>Générez un mot de passe sécurisé</li>
+                            <li>Assignez un rôle (optionnel à cette étape)</li>
+                            <li>Validez la création</li>
+                        </ol>
+                    </div>
+                    
+                    <h5 class="mb-3">📝 Exemple pratique :</h5>
+                    <div class="code-block">
+Nom           : Bouchemama
+Prénom        : Mehdi  
+Email         : m.bouchemama@aicmetallurgie.ma
+Mot de passe  : [Généré automatiquement]
+Rôle          : [À assigner ultérieurement]
+Statut        : Actif
+                    </div>
+                    
+                    <div class="warning-box">
+                        <strong><i class="fas fa-key me-2"></i>Permissions requises :</strong>
+                        <code>collaborateurs.create</code>
+                        <br><small class="mt-2 d-block">Seuls les utilisateurs ayant cette permission peuvent créer de nouveaux collaborateurs.</small>
+                    </div>
+
+                    <h4 class="mb-3 mt-4">✏️ Modification et gestion</h4>
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <h6><i class="fas fa-edit me-2"></i>Modification</h6>
+                            <p>Mise à jour des informations personnelles et professionnelles</p>
+                        </div>
+                        <div class="feature-card">
+                            <h6><i class="fas fa-eye me-2"></i>Consultation</h6>
+                            <p>Vue détaillée avec historique des lancements associés</p>
+                        </div>
+                        <div class="feature-card">
+                            <h6><i class="fas fa-user-slash me-2"></i>Désactivation</h6>
+                            <p>Désactivation sécurisée plutôt que suppression définitive</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section Ateliers -->
+                <div id="ateliers" class="guide-section">
+                    <h3 class="mb-4"><i class="fas fa-industry text-primary me-3"></i>Gestion des ateliers</h3>
+                    
+                    <h4 class="mb-3">🏭 Configuration des espaces de production</h4>
+                    <div class="procedure-step">
+                        <strong><i class="fas fa-cogs me-2"></i>Création d'un atelier :</strong>
+                        <ol class="mt-3 mb-2">
+                            <li>Définir le nom de l'atelier (ex: "D. Otube")</li>
+                            <li>Sélectionner le type d'atelier (Débitage, Assemblage, etc.)</li>
+                            <li>Assigner un responsable d'atelier</li>
+                            <li>Configurer les capacités et équipements</li>
+                        </ol>
+                    </div>
+                    
+                    <h5 class="mb-3">🔧 Exemple de configuration :</h5>
+                    <div class="code-block">
+Nom Atelier        : D. Otube
+Type Atelier       : Débitage
+Responsable        : Idrissi Said
+Capacité           : 50 tonnes/mois
+Équipements        : Machines CNC, Plasma
+Statut             : Actif
+                    </div>
+                    
+                    <div class="info-box">
+                        <h5><i class="fas fa-info-circle me-2"></i>Types d'ateliers disponibles</h5>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <ul class="mb-0">
+                                    <li><strong>Débitage</strong> - Découpe et préparation</li>
+                                    <li><strong>Assemblage</strong> - Montage structures</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="mb-0">
+                                    <li><strong>Soudure</strong> - Assemblage par soudage</li>
+                                    <li><strong>Finition</strong> - Traitement final</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section Catégories -->
+                <div id="categories" class="guide-section">
+                    <h3 class="mb-4"><i class="fas fa-tags text-primary me-3"></i>Gestion des catégories</h3>
+                    
+                    <h4 class="mb-3">🏷️ Classification des types de travaux</h4>
+                    <div class="procedure-step">
+                        <strong><i class="fas fa-tag me-2"></i>Création d'une catégorie :</strong>
+                        <ol class="mt-3 mb-2">
+                            <li>Définir un nom explicite pour la catégorie</li>
+                            <li>Rédiger une description détaillée des travaux inclus</li>
+                            <li>Définir les spécifications techniques associées</li>
+                        </ol>
+                    </div>
+                    
+                    <h5 class="mb-3">🏗️ Exemple - Catégorie CHARPENTE :</h5>
+                    <div class="code-block">
+Nom         : CHARPENTE
+Description : Travaux de charpente métallique, structures et 
+             ossatures. Comprend la fabrication, l'assemblage 
+             et le montage de structures porteuses.
+Spécialités : - Poutres métalliques
+             - Structures porteuses  
+             - Ossatures bâtiments
+             - Charpentes industrielles
+                    </div>
+                    
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <h6><i class="fas fa-building me-2"></i>CHARPENTE</h6>
+                            <p>Structures porteuses et ossatures métalliques</p>
+                        </div>
+                        <div class="feature-card">
+                            <h6><i class="fas fa-tools me-2"></i>SERRURERIE</h6>
+                            <p>Travaux de serrurerie et métallerie fine</p>
+                        </div>
+                        <div class="feature-card">
+                            <h6><i class="fas fa-stairs me-2"></i>ESCALIERS</h6>
+                            <p>Fabrication d'escaliers métalliques</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section Affaires -->
+                <div id="affaires" class="guide-section">
+                    <h3 class="mb-4"><i class="fas fa-briefcase text-primary me-3"></i>Gestion des affaires</h3>
+                    
+                    <h4 class="mb-3">📋 Suivi des projets clients</h4>
+                    <div class="procedure-step">
+                        <strong><i class="fas fa-project-diagram me-2"></i>Création d'une affaire :</strong>
+                        <ol class="mt-3 mb-2">
+                            <li>Attribuer un code affaire unique</li>
+                            <li>Renseigner les informations client</li>
+                            <li>Définir le livrable et les spécifications</li>
+                            <li>Planifier les dates de début et fin</li>
+                            <li>Assigner un responsable d'affaire</li>
+                        </ol>
+                    </div>
+                    
+                    <h5 class="mb-3">📊 Exemple - Projet TGCC :</h5>
+                    <div class="code-block">
+Code Affaire      : 10C23
+Client            : TGCC
+Livrable          : TGCC UMP6 LYDEX Rabat
+Responsable       : [À assigner]
+Date début        : 01/09/2025
+Date fin prévue   : 10/12/2025
+Statut            : En cours
+Budget estimé     : 2.5M MAD
+                    </div>
+                    
+                    <div class="info-box">
+                        <h5><i class="fas fa-chart-pie me-2"></i>Statuts des affaires</h5>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <ul class="mb-0">
+                                    <li><span class="badge bg-primary">En cours</span> - Projet actif en production</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="mb-0">
+                                    <li><span class="badge bg-success">Terminé</span> - Projet livré avec succès</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section Lancements -->
+                <div id="lancements" class="guide-section">
+                    <h3 class="mb-4"><i class="fas fa-rocket text-primary me-3"></i>Gestion des lancements</h3>
+                    
+                    <h4 class="mb-3">🚀 Cœur du système de production</h4>
+                    <div class="procedure-step">
+                        <strong><i class="fas fa-play-circle me-2"></i>Création d'un lancement :</strong>
+                        <ol class="mt-3 mb-2">
+                            <li>Générer un numéro de lancement unique</li>
+                            <li>Associer à une affaire existante</li>
+                            <li>Définir le sous-livrable spécifique</li>
+                            <li>Planifier les dates de réception et lancement</li>
+                            <li>Assigner atelier, catégorie et collaborateur</li>
+                            <li>Renseigner les poids de débitage et assemblage</li>
+                        </ol>
+                    </div>
+                    
+                    <h5 class="mb-3">📋 Exemple - Lancement L03 :</h5>
+                    <div class="code-block">
+N° lancement           : L03
+Code Affaire           : 10C23
+S. Livrable           : Plancher
+Date réception        : 01/07/2025
+Date lancement prévue : 10/09/2025
+Atelier               : D.Otube
+Catégorie             : CHARPENTE
+Collaborateur         : Mehdi Bouchemama
+Poids débitage        : 29.3285 tonnes
+Poids assemblage      : 0 tonnes
+Statut                : En cours
+Observations          : Remarques techniques spécifiques
+                    </div>
+                    
+                    <div class="warning-box">
+                        <strong><i class="fas fa-calendar-alt me-2"></i>Planning des lancements</strong>
+                        <p class="mb-0 mt-2">Le système intègre un calendrier interactif permettant de visualiser tous les lancements planifiés avec leurs dates de démarrage et de livraison prévues.</p>
+                    </div>
+
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <h6><i class="fas fa-weight-hanging me-2"></i>Suivi des poids</h6>
+                            <p>Traçabilité complète des tonnages en débitage et assemblage</p>
+                        </div>
+                        <div class="feature-card">
+                            <h6><i class="fas fa-calendar-check me-2"></i>Planification</h6>
+                            <p>Gestion des délais et optimisation des ressources</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section Reporting -->
+                <div id="reporting" class="guide-section">
+                    <h3 class="mb-4"><i class="fas fa-chart-line text-primary me-3"></i>Rapports et Analytics</h3>
+                    
+                    <h4 class="mb-3">📊 Graphiques et visualisations</h4>
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <h6><i class="fas fa-user-chart me-2"></i>Poids par collaborateur</h6>
+                            <p>Performance individuelle et charge de travail</p>
+                        </div>
+                        <div class="feature-card">
+                            <h6><i class="fas fa-briefcase me-2"></i>Poids par affaire</h6>
+                            <p>Répartition des tonnages par projet client</p>
+                        </div>
+                        <div class="feature-card">
+                            <h6><i class="fas fa-tags me-2"></i>Poids par catégorie</h6>
+                            <p>Distribution par type de travaux métallurgiques</p>
+                        </div>
+                    </div>
+                    
+                    <h4 class="mb-3 mt-4">📈 Rapports périodiques</h4>
+                    <div class="procedure-step">
+                        <strong><i class="fas fa-file-alt me-2"></i>Types de rapports disponibles :</strong>
+                        <ul class="mt-3 mb-2">
+                            <li><strong>Journaliers</strong> - Production quotidienne et incidents</li>
+                            <li><strong>Hebdomadaires</strong> - Synthèse de la semaine par atelier</li>
+                            <li><strong>Mensuels</strong> - Bilan mensuel et tendances</li>
+                            <li><strong>Annuels</strong> - Rapport de performance globale</li>
+                        </ul>
+                    </div>
+                    
+                    <h4 class="mb-3 mt-4">💾 Options d'exportation</h4>
+                    <div class="code-block">
+Formats disponibles :
+├── Excel (.xlsx)     - Données tabulaires pour analyse
+├── PDF               - Rapports formatés pour présentation  
+├── CSV               - Import/Export données
+└── JSON              - Intégration avec autres systèmes
+                    </div>
+                    
+                    <div class="info-box">
+                        <h5><i class="fas fa-download me-2"></i>Exportation des données</h5>
+                        <p class="mb-0">Le système permet l'exportation complète ou sélective de toutes les données de l'application dans différents formats selon les besoins d'analyse ou d'archivage.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script pour génération PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const navItems = document.querySelectorAll('.section-nav-item');
+    const sections = document.querySelectorAll('.guide-section');
+    
+    navItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Retirer les classes actives
+            navItems.forEach(nav => nav.classList.remove('active'));
+            sections.forEach(section => section.classList.remove('active'));
+            
+            // Ajouter la classe active
+            this.classList.add('active');
+            const targetSection = document.getElementById(this.dataset.section);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+            
+            // Scroll fluide vers le haut
+            document.querySelector('.guide-content').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        });
+    });
+});
+
+function printGuide() {
+    // Masquer temporairement la navigation pour l'impression
+    const nav = document.querySelector('.guide-nav');
+    const originalNavDisplay = nav.style.display;
+    nav.style.display = 'none';
+    
+    // Afficher toutes les sections pour l'impression
+    const sections = document.querySelectorAll('.guide-section');
+    const originalSectionDisplays = [];
+    sections.forEach((section, index) => {
+        originalSectionDisplays[index] = section.style.display;
+        section.style.display = 'block';
+        section.classList.add('active');
+    });
+    
+    // Lancer l'impression
+    window.print();
+    
+    // Restaurer l'affichage original après impression
+    setTimeout(() => {
+        nav.style.display = originalNavDisplay;
+        sections.forEach((section, index) => {
+            section.style.display = originalSectionDisplays[index];
+            if (index !== 0) { // Garder seulement la première section active
+                section.classList.remove('active');
+            }
+        });
+    }, 1000);
+}
+
+async function exportPDF() {
+    try {
+        // Afficher un indicateur de chargement
+        const loadingToast = showToast('Génération du PDF en cours...', 'info');
+        
+        // Créer une nouvelle instance jsPDF
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        
+        // Configuration
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 20;
+        const contentWidth = pageWidth - (margin * 2);
+        
+        // Page de couverture
+        pdf.setFontSize(24);
+        pdf.setTextColor(25, 118, 210); // Bleu primaire
+        pdf.text('Guide Technique', pageWidth / 2, 60, { align: 'center' });
+        
+        pdf.setFontSize(18);
+        pdf.setTextColor(123, 31, 162); // Violet
+        pdf.text('AIC Métallurgie', pageWidth / 2, 80, { align: 'center' });
+        
+        pdf.setFontSize(12);
+        pdf.setTextColor(84, 110, 122); // Gris
+        pdf.text('Système de Gestion des Lancements', pageWidth / 2, 100, { align: 'center' });
+        
+        // Date de génération
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('fr-FR', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        pdf.text(`Généré le ${dateStr}`, pageWidth / 2, 120, { align: 'center' });
+        
+        // Logo ou élément décoratif (optionnel)
+        pdf.setDrawColor(25, 118, 210);
+        pdf.setLineWidth(2);
+        pdf.line(margin, 140, pageWidth - margin, 140);
+        
+        // Nouvelle page pour la table des matières
+        pdf.addPage();
+        
+        pdf.setFontSize(18);
+        pdf.setTextColor(25, 118, 210);
+        pdf.text('Table des Matières', margin, 40);
+        
+        // Table des matières
+        const sections = [
+            { title: '1. Vue d\'ensemble du système', page: 3 },
+            { title: '2. Gestion des collaborateurs', page: 4 },
+            { title: '3. Gestion des ateliers', page: 5 },
+            { title: '4. Gestion des catégories', page: 6 },
+            { title: '5. Gestion des affaires', page: 7 },
+            { title: '6. Gestion des lancements', page: 8 },
+            { title: '7. Rapports et Analytics', page: 9 }
+        ];
+        
+        let yPosition = 60;
+        pdf.setFontSize(12);
+        pdf.setTextColor(60, 60, 60);
+        
+        sections.forEach(section => {
+            pdf.text(section.title, margin, yPosition);
+            pdf.text(`${section.page}`, pageWidth - margin - 10, yPosition, { align: 'right' });
+            
+            // Ligne pointillée
+            pdf.setDrawColor(200, 200, 200);
+            pdf.setLineWidth(0.5);
+            const dotCount = Math.floor((contentWidth - 40) / 3);
+            for (let i = 0; i < dotCount; i++) {
+                pdf.circle(margin + 80 + (i * 3), yPosition - 1, 0.3, 'F');
+            }
+            
+            yPosition += 15;
+        });
+        
+        // Ajouter le contenu de chaque section
+        const guideContent = document.querySelector('.guide-content');
+        const allSections = document.querySelectorAll('.guide-section');
+        
+        for (let i = 0; i < allSections.length; i++) {
+            const section = allSections[i];
+            pdf.addPage();
+            
+            // Titre de section
+            const sectionTitle = section.querySelector('h3').textContent;
+            pdf.setFontSize(16);
+            pdf.setTextColor(25, 118, 210);
+            pdf.text(sectionTitle, margin, 40);
+            
+            // Ligne sous le titre
+            pdf.setDrawColor(25, 118, 210);
+            pdf.setLineWidth(1);
+            pdf.line(margin, 45, pageWidth - margin, 45);
+            
+            // Contenu textuel simplifié
+            let yPos = 60;
+            pdf.setFontSize(10);
+            pdf.setTextColor(60, 60, 60);
+            
+            const paragraphs = section.querySelectorAll('p, li');
+            paragraphs.forEach(p => {
+                const text = p.textContent.trim();
+                if (text && yPos < pageHeight - 40) {
+                    const lines = pdf.splitTextToSize(text, contentWidth);
+                    lines.forEach(line => {
+                        if (yPos < pageHeight - 40) {
+                            pdf.text(line, margin, yPos);
+                            yPos += 6;
+                        }
+                    });
+                    yPos += 4; // Espacement entre paragraphes
+                }
+            });
+        }
+        
+        // Pied de page sur toutes les pages
+        const totalPages = pdf.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            pdf.setPage(i);
+            pdf.setFontSize(8);
+            pdf.setTextColor(150, 150, 150);
+            pdf.text(`Guide Technique AIC Métallurgie - Page ${i}/${totalPages}`, 
+                     pageWidth / 2, pageHeight - 10, { align: 'center' });
+        }
+        
+        // Sauvegarder le PDF
+        const fileName = `Guide_Technique_AIC_Metallurgie_${today.getFullYear()}_${String(today.getMonth() + 1).padStart(2, '0')}_${String(today.getDate()).padStart(2, '0')}.pdf`;
+        pdf.save(fileName);
+        
+        // Masquer l'indicateur de chargement
+        hideToast(loadingToast);
+        showToast('PDF généré avec succès !', 'success');
+        
+    } catch (error) {
+        console.error('Erreur lors de la génération du PDF:', error);
+        showToast('Erreur lors de la génération du PDF', 'error');
+    }
+}
+
+// Fonctions utilitaires pour les notifications
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} toast-notification`;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        animation: slideInRight 0.3s ease-out;
+    `;
+    
+    const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+    toast.innerHTML = `
+        <div class="d-flex align-items-center">
+            <span class="me-2">${icon}</span>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto-hide après 3 secondes sauf pour les erreurs
+    if (type !== 'info') {
+        setTimeout(() => hideToast(toast), 3000);
+    }
+    
+    return toast;
+}
+
+function hideToast(toast) {
+    if (toast && toast.parentNode) {
+        toast.style.animation = 'slideOutRight 0.3s ease-in';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }
+}
+
+// Ajouter les animations CSS
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+    }
+    
+    .toast-notification {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+`;
+document.head.appendChild(style);
+
+// Fonction pour navigation par clavier
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+            case 'p':
+                e.preventDefault();
+                printGuide();
+                break;
+            case 's':
+                e.preventDefault();
+                exportPDF();
+                break;
+        }
+    }
+    
+    // Navigation avec les flèches
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const activeNav = document.querySelector('.section-nav-item.active');
+        const navItems = Array.from(document.querySelectorAll('.section-nav-item'));
+        const currentIndex = navItems.indexOf(activeNav);
+        
+        let newIndex;
+        if (e.key === 'ArrowLeft' && currentIndex > 0) {
+            newIndex = currentIndex - 1;
+        } else if (e.key === 'ArrowRight' && currentIndex < navItems.length - 1) {
+            newIndex = currentIndex + 1;
+        }
+        
+        if (newIndex !== undefined) {
+            e.preventDefault();
+            navItems[newIndex].click();
+        }
+    }
+});
+
+// Ajouter une fonctionnalité de recherche
+function addSearchFunctionality() {
+    const searchContainer = document.createElement('div');
+    searchContainer.className = 'mb-3';
+    searchContainer.innerHTML = `
+        <div class="input-group">
+            <span class="input-group-text">
+                <i class="fas fa-search"></i>
+            </span>
+            <input type="text" class="form-control" id="guideSearch" 
+                   placeholder="Rechercher dans le guide..." autocomplete="off">
+        </div>
+    `;
+    
+    const guideNav = document.querySelector('.guide-nav');
+    const sectionsTitle = guideNav.querySelector('h5');
+    sectionsTitle.after(searchContainer);
+    
+    const searchInput = document.getElementById('guideSearch');
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        const sections = document.querySelectorAll('.guide-section');
+        const navItems = document.querySelectorAll('.section-nav-item');
+        
+        if (!searchTerm) {
+            // Réinitialiser l'affichage
+            navItems.forEach(item => {
+                item.style.display = 'flex';
+                item.style.opacity = '1';
+            });
+            return;
+        }
+        
+        navItems.forEach((item, index) => {
+            const section = sections[index];
+            const sectionText = section.textContent.toLowerCase();
+            const navText = item.textContent.toLowerCase();
+            
+            if (sectionText.includes(searchTerm) || navText.includes(searchTerm)) {
+                item.style.display = 'flex';
+                item.style.opacity = '1';
+            } else {
+                item.style.opacity = '0.3';
+            }
+        });
+    });
+}
+
+// Initialiser la recherche au chargement
+document.addEventListener('DOMContentLoaded', function() {
+    addSearchFunctionality();
+    
+    // Ajouter des tooltips pour les raccourcis clavier
+    const printBtn = document.querySelector('[onclick="printGuide()"]');
+    const exportBtn = document.querySelector('[onclick="exportPDF()"]');
+    
+    if (printBtn) {
+        printBtn.title = 'Imprimer le guide (Ctrl+P)';
+    }
+    if (exportBtn) {
+        exportBtn.title = 'Exporter en PDF (Ctrl+S)';
+    }
+});
+</script>
+{% endblock %}

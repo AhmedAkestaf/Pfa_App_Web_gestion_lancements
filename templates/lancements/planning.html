@@ -309,13 +309,6 @@
                             <small class="text-muted">Planifiés</small>
                         </div>
                     </div>
-                    
-                    <hr>
-                    
-                    <div class="text-center">
-                        <strong class="text-info">{{ stats.poids_total_month|default:0 }} kg</strong>
-                        <br><small class="text-muted">Poids total du mois</small>
-                    </div>
                 </div>
             </div>
 
@@ -580,7 +573,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         collaborateur_id: lancement.collaborateur_id,
                         statut: lancement.statut || 'planifie',
                         statut_display: lancement.statut_display || 'Planifié',
-                        poids_total: parseFloat(lancement.poids_total || 0),
                         sous_livrable: lancement.sous_livrable || 'Pas de description',
                         date_reception: lancement.date_reception || '',
                         observations: lancement.observations || ''
@@ -651,8 +643,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         `Affaire: ${props.affaire_code}`,
                         `Client: ${props.client}`,
                         `Atelier: ${props.atelier_nom}`,
-                        `Statut: ${props.statut_display}`,
-                        `Poids: ${props.poids_total} kg`
+                        `Statut: ${props.statut_display}`
                     ].join('\n');
                 },
                 
@@ -990,9 +981,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="col-md-6">
                         <h6><i class="fas fa-flag me-2"></i>Statut</h6>
                         <p><span class="badge bg-${getStatusColor(props.statut)}">${props.statut_display}</span></p>
-                        
-                        <h6><i class="fas fa-weight me-2"></i>Poids Total</h6>
-                        <p><strong>${props.poids_total} kg</strong></p>
                         
                         <h6><i class="fas fa-calendar me-2"></i>Date de lancement</h6>
                         <p>${formatDate(event.start)}</p>

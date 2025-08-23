@@ -120,7 +120,7 @@
 
             <!-- Statistiques rapides -->
             <div class="row mb-4">
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <div class="card text-center bg-primary text-white">
                         <div class="card-body">
                             <i class="fas fa-rocket fa-2x mb-2"></i>
@@ -129,7 +129,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <div class="card text-center bg-warning text-white">
                         <div class="card-body">
                             <i class="fas fa-clock fa-2x mb-2"></i>
@@ -138,21 +138,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <div class="card text-center bg-success text-white">
                         <div class="card-body">
                             <i class="fas fa-check-circle fa-2x mb-2"></i>
                             <h4>{{ stats.termines|default:0 }}</h4>
                             <small>Terminés</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-center bg-info text-white">
-                        <div class="card-body">
-                            <i class="fas fa-weight fa-2x mb-2"></i>
-                            <h4>{{ stats.poids_total|floatformat:1|default:0 }}kg</h4>
-                            <small>Poids Total</small>
                         </div>
                     </div>
                 </div>
@@ -228,7 +219,7 @@
                                         <th>Sous-livrable</th>
                                         <th>Atelier</th>
                                         <th>Collaborateur</th>
-                                        <th>Poids Total</th>
+                                        <th>Poids</th>
                                         <th>Date Lancement</th>
                                         <th>Statut</th>
                                         <th>Actions</th>
@@ -271,12 +262,9 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <div class="weight-indicator">
-                                                    {{ lancement.get_poids_total|floatformat:1 }} kg
-                                                </div>
-                                                <small class="text-muted d-block mt-1">
-                                                    D: {{ lancement.poids_debitage|floatformat:1 }}kg | 
-                                                    A: {{ lancement.poids_assemblage|floatformat:1 }}kg
+                                                <small class="text-muted">
+                                                    Débitage: {{ lancement.poids_debitage|floatformat:1 }}kg<br>
+                                                    Assemblage: {{ lancement.poids_assemblage|floatformat:1 }}kg
                                                 </small>
                                             </td>
                                             <td>

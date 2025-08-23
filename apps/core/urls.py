@@ -52,4 +52,7 @@ urlpatterns = [
     
     # Utilitaires de développement
     path('notifications/test/', views.creer_notification_test, name='notification_test'),
+    
+    path('guide-technique/', views.guide_technique_view, name='guide_technique'),
+
 ]

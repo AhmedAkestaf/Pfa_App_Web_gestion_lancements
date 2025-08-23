@@ -127,17 +127,17 @@
                     <div class="card metric-card bg-warning text-white">
                         <div class="card-body text-center">
                             <i class="fas fa-weight-hanging fa-3x mb-3 opacity-75"></i>
-                            <h3>{{ total_poids|floatformat:0|default:0 }}kg</h3>
-                            <p class="mb-0">Poids Total Traité</p>
+                            <h3>{{ total_poids_debitage|floatformat:0|default:0 }}kg</h3>
+                            <p class="mb-0">Poids Débitage</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-xl-3 col-md-6">
                     <div class="card metric-card bg-info text-white">
                         <div class="card-body text-center">
-                            <i class="fas fa-calendar fa-3x mb-3 opacity-75"></i>
-                            <h3>{{ rapport_recent.type_rapport|default:"Aucun" }}</h3>
-                            <p class="mb-0">Dernier Rapport</p>
+                            <i class="fas fa-tools fa-3x mb-3 opacity-75"></i>
+                            <h3>{{ total_poids_assemblage|floatformat:0|default:0 }}kg</h3>
+                            <p class="mb-0">Poids Assemblage</p>
                         </div>
                     </div>
                 </div>
@@ -229,7 +229,8 @@
                                         <th>Type</th>
                                         <th>Période</th>
                                         <th>Lancements</th>
-                                        <th>Poids Total</th>
+                                        <th>Poids Débitage</th>
+                                        <th>Poids Assemblage</th>
                                         <th>Généré le</th>
                                         <th>Actions</th>
                                     </tr>
@@ -266,9 +267,17 @@
                                             </td>
                                             <td>
                                                 <div class="d-flex align-items-center">
-                                                    <i class="fas fa-weight-hanging text-info me-2"></i>
+                                                    <i class="fas fa-cut text-warning me-2"></i>
                                                     <div>
-                                                        <strong>{{ rapport.poids_total|floatformat:1 }} kg</strong>
+                                                        <strong>{{ rapport.poids_debitage|floatformat:1|default:0 }} kg</strong>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-tools text-info me-2"></i>
+                                                    <div>
+                                                        <strong>{{ rapport.poids_assemblage|floatformat:1|default:0 }} kg</strong>
                                                     </div>
                                                 </div>
                                             </td>
@@ -488,6 +497,7 @@ function downloadRapportFormat(rapportId, format) {
             window.open(`/reporting/rapport/${rapportId}/download/${format}/`, '_blank');
         });
 }
+
 // Fonction utilitaire pour afficher les notifications
 function showNotification(message, type = 'info') {
     // Suppression des anciennes notifications
@@ -547,7 +557,6 @@ function getCookie(name) {
     }
     return cookieValue;
 }
-
 
 function deleteRapport(rapportId) {
     if (confirm('Êtes-vous sûr de vouloir supprimer ce rapport ?')) {

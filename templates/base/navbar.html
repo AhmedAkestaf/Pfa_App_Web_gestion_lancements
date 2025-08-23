@@ -51,28 +51,13 @@
                         </a></li>
                         {% endif %}
                         
-                        {% if can_view_collaborateurs or can_view_ateliers or can_view_categories %}
-                        <li><hr class="dropdown-divider"></li>
-                        {% endif %}
-                        
                         {% has_permission 'affaires' 'read' as can_view_affaires %}
                         {% if can_view_affaires %}
-                        <li><a class="dropdown-item" href="{% url 'core:affaires_list' %}">
-                            <i class="fas fa-briefcase"></i> Affaires
-                        </a></li>
-                        {% endif %}
-                        
                         {% if can_view_collaborateurs or can_view_ateliers or can_view_categories %}
                         <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header">Associations</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'associations:collaborateur_atelier_list' %}">
-                            <i class="fas fa-user-cog"></i> Affectations aux ateliers
-                        </a></li>
-                        <li><a class="dropdown-item" href="{% url 'associations:collaborateur_categorie_list' %}">
-                            <i class="fas fa-graduation-cap"></i> Compétences par catégorie
-                        </a></li>
-                        <li><a class="dropdown-item" href="{% url 'associations:atelier_categorie_list' %}">
-                            <i class="fas fa-cogs"></i> Catégories par atelier
+                        {% endif %}
+                        <li><a class="dropdown-item" href="{% url 'core:affaires_list' %}">
+                            <i class="fas fa-briefcase"></i> Affaires
                         </a></li>
                         {% endif %}
                     </ul>
@@ -267,11 +252,6 @@
                                 {% endif %}
                             </a>
                         </li>
-                        <li>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-cog me-2"></i> Paramètres
-                            </a>
-                        </li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <div class="dropdown-item-text">
@@ -302,10 +282,24 @@
 </nav>
 
 <style>
-.notification-dropdown {
-    width: 350px;
-    max-height: 500px;
-    overflow-y: auto;
+.navbar-nav .nav-item.dropdown.me-2 {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+}
+.navbar-nav .nav-item a[href*="dashboard"] {
+    padding: auto;
+    margin-right: 0rem;
+    gap: 0rem;
+
+}
+.navbar-nav.me-auto {
+    margin-left: 4.5rem !important; /* Supprimer la marge gauche du menu */
+    padding-left: 0;
+}
+.navbar .container-fluid {
+    gap: -4rem; /* Supprime l'espace entre les éléments flex */
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
 }
 </style>
 <!-- Pass Django variables to JavaScript safely through data attributes -->

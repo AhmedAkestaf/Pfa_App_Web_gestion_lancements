@@ -78,8 +78,9 @@ def rapports_list(request):
         total_debitage=Sum('poids_debitage'),
         total_assemblage=Sum('poids_assemblage')
     )
-    total_poids = (lancements_aggregation['total_debitage'] or 0) + (lancements_aggregation['total_assemblage'] or 0)
-    
+    total_poids_debitage = lancements_aggregation['total_debitage'] or 0
+    total_poids_assemblage = lancements_aggregation['total_assemblage'] or 0
+
     try:
         rapport_recent = RapportProduction.objects.latest('created_at')
     except RapportProduction.DoesNotExist:
@@ -92,7 +93,8 @@ def rapports_list(request):
         'date_to': date_to,
         'total_rapports': total_rapports,
         'total_lancements': total_lancements,
-        'total_poids': total_poids,
+        'total_poids_debitage': total_poids_debitage,
+        'total_poids_assemblage': total_poids_assemblage,
         'rapport_recent': rapport_recent,
     }
 
@@ -103,7 +105,7 @@ def rapports_list(request):
 @permission_required('rapports', 'read')
 def rapport_detail(request, rapport_id):
     """
-    Vue pour afficher les détails d'un rapport spécifique
+    Vue pour afficher les détails d'un rapport spécifique - CORRIGÉE
     """
     rapport = get_object_or_404(RapportProduction, id=rapport_id)
 
@@ -112,7 +114,7 @@ def rapport_detail(request, rapport_id):
         date_lancement__range=[rapport.date_debut, rapport.date_fin]
     )
 
-    # Statistiques par atelier
+    # Statistiques par atelier - CORRECTION COMPLÈTE
     stats_ateliers = lancements.values(
         'atelier__id', 'atelier__nom_atelier', 'atelier__type_atelier'
     ).annotate(
@@ -121,27 +123,39 @@ def rapport_detail(request, rapport_id):
         poids_assemblage=Sum('poids_assemblage')
     )
 
-    # Ajouter le poids total et calculer les pourcentages
+    # CALCUL DES TOTAUX GLOBAUX D'ABORD
+    total_debitage_global = sum(float(stat['poids_debitage'] or 0) for stat in stats_ateliers)
+    total_assemblage_global = sum(float(stat['poids_assemblage'] or 0) for stat in stats_ateliers)
+
+    # Traitement des statistiques avec pourcentages CORRECTS
     stats_ateliers_list = []
-    total_poids_periode = 0
     
     for stat in stats_ateliers:
-        debitage = stat['poids_debitage'] or 0
-        assemblage = stat['poids_assemblage'] or 0
+        debitage = float(stat['poids_debitage'] or 0)
+        assemblage = float(stat['poids_assemblage'] or 0)
         poids_total = debitage + assemblage
-        stat['poids_total'] = poids_total
-        total_poids_periode += poids_total
-        stats_ateliers_list.append(stat)
+        
+        # Calcul des pourcentages par rapport aux totaux globaux
+        pourcentage_debitage = (debitage / total_debitage_global * 100) if total_debitage_global > 0 else 0
+        pourcentage_assemblage = (assemblage / total_assemblage_global * 100) if total_assemblage_global > 0 else 0
+        pourcentage_poids = ((poids_total) / (total_debitage_global + total_assemblage_global) * 100) if (total_debitage_global + total_assemblage_global) > 0 else 0
+        
+        stat_data = {
+            'atelier__id': stat['atelier__id'],
+            'atelier__nom_atelier': stat['atelier__nom_atelier'],
+            'atelier__type_atelier': stat['atelier__type_atelier'],
+            'nb_lancements': stat['nb_lancements'],
+            'poids_debitage': debitage,
+            'poids_assemblage': assemblage,
+            'poids_total': poids_total,
+            'pourcentage_debitage': pourcentage_debitage,
+            'pourcentage_assemblage': pourcentage_assemblage,
+            'pourcentage_poids': pourcentage_poids
+        }
+        stats_ateliers_list.append(stat_data)
 
     # Tri par poids total décroissant
     stats_ateliers_list.sort(key=lambda x: x['poids_total'], reverse=True)
-
-    # Calcul des pourcentages
-    for stat in stats_ateliers_list:
-        if total_poids_periode > 0:
-            stat['pourcentage_poids'] = (stat['poids_total'] or 0) * 100 / total_poids_periode
-        else:
-            stat['pourcentage_poids'] = 0
 
     # Statistiques par collaborateur - SOLUTION SANS AVG SUR AGGREGATES
     # D'abord récupérer les données de base
@@ -154,6 +168,7 @@ def rapport_detail(request, rapport_id):
         poids_debitage=Sum('poids_debitage'),
         poids_assemblage=Sum('poids_assemblage')
     )
+
 
     # Ensuite calculer les moyennes manuellement
     stats_collaborateurs_list = []
@@ -237,6 +252,7 @@ def rapport_detail(request, rapport_id):
 
     return render(request, 'reporting/rapport_detail.html', context)
 
+
 @login_required
 @permission_required('rapports', 'read')
 def graphiques(request):
@@ -279,13 +295,16 @@ def graphiques(request):
         total_assemblage=Sum('poids_assemblage')
     )
     poids_total_dashboard = (lancements_aggregation['total_debitage'] or 0) + (lancements_aggregation['total_assemblage'] or 0)
+    poids_debitage_total = (lancements_aggregation['total_debitage'] or 0)
+    poids_assemblage_total = (lancements_aggregation['total_assemblage'] or 0)
 
     # Calcul du nombre de jours d'analyse
     jours_analyse = (date_fin - date_debut).days + 1
 
     dashboard_stats = {
         'total_lancements': lancements.count(),
-        'poids_total': poids_total_dashboard,
+        'poids__debitage_total': poids_debitage_total,
+        'poids__assemblage_total': poids_assemblage_total,
         'efficacite': 85.5,  # Simulation - vous pouvez calculer la vraie efficacité
         'delai_moyen': 5,  # Simulation - calculer le vrai délai moyen
         'completion_rate': 78.2,  # Simulation
@@ -322,36 +341,37 @@ def graphiques(request):
     top_collaborateurs_list.sort(key=lambda x: x['poids_total'], reverse=True)
     top_collaborateurs = top_collaborateurs_list[:10]
 
-    # Top affaires pour les graphiques
+    # MODIFICATION PRINCIPALE: Top affaires par poids débitage uniquement
     top_affaires_data = lancements.values(
         'affaire__code_affaire'
     ).annotate(
         poids_debitage=Sum('poids_debitage'),
-        poids_assemblage=Sum('poids_assemblage')
+        poids_assemblage=Sum('poids_assemblage')  # On garde pour les statistiques mais on n'utilise que débitage
     )
 
-    # Traitement des top affaires
+    # Traitement des top affaires - UTILISATION DU POIDS DÉBITAGE UNIQUEMENT
     top_affaires_list = []
+    total_poids_debitage_affaires = 0
+    
     for affaire in top_affaires_data:
-        debitage = affaire['poids_debitage'] or 0
-        assemblage = affaire['poids_assemblage'] or 0
-        poids_total = debitage + assemblage
+        poids_debitage = affaire['poids_debitage'] or 0
         
         affaire_data = {
             'code_affaire': affaire['affaire__code_affaire'],
-            'poids_total': poids_total
+            'poids_debitage': poids_debitage,  # Nouveau: poids débitage séparé
+            'poids_total': poids_debitage  # Pour compatibilité avec le template, on met le débitage ici
         }
         top_affaires_list.append(affaire_data)
+        total_poids_debitage_affaires += poids_debitage
 
-    # Tri et limitation à 8 affaires
-    top_affaires_list.sort(key=lambda x: x['poids_total'], reverse=True)
+    # Tri et limitation à 8 affaires par poids débitage
+    top_affaires_list.sort(key=lambda x: x['poids_debitage'], reverse=True)
     top_affaires = top_affaires_list[:8]
 
-    # Calcul des pourcentages pour les affaires
-    total_poids_affaires = sum(affaire['poids_total'] for affaire in top_affaires)
+    # Calcul des pourcentages pour les affaires (basé sur le poids débitage)
     for affaire in top_affaires:
-        if total_poids_affaires > 0:
-            affaire['pourcentage'] = (affaire['poids_total'] / total_poids_affaires) * 100
+        if total_poids_debitage_affaires > 0:
+            affaire['pourcentage'] = (affaire['poids_debitage'] / total_poids_debitage_affaires) * 100
         else:
             affaire['pourcentage'] = 0
 
@@ -419,7 +439,7 @@ def graphiques(request):
     # Top collaborateur (celui avec le plus gros poids total)
     top_collaborateur = top_collaborateurs[0] if top_collaborateurs else None
 
-    # Top affaire (celle avec le plus gros pourcentage)
+    # Top affaire (celle avec le plus gros pourcentage de débitage)
     top_affaire = top_affaires[0] if top_affaires else None
 
     # Tendance (simulation basée sur la comparaison avec la période précédente)
@@ -476,7 +496,6 @@ def graphiques(request):
     }
 
     return render(request, 'reporting/graphiques.html', context)
-
 
 @login_required
 @permission_required('rapports', 'read')
@@ -668,7 +687,7 @@ def generate_excel_export(lancements, date_debut, date_fin, include_stats, detai
         'Numéro Lancement', 'Date Lancement', 'Date Réception', 
         'Affaire', 'Client', 'Sous-livrable', 'Atelier', 'Type Atelier',
         'Collaborateur', 'Catégorie', 'Poids Débitage', 'Poids Assemblage',
-        'Poids Total', 'Statut', 'Observations'
+        'Statut', 'Observations'
     ]
     
     # Écriture des en-têtes
@@ -689,50 +708,68 @@ def generate_excel_export(lancements, date_debut, date_fin, include_stats, detai
         worksheet.write(row, 9, lancement.categorie.nom_categorie, data_format)
         worksheet.write(row, 10, float(lancement.poids_debitage), number_format)
         worksheet.write(row, 11, float(lancement.poids_assemblage), number_format)
-        worksheet.write(row, 12, float(lancement.get_poids_total()), number_format)
-        worksheet.write(row, 13, lancement.get_statut_display(), data_format)
-        worksheet.write(row, 14, lancement.observations or '', data_format)
+        worksheet.write(row, 12, lancement.get_statut_display(), data_format)
+        worksheet.write(row, 13, lancement.observations or '', data_format)
 
     # Ajustement de la largeur des colonnes
-    worksheet.set_column('A:O', 15)
+    worksheet.set_column('A:N', 15)
+
+
+    total_debitage = lancements.aggregate(Sum('poids_debitage'))['poids_debitage__sum'] or 0
+    total_assemblage = lancements.aggregate(Sum('poids_assemblage'))['poids_assemblage__sum'] or 0
 
     # Feuille statistiques si demandée
+    # Dans la fonction generate_excel_export, section des statistiques
     if include_stats:
         stats_worksheet = workbook.add_worksheet('Statistiques')
-        
+
         # Statistiques globales
         stats_worksheet.write('A1', 'Période d\'analyse', header_format)
         stats_worksheet.write('B1', f'{date_debut.strftime("%d/%m/%Y")} - {date_fin.strftime("%d/%m/%Y")}', data_format)
-        
+
+    
         stats_worksheet.write('A2', 'Nombre total de lancements', header_format)
         stats_worksheet.write('B2', lancements.count(), data_format)
-        
-        # Calcul du poids total
-        total_poids = sum(l.get_poids_total() for l in lancements)
-        
-        stats_worksheet.write('A3', 'Poids total traité (kg)', header_format)
-        stats_worksheet.write('B3', total_poids, number_format)
-        
-        # Statistiques par atelier
-        stats_worksheet.write('A5', 'Statistiques par Atelier', header_format)
-        stats_worksheet.write('A6', 'Atelier', header_format)
-        stats_worksheet.write('B6', 'Nb Lancements', header_format)
-        stats_worksheet.write('C6', 'Poids Total', header_format)
-        
+    
+        # Calcul des poids totaux CORRIGÉS
+        total_debitage = sum(float(l.poids_debitage or 0) for l in lancements)
+        total_assemblage = sum(float(l.poids_assemblage or 0) for l in lancements)
+    
+        stats_worksheet.write('A3', 'Poids débitage total (kg)', header_format)
+        stats_worksheet.write('B3', total_debitage, number_format)
+    
+        stats_worksheet.write('A4', 'Poids assemblage total (kg)', header_format)
+        stats_worksheet.write('B4', total_assemblage, number_format)
+    
+        # Statistiques par atelier - SECTION CORRIGÉE
+        stats_worksheet.write('A6', 'Statistiques par Atelier', header_format)
+        stats_worksheet.write('A7', 'Atelier', header_format)
+        stats_worksheet.write('B7', 'Nb Lancements', header_format)
+        stats_worksheet.write('C7', 'Poids Débitage', header_format)
+        stats_worksheet.write('D7', 'Poids Assemblage', header_format)
+    
+        # Calcul des statistiques par atelier - CORRECTION ICI
         ateliers_stats = {}
         for lancement in lancements:
-            atelier = lancement.atelier.nom_atelier
+            atelier = lancement.atelier.nom_atelier if lancement.atelier else 'Non défini'
             if atelier not in ateliers_stats:
-                ateliers_stats[atelier] = {'nb': 0, 'poids': 0}
+                ateliers_stats[atelier] = {
+                    'nb': 0, 
+                    'poids_debitage': 0, 
+                    'poids_assemblage': 0
+            }
             ateliers_stats[atelier]['nb'] += 1
-            ateliers_stats[atelier]['poids'] += lancement.get_poids_total()
-        
-        row = 7
+            ateliers_stats[atelier]['poids_debitage'] += float(lancement.poids_debitage or 0)
+            ateliers_stats[atelier]['poids_assemblage'] += float(lancement.poids_assemblage or 0)
+    
+    # Écriture des statistiques par atelier
+        row = 8
         for atelier, stats in ateliers_stats.items():
             stats_worksheet.write(row, 0, atelier, data_format)
             stats_worksheet.write(row, 1, stats['nb'], data_format)
-            stats_worksheet.write(row, 2, stats['poids'], number_format)
-            row += 1
+            stats_worksheet.write(row, 2, stats['poids_debitage'], number_format)
+            stats_worksheet.write(row, 3, stats['poids_assemblage'], number_format)
+        row += 1
 
     workbook.close()
     output.seek(0)
@@ -767,14 +804,17 @@ def generate_pdf_export(lancements, date_debut, date_fin, include_graphics, incl
         story.append(Paragraph("Statistiques Générales", styles['Heading2']))
         
         # Calcul du poids total
-        total_poids = sum(l.get_poids_total() for l in lancements)
-        
+        total_debitage = lancements.aggregate(Sum('poids_debitage'))['poids_debitage__sum'] or 0
+        total_assemblage = lancements.aggregate(Sum('poids_assemblage'))['poids_assemblage__sum'] or 0
+
         stats_data = [
             ['Métrique', 'Valeur'],
             ['Nombre de lancements', str(lancements.count())],
-            ['Poids total traité', f'{total_poids:.2f} kg'],
+            ['Poids débitage total', f'{total_debitage:.2f} kg'],      # Séparer
+            ['Poids assemblage total', f'{total_assemblage:.2f} kg'],   # Séparer
             ['Période', f'{date_debut.strftime("%d/%m/%Y")} - {date_fin.strftime("%d/%m/%Y")}']
         ]
+    
         
         stats_table = Table(stats_data)
         stats_table.setStyle(TableStyle([
@@ -795,7 +835,7 @@ def generate_pdf_export(lancements, date_debut, date_fin, include_graphics, incl
     story.append(Paragraph("Détail des Lancements", styles['Heading2']))
     
     # Données du tableau (limitées pour le PDF)
-    table_data = [['N° Lanc.', 'Date', 'Affaire', 'Atelier', 'Collaborateur', 'Poids Total']]
+    table_data = [['N° Lanc.', 'Date', 'Affaire', 'Atelier', 'Collaborateur', 'Débitage', 'Assemblage']]
     
     for lancement in lancements[:50]:  # Limiter à 50 pour le PDF
         table_data.append([
@@ -804,9 +844,10 @@ def generate_pdf_export(lancements, date_debut, date_fin, include_graphics, incl
             lancement.affaire.code_affaire,
             lancement.atelier.nom_atelier,
             lancement.collaborateur.get_full_name()[:20],
-            f'{lancement.get_poids_total():.1f} kg'
+            f"{lancement.poids_debitage:.1f}Kg",
+            f"{lancement.poids_assemblage:.1f}Kg"
         ])
-    
+
     table = Table(table_data)
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
@@ -853,7 +894,7 @@ def generate_csv_export(lancements, detailed_data):
         'Numéro Lancement', 'Date Lancement', 'Date Réception',
         'Code Affaire', 'Client', 'Sous-livrable', 'Atelier',
         'Collaborateur', 'Catégorie', 'Poids Débitage',
-        'Poids Assemblage', 'Poids Total', 'Statut'
+        'Poids Assemblage', 'Statut'
     ]
     
     if detailed_data:
@@ -875,7 +916,6 @@ def generate_csv_export(lancements, detailed_data):
             lancement.categorie.nom_categorie,
             str(lancement.poids_debitage).replace('.', ','),
             str(lancement.poids_assemblage).replace('.', ','),
-            str(lancement.get_poids_total()).replace('.', ','),
             lancement.get_statut_display()
         ]
         
@@ -919,7 +959,7 @@ def generate_json_export(lancements, detailed_data):
             'poids': {
                 'debitage': float(lancement.poids_debitage),
                 'assemblage': float(lancement.poids_assemblage),
-                'total': float(lancement.get_poids_total())
+                
             },
             'statut': lancement.statut
         }
@@ -965,7 +1005,9 @@ def generate_rapport(request):
             total_debitage=Sum('poids_debitage'),
             total_assemblage=Sum('poids_assemblage')
         )
-        poids_total = (lancements_aggregation['total_debitage'] or 0) + (lancements_aggregation['total_assemblage'] or 0)
+        total_debitage = (lancements_aggregation['total_debitage'] or 0)
+        total_assemblage = (lancements_aggregation['total_assemblage'] or 0)
+        poids_total = total_debitage + total_assemblage
 
         # Création du rapport
         rapport = RapportProduction.objects.create(
@@ -973,6 +1015,8 @@ def generate_rapport(request):
             date_fin=date_fin,
             type_rapport=type_rapport,
             nb_lancements=nb_lancements,
+            poids_debitage=total_debitage,
+            poids_assemblage=total_assemblage,
             poids_total=poids_total
         )
 
@@ -1163,7 +1207,9 @@ def regenerate_rapport(request, rapport_id):
         total_debitage=Sum('poids_debitage'),
         total_assemblage=Sum('poids_assemblage')
     )
-    rapport.poids_total = (lancements_aggregation['total_debitage'] or 0) + (lancements_aggregation['total_assemblage'] or 0)
+    rapport.poids_debitage = (lancements_aggregation['total_debitage'] or 0)
+    rapport.poids_assemblage = (lancements_aggregation['total_assemblage'] or 0)
+    rapport.poids_total = rapport.poids_debitage + rapport.poids_assemblage
     rapport.save()
     
     messages.success(request, 'Rapport régénéré avec succès.')
@@ -1275,7 +1321,7 @@ def export_dashboard_data(request):
 
 def generate_dashboard_excel(lancements, date_debut, date_fin):
     """
-    Génération Excel spécifique pour le dashboard
+    Génération Excel spécifique pour le dashboard - VERSION CORRIGÉE
     """
     output = BytesIO()
     workbook = xlsxwriter.Workbook(output)
@@ -1292,19 +1338,22 @@ def generate_dashboard_excel(lancements, date_debut, date_fin):
     data_format = workbook.add_format({'border': 1})
     number_format = workbook.add_format({'border': 1, 'num_format': '#,##0.00'})
     
-    # Feuille principale - Résumé du dashboard
+    # Feuille principale
     worksheet = workbook.add_worksheet('Dashboard')
     
-    # En-tête du rapport
-    worksheet.write('A1', 'TABLEAU DE BORD - ANALYTICS DE PRODUCTION', header_format)
-    worksheet.merge_range('A1:E1', 'TABLEAU DE BORD - ANALYTICS DE PRODUCTION', header_format)
-    worksheet.write('A2', f'Période: {date_debut.strftime("%d/%m/%Y")} - {date_fin.strftime("%d/%m/%Y")}', data_format)
-    worksheet.merge_range('A2:E2', f'Période: {date_debut.strftime("%d/%m/%Y")} - {date_fin.strftime("%d/%m/%Y")}', data_format)
+    # Variables pour le suivi des lignes
+    current_row = 0
     
-    # Statistiques globales
-    row = 4
-    worksheet.write(row, 0, 'STATISTIQUES GÉNÉRALES', header_format)
-    worksheet.merge_range(f'A{row+1}:B{row+1}', 'STATISTIQUES GÉNÉRALES', header_format)
+    # En-tête du rapport
+    worksheet.merge_range(f'A{current_row+1}:E{current_row+1}', 'TABLEAU DE BORD - ANALYTICS DE PRODUCTION', header_format)
+    current_row += 1
+    
+    worksheet.merge_range(f'A{current_row+1}:E{current_row+1}', f'Période: {date_debut.strftime("%d/%m/%Y")} - {date_fin.strftime("%d/%m/%Y")}', data_format)
+    current_row += 2  # Laisser une ligne vide
+    
+    # STATISTIQUES GÉNÉRALES
+    worksheet.merge_range(f'A{current_row+1}:B{current_row+1}', 'STATISTIQUES GÉNÉRALES', header_format)
+    current_row += 1
     
     # Calculs des statistiques
     total_lancements = lancements.count()
@@ -1312,35 +1361,36 @@ def generate_dashboard_excel(lancements, date_debut, date_fin):
         total_debitage=Sum('poids_debitage'),
         total_assemblage=Sum('poids_assemblage')
     )
-    poids_total = (aggregation['total_debitage'] or 0) + (aggregation['total_assemblage'] or 0)
+    
+    total_debitage = float(aggregation['total_debitage'] or 0)
+    total_assemblage = float(aggregation['total_assemblage'] or 0)
     
     stats_data = [
         ['Nombre total de lancements', total_lancements],
-        ['Poids total débitage (kg)', float(aggregation['total_debitage'] or 0)],
-        ['Poids total assemblage (kg)', float(aggregation['total_assemblage'] or 0)],
-        ['Poids total traité (kg)', float(poids_total)],
+        ['Poids total débitage (kg)', total_debitage],
+        ['Poids total assemblage (kg)', total_assemblage],
         ['Nombre de jours analysés', (date_fin - date_debut).days + 1]
     ]
     
-    row = 6
+    # Écriture des statistiques
     for stat in stats_data:
-        worksheet.write(row, 0, stat[0], data_format)
-        if isinstance(stat[1], (int, float)):
-            worksheet.write(row, 1, stat[1], number_format if isinstance(stat[1], float) else data_format)
+        current_row += 1
+        worksheet.write(current_row, 0, stat[0], data_format)  # Colonne A
+        if isinstance(stat[1], (int, float)) and stat[1] != int(stat[1]):
+            worksheet.write(current_row, 1, stat[1], number_format)  # Colonne B
         else:
-            worksheet.write(row, 1, stat[1], data_format)
-        row += 1
+            worksheet.write(current_row, 1, stat[1], data_format)  # Colonne B
     
-    # Top collaborateurs
-    row += 2
-    worksheet.write(row, 0, 'TOP COLLABORATEURS', header_format)
-    worksheet.merge_range(f'A{row+1}:D{row+1}', 'TOP COLLABORATEURS', header_format)
+    current_row += 2  # Laisser une ligne vide
+    
+    # TOP COLLABORATEURS
+    worksheet.merge_range(f'A{current_row+1}:C{current_row+1}', 'TOP COLLABORATEURS', header_format)
+    current_row += 1
     
     # En-têtes collaborateurs
-    row += 1
-    collab_headers = ['Collaborateur', 'Poids Débitage', 'Poids Assemblage', 'Total']
+    collab_headers = ['Collaborateur', 'Poids Débitage', 'Poids Assemblage']
     for col, header in enumerate(collab_headers):
-        worksheet.write(row, col, header, header_format)
+        worksheet.write(current_row, col, header, header_format)  # Ligne actuelle, colonnes A, B, C
     
     # Données collaborateurs
     collab_data = lancements.values(
@@ -1359,58 +1409,59 @@ def generate_dashboard_excel(lancements, date_debut, date_fin):
         collab_list.append({
             'nom': nom_complet,
             'debitage': debitage,
-            'assemblage': assemblage,
-            'total': debitage + assemblage
+            'assemblage': assemblage
         })
     
-    collab_list.sort(key=lambda x: x['total'], reverse=True)
+    collab_list.sort(key=lambda x: x['debitage'], reverse=True)
     
-    row += 1
+    # Écriture des données collaborateurs
     for collab in collab_list[:10]:  # Top 10
-        worksheet.write(row, 0, collab['nom'], data_format)
-        worksheet.write(row, 1, collab['debitage'], number_format)
-        worksheet.write(row, 2, collab['assemblage'], number_format)
-        worksheet.write(row, 3, collab['total'], number_format)
-        row += 1
+        current_row += 1
+        worksheet.write(current_row, 0, collab['nom'], data_format)           # Colonne A
+        worksheet.write(current_row, 1, collab['debitage'], number_format)    # Colonne B
+        worksheet.write(current_row, 2, collab['assemblage'], number_format)  # Colonne C
     
-    # Top affaires
-    row += 2
-    worksheet.write(row, 0, 'TOP AFFAIRES', header_format)
-    worksheet.merge_range(f'A{row+1}:C{row+1}', 'TOP AFFAIRES', header_format)
+    current_row += 2  # Laisser une ligne vide
     
-    row += 1
-    affaire_headers = ['Code Affaire', 'Poids Total', 'Pourcentage']
+    # TOP AFFAIRES
+    worksheet.merge_range(f'A{current_row+1}:C{current_row+1}', 'TOP AFFAIRES', header_format)
+    current_row += 1
+    
+    # En-têtes affaires
+    affaire_headers = ['Code Affaire', 'Poids Débitage', 'Pourcentage']
     for col, header in enumerate(affaire_headers):
-        worksheet.write(row, col, header, header_format)
+        worksheet.write(current_row, col, header, header_format)  # Ligne actuelle, colonnes A, B, C
     
     # Données affaires
     affaire_data = lancements.values('affaire__code_affaire').annotate(
-        poids_total=Sum('poids_debitage') + Sum('poids_assemblage')
+        poids_debitage=Sum('poids_debitage')
     )
     
     affaire_list = []
-    total_affaires = 0
+    total_debitage_affaires = 0
+    
     for affaire in affaire_data:
-        poids = float(affaire['poids_total'] or 0)
+        poids_debitage = float(affaire['poids_debitage'] or 0)
         affaire_list.append({
             'code': affaire['affaire__code_affaire'],
-            'poids': poids
+            'poids_debitage': poids_debitage
         })
-        total_affaires += poids
+        total_debitage_affaires += poids_debitage
     
-    affaire_list.sort(key=lambda x: x['poids'], reverse=True)
+    affaire_list.sort(key=lambda x: x['poids_debitage'], reverse=True)
     
-    row += 1
+    # Écriture des données affaires
     for affaire in affaire_list[:8]:  # Top 8
-        pourcentage = (affaire['poids'] / total_affaires * 100) if total_affaires > 0 else 0
-        worksheet.write(row, 0, affaire['code'], data_format)
-        worksheet.write(row, 1, affaire['poids'], number_format)
-        worksheet.write(row, 2, f"{pourcentage:.1f}%", data_format)
-        row += 1
+        current_row += 1
+        pourcentage = (affaire['poids_debitage'] / total_debitage_affaires * 100) if total_debitage_affaires > 0 else 0
+        worksheet.write(current_row, 0, affaire['code'], data_format)                    # Colonne A
+        worksheet.write(current_row, 1, affaire['poids_debitage'], number_format)       # Colonne B
+        worksheet.write(current_row, 2, f"{pourcentage:.1f}%", data_format)             # Colonne C
     
     # Ajustement des largeurs de colonnes
-    worksheet.set_column('A:A', 25)
-    worksheet.set_column('B:D', 15)
+    worksheet.set_column('A:A', 25)  # Noms/codes plus longs
+    worksheet.set_column('B:C', 15)  # Valeurs numériques
+    worksheet.set_column('D:E', 12)  # Colonnes supplémentaires si nécessaire
     
     workbook.close()
     output.seek(0)
@@ -1423,7 +1474,6 @@ def generate_dashboard_excel(lancements, date_debut, date_fin):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
     return response
-
 
 def generate_dashboard_pdf(lancements, date_debut, date_fin):
     """
@@ -1448,14 +1498,12 @@ def generate_dashboard_pdf(lancements, date_debut, date_fin):
         total_debitage=Sum('poids_debitage'),
         total_assemblage=Sum('poids_assemblage')
     )
-    poids_total = (aggregation['total_debitage'] or 0) + (aggregation['total_assemblage'] or 0)
     
     stats_data = [
         ['Métrique', 'Valeur'],
         ['Nombre de lancements', str(total_lancements)],
         ['Poids débitage', f"{float(aggregation['total_debitage'] or 0):.2f} kg"],
         ['Poids assemblage', f"{float(aggregation['total_assemblage'] or 0):.2f} kg"],
-        ['Poids total', f"{float(poids_total):.2f} kg"],
         ['Durée d\'analyse', f"{(date_fin - date_debut).days + 1} jour(s)"]
     ]
     
@@ -1485,7 +1533,7 @@ def generate_dashboard_pdf(lancements, date_debut, date_fin):
         poids_assemblage=Sum('poids_assemblage')
     )
     
-    collab_table_data = [['Collaborateur', 'Débitage (kg)', 'Assemblage (kg)', 'Total (kg)']]
+    collab_table_data = [['Collaborateur', 'Débitage (kg)', 'Assemblage (kg)']]
     
     collab_list = []
     for collab in collab_data:
@@ -1505,8 +1553,7 @@ def generate_dashboard_pdf(lancements, date_debut, date_fin):
         collab_table_data.append([
             collab['nom'],
             f"{collab['debitage']:.1f}",
-            f"{collab['assemblage']:.1f}",
-            f"{collab['total']:.1f}"
+            f"{collab['assemblage']:.1f}"
         ])
     
     collab_table = Table(collab_table_data)
@@ -1566,7 +1613,7 @@ def generate_dashboard_csv(lancements, date_debut, date_fin):
     
     # Collaborateurs
     writer.writerow(['TOP COLLABORATEURS'])
-    writer.writerow(['Collaborateur', 'Poids Débitage', 'Poids Assemblage', 'Total'])
+    writer.writerow(['Collaborateur', 'Poids Débitage', 'Poids Assemblage'])
     
     collab_data = lancements.values(
         'collaborateur__nom_collaborateur',
@@ -1594,14 +1641,12 @@ def generate_dashboard_csv(lancements, date_debut, date_fin):
         writer.writerow([
             collab['nom'],
             str(collab['debitage']).replace('.', ','),
-            str(collab['assemblage']).replace('.', ','),
-            str(collab['total']).replace('.', ',')
+            str(collab['assemblage']).replace('.', ',')
         ])
     
     return response
 
 
-# Ajoutez ces nouvelles vues à votre fichier views.py
 
 @login_required
 @permission_required('rapports', 'export')
@@ -1693,7 +1738,7 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
     # Feuille principale
     worksheet = workbook.add_worksheet('Rapport Détaillé')
 
-    # En-têtes - exactement comme dans l'image
+    # En-têtes 
     headers = [
         'Numéro Lancement',
         'Date Lancement', 
@@ -1707,7 +1752,6 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
         'Catégorie',
         'Poids Débitage',
         'Poids Assemblage',
-        'Poids Total',
         'Statut',
         'Observations'
     ]
@@ -1722,7 +1766,6 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
         # Calcul du poids total
         poids_debitage = float(lancement.poids_debitage or 0)
         poids_assemblage = float(lancement.poids_assemblage or 0)
-        poids_total = poids_debitage + poids_assemblage
 
         # Données de la ligne
         data_row = [
@@ -1738,7 +1781,6 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
             lancement.categorie.nom_categorie if lancement.categorie else '',
             poids_debitage,
             poids_assemblage,
-            poids_total,
             lancement.get_statut_display() if hasattr(lancement, 'get_statut_display') else lancement.statut,
             lancement.observations or ''
         ]
@@ -1747,14 +1789,13 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
         for col, value in enumerate(data_row):
             if col in [1, 2]:  # Dates
                 worksheet.write(row, col, value, date_format)
-            elif col in [10, 11, 12]:  # Poids (nombres)
+            elif col in [10, 11]:  # Poids (nombres)
                 worksheet.write(row, col, value, number_format)
             else:  # Texte
                 worksheet.write(row, col, str(value), data_format)
         
         row += 1
 
-    # Ajustement automatique de la largeur des colonnes
     column_widths = [
         15,  # Numéro Lancement
         12,  # Date Lancement
@@ -1768,7 +1809,6 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
         15,  # Catégorie
         12,  # Poids Débitage
         12,  # Poids Assemblage
-        12,  # Poids Total
         12,  # Statut
         25   # Observations
     ]
@@ -1799,14 +1839,12 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
     )
     total_debitage = float(aggregation['total_debitage'] or 0)
     total_assemblage = float(aggregation['total_assemblage'] or 0)
-    total_poids = total_debitage + total_assemblage
 
     stats_data = [
         ['Statistique', 'Valeur', 'Unité', 'Description'],
         ['Nombre de lancements', total_lancements, 'unités', 'Total des lancements sur la période'],
         ['Poids débitage total', total_debitage, 'kg', 'Somme des poids de débitage'],
         ['Poids assemblage total', total_assemblage, 'kg', 'Somme des poids d\'assemblage'],
-        ['Poids total traité', total_poids, 'kg', 'Poids total débitage + assemblage'],
         ['Durée d\'analyse', (date_fin - date_debut).days + 1, 'jours', 'Nombre de jours analysés']
     ]
 
@@ -1867,7 +1905,6 @@ def generate_rapport_csv(lancements, date_debut, date_fin):
         'Catégorie',
         'Poids Débitage',
         'Poids Assemblage',
-        'Poids Total',
         'Statut',
         'Observations'
     ]
@@ -1878,7 +1915,6 @@ def generate_rapport_csv(lancements, date_debut, date_fin):
     for lancement in lancements:
         poids_debitage = float(lancement.poids_debitage or 0)
         poids_assemblage = float(lancement.poids_assemblage or 0)
-        poids_total = poids_debitage + poids_assemblage
 
         row = [
             lancement.num_lanc,
@@ -1893,7 +1929,6 @@ def generate_rapport_csv(lancements, date_debut, date_fin):
             lancement.categorie.nom_categorie if lancement.categorie else '',
             str(poids_debitage).replace('.', ','),
             str(poids_assemblage).replace('.', ','),
-            str(poids_total).replace('.', ','),
             lancement.get_statut_display() if hasattr(lancement, 'get_statut_display') else lancement.statut,
             lancement.observations or ''
         ]
@@ -1924,14 +1959,14 @@ def generate_rapport_pdf(lancements, date_debut, date_fin):
         total_debitage=Sum('poids_debitage'),
         total_assemblage=Sum('poids_assemblage')
     )
-    total_poids = (aggregation['total_debitage'] or 0) + (aggregation['total_assemblage'] or 0)
 
     story.append(Paragraph("SYNTHÈSE GÉNÉRALE", styles['Heading2']))
     
     stats_data = [
         ['Métrique', 'Valeur'],
         ['Nombre de lancements', str(total_lancements)],
-        ['Poids total traité', f"{float(total_poids):.2f} kg"],
+        ['Poids total assemblage', f"{float(aggregation['total_assemblage'] or 0):.2f} kg"],
+        ['Poids total débitage', f"{float(aggregation['total_debitage'] or 0):.2f} kg"],
         ['Période d\'analyse', f"{(date_fin - date_debut).days + 1} jour(s)"]
     ]
 
@@ -1954,12 +1989,11 @@ def generate_rapport_pdf(lancements, date_debut, date_fin):
     story.append(Paragraph("DÉTAIL DES LANCEMENTS", styles['Heading2']))
     
     # Tableau simplifié pour le PDF (colonnes principales)
-    table_data = [['N° Lanc.', 'Date', 'Affaire', 'Atelier', 'Collaborateur', 'Débitage', 'Assemblage', 'Total']]
+    table_data = [['N° Lanc.', 'Date', 'Affaire', 'Atelier', 'Collaborateur', 'Débitage', 'Assemblage']]
 
     for lancement in lancements[:50]:  # Limiter pour le PDF
         poids_debitage = float(lancement.poids_debitage or 0)
         poids_assemblage = float(lancement.poids_assemblage or 0)
-        poids_total = poids_debitage + poids_assemblage
 
         table_data.append([
             lancement.num_lanc,
@@ -1968,8 +2002,7 @@ def generate_rapport_pdf(lancements, date_debut, date_fin):
             lancement.atelier.nom_atelier[:15] if lancement.atelier else '',
             lancement.collaborateur.get_full_name()[:18] if lancement.collaborateur else '',
             f'{poids_debitage:.1f}',
-            f'{poids_assemblage:.1f}',
-            f'{poids_total:.1f}'
+            f'{poids_assemblage:.1f}'
         ])
 
     table = Table(table_data)

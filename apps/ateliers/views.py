@@ -192,11 +192,10 @@ def atelier_edit(request, pk):
         # Récupération des données du formulaire
         nom_atelier = request.POST.get('nom_atelier')
         type_atelier = request.POST.get('type_atelier')
-        capacite_max = request.POST.get('capacite_max')
         responsable_atelier_id = request.POST.get('responsable_atelier')
         
-        # Validation basique
-        if not all([nom_atelier, type_atelier, capacite_max]):
+        # Validation basique (capacite_max supprimée)
+        if not all([nom_atelier, type_atelier]):
             messages.error(request, "Tous les champs obligatoires doivent être remplis.")
             return redirect('ateliers:edit', pk=pk)
         
@@ -208,15 +207,13 @@ def atelier_edit(request, pk):
             
             atelier.nom_atelier = nom_atelier
             atelier.type_atelier = type_atelier
-            atelier.capacite_max = int(capacite_max)
+            # Ligne capacite_max supprimée
             atelier.responsable_atelier = responsable
             atelier.save()
             
             messages.success(request, f"L'atelier '{nom_atelier}' a été modifié avec succès.")
             return redirect('ateliers:detail', pk=atelier.pk)
             
-        except ValueError:
-            messages.error(request, "La capacité maximale doit être un nombre entier.")
         except Collaborateur.DoesNotExist:
             messages.error(request, "Le responsable sélectionné n'existe pas.")
         except Exception as e:
@@ -235,7 +232,6 @@ def atelier_edit(request, pk):
     }
     
     return render(request, 'ateliers/edit.html', context)
-
 
 @login_required
 def atelier_delete(request, pk):

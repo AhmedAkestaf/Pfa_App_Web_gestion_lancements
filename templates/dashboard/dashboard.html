@@ -122,8 +122,8 @@
     <!-- Actions rapides -->
     <div class="col-12 mt-4">
         <div class="card">
-            <div class="card-header bg-primary">
-                <h5 class="mb-0 text-light">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 text-white"></h5>
                     <i class="fas fa-bolt me-2"></i>Actions rapides
                 </h5>
             </div>
@@ -176,211 +176,224 @@
         </div>
     </div>
     
-    <!-- Activité récente AMÉLIORÉE -->
-    {% if can_view_lancements %}
-    <div class="col-md-8 mt-4">
-        <div class="card">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-clock me-2"></i>Activité récente
-                </h5>
-                <div class="card-header-actions">
-                    <button class="btn btn-sm btn-outline-primary" onclick="refreshActivities()" title="Actualiser">
-                        <i class="fas fa-sync-alt" id="refresh-icon"></i>
-                    </button>
-                    <a href="{% url 'core:activites_list' %}" class="btn btn-sm btn-outline-secondary ms-1" title="Voir toutes">
-                        <i class="fas fa-list"></i>
-                    </a>
+    <!-- Conteneur principal avec hauteur égalisée -->
+    <div class="col-12 mt-4">
+        <div class="row dashboard-main-row">
+            <!-- Activité récente ÉTENDUE -->
+            {% if can_view_lancements %}
+            <div class="col-md-8">
+                <div class="card dashboard-activity-card">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-clock me-2"></i>Activité récente
+                        </h5>
+                        <div class="card-header-actions">
+                            <button class="btn btn-sm btn-outline-primary" onclick="refreshActivities()" title="Actualiser">
+                                <i class="fas fa-sync-alt" id="refresh-icon"></i>
+                            </button>
+                            <a href="{% url 'core:activites_list' %}" class="btn btn-sm btn-outline-secondary ms-1" title="Voir toutes">
+                                <i class="fas fa-list"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body p-0 dashboard-activity-body">
+                        <div class="timeline-extended" id="activites-timeline">
+                            {% if activites_recentes %}
+                                {% for activite in activites_recentes %}
+                                <div class="timeline-item" data-activite-id="{{ activite.id }}">
+                                    <div class="timeline-marker">
+                                        <i class="{{ activite.get_icon_class }}"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-header d-flex justify-content-between align-items-start">
+                                            <h6 class="timeline-title mb-1">
+                                                {{ activite.get_action_display }} - {{ activite.get_module_display }}
+                                            </h6>
+                                            <small class="text-muted timeline-time">
+                                                <i class="fas fa-clock me-1"></i>Il y a {{ activite.get_time_ago }}
+                                            </small>
+                                        </div>
+                                        <p class="timeline-text mb-1">{{ activite.description }}</p>
+                                        {% if activite.utilisateur %}
+                                        <div class="timeline-user">
+                                            <small class="text-muted">
+                                                <i class="fas fa-user me-1"></i>{{ activite.utilisateur.get_full_name }}
+                                            </small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-5 empty-state">
+                                    <div class="text-muted">
+                                        <i class="fas fa-history fa-3x mb-3"></i>
+                                        <p class="mb-0">Aucune activité récente</p>
+                                        <small>Les nouvelles activités apparaîtront ici</small>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Indicateur de chargement -->
+                        <div class="text-center py-3 d-none" id="activities-loading">
+                            <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                            <span class="text-muted">Actualisation en cours...</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="card-body p-0">
-                <div class="timeline" id="activites-timeline">
-                    {% if activites_recentes %}
-                        {% for activite in activites_recentes %}
-                        <div class="timeline-item" data-activite-id="{{ activite.id }}">
-                            <div class="timeline-marker">
-                                <i class="{{ activite.get_icon_class }}"></i>
-                            </div>
-                            <div class="timeline-content">
-                                <div class="timeline-header d-flex justify-content-between align-items-start">
-                                    <h6 class="timeline-title mb-1">
-                                        {{ activite.get_action_display }} - {{ activite.get_module_display }}
-                                    </h6>
-                                    <small class="text-muted timeline-time">
-                                        <i class="fas fa-clock me-1"></i>Il y a {{ activite.get_time_ago }}
-                                    </small>
+            {% endif %}
+            
+            <!-- Colonne de droite avec toutes les sections -->
+            <div class="col-md-4">
+                <div class="dashboard-right-column">
+                    <!-- Informations utilisateur -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="fas fa-user me-2"></i>Mes informations
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center mb-3">
+                                <div class="avatar-circle bg-primary text-white mx-auto" style="width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                                    {{ user.prenom_collaborateur.0|default:"U" }}{{ user.nom_collaborateur.0|default:"" }}
                                 </div>
-                                <p class="timeline-text mb-1">{{ activite.description }}</p>
-                                {% if activite.utilisateur %}
-                                <div class="timeline-user">
-                                    <small class="text-muted">
-                                        <i class="fas fa-user me-1"></i>{{ activite.utilisateur.get_full_name }}
-                                    </small>
+                                <h6 class="mt-2 mb-1">{{ user.get_full_name }}</h6>
+                                <small class="text-muted">{{ user.email }}</small>
+                            </div>
+                            
+                            <hr>
+                            
+                            <div class="row text-center">
+                                <div class="col-12 mb-2">
+                                    <strong>Rôle:</strong><br>
+                                    <span class="badge bg-secondary">{{ user.user_role.name|default:"Aucun" }}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Notifications récentes de l'utilisateur -->
+                            {% if nb_notifications_non_lues > 0 %}
+                            <div class="alert alert-info mt-3" role="alert">
+                                <h6><i class="fas fa-bell me-2"></i>Notifications</h6>
+                                <p class="mb-2">Vous avez <strong>{{ nb_notifications_non_lues }}</strong> notification(s) non lue(s).</p>
+                                <a href="{% url 'core:notifications_list' %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-list me-1"></i>Voir toutes
+                                </a>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="d-grid gap-2 mt-3">
+                                <a href="{% url 'collaborateurs:profile' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-eye me-1"></i>Voir mon profil
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mes notifications récentes -->
+                    {% if notifications_non_lues %}
+                    <div class="card mb-3">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="fas fa-bell me-2"></i>Mes dernières notifications
+                            </h6>
+                            <span class="badge bg-primary">{{ notifications_non_lues|length }}</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush">
+                                {% for notification in notifications_non_lues|slice:":5" %}
+                                <div class="list-group-item list-group-item-action notification-dashboard-item" 
+                                     data-notification-id="{{ notification.id }}">
+                                    <div class="d-flex align-items-start">
+                                        <div class="notification-icon me-2">
+                                            <i class="{{ notification.get_icon_class }}"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1 text-truncate">{{ notification.titre }}</h6>
+                                            <p class="mb-1 small text-muted">
+                                                {{ notification.message|truncatewords:8 }}
+                                            </p>
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>Il y a {{ notification.get_time_ago }}
+                                            </small>
+                                        </div>
+                                        <div class="notification-actions">
+                                            <button class="btn btn-sm btn-link p-0 text-success" 
+                                                    onclick="marquerNotificationLueDashboard('{{ notification.id }}')"
+                                                    title="Marquer comme lu">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% if notification.url_action %}
+                                    <div class="mt-2">
+                                        <a href="{{ notification.url_action }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-external-link-alt me-1"></i>Voir
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                                
+                                {% if notifications_non_lues|length > 5 %}
+                                <div class="list-group-item text-center">
+                                    <a href="{% url 'core:notifications_list' %}" class="btn btn-sm btn-link">
+                                        Voir {{ notifications_non_lues|length|add:"-5" }} autre(s) notification(s)
+                                    </a>
                                 </div>
                                 {% endif %}
                             </div>
                         </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="text-center py-4">
-                            <div class="text-muted">
-                                <i class="fas fa-history fa-3x mb-3"></i>
-                                <p class="mb-0">Aucune activité récente</p>
-                            </div>
-                        </div>
+                    </div>
                     {% endif %}
-                </div>
-                
-                <!-- Indicateur de chargement -->
-                <div class="text-center py-3 d-none" id="activities-loading">
-                    <div class="spinner-border spinner-border-sm text-primary me-2"></div>
-                    <span class="text-muted">Actualisation en cours...</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-    
-    <!-- Informations utilisateur et notifications récentes -->
-    <div class="col-md-4 mt-4">
-        <!-- Informations utilisateur -->
-        <div class="card">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">
-                    <i class="fas fa-user me-2"></i>Mes informations
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="text-center mb-3">
-                    <div class="avatar-circle bg-primary text-white mx-auto" style="width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-                        {{ user.prenom_collaborateur.0|default:"U" }}{{ user.nom_collaborateur.0|default:"" }}
-                    </div>
-                    <h6 class="mt-2 mb-1">{{ user.get_full_name }}</h6>
-                    <small class="text-muted">{{ user.email }}</small>
-                </div>
-                
-                <hr>
-                
-                <div class="row text-center">
-                    <div class="col-12 mb-2">
-                        <strong>Rôle:</strong><br>
-                        <span class="badge bg-secondary">{{ user.user_role.name|default:"Aucun" }}</span>
-                    </div>
-                </div>
-                
-                <!-- Notifications récentes de l'utilisateur -->
-                {% if nb_notifications_non_lues > 0 %}
-                <div class="alert alert-info mt-3" role="alert">
-                    <h6><i class="fas fa-bell me-2"></i>Notifications</h6>
-                    <p class="mb-2">Vous avez <strong>{{ nb_notifications_non_lues }}</strong> notification(s) non lue(s).</p>
-                    <a href="{% url 'core:notifications_list' %}" class="btn btn-sm btn-info">
-                        <i class="fas fa-list me-1"></i>Voir toutes
-                    </a>
-                </div>
-                {% endif %}
-                
-                <div class="d-grid gap-2 mt-3">
-                    <a href="{% url 'collaborateurs:profile' %}" class="btn btn-outline-primary btn-sm">
-                        <i class="fas fa-eye me-1"></i>Voir mon profil
-                    </a>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Mes notifications récentes -->
-        {% if notifications_non_lues %}
-        <div class="card mt-3">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">
-                    <i class="fas fa-bell me-2"></i>Mes dernières notifications
-                </h6>
-                <span class="badge bg-primary">{{ notifications_non_lues|length }}</span>
-            </div>
-            <div class="card-body p-0">
-                <div class="list-group list-group-flush">
-                    {% for notification in notifications_non_lues|slice:":5" %}
-                    <div class="list-group-item list-group-item-action notification-dashboard-item" 
-                         data-notification-id="{{ notification.id }}">
-                        <div class="d-flex align-items-start">
-                            <div class="notification-icon me-2">
-                                <i class="{{ notification.get_icon_class }}"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1 text-truncate">{{ notification.titre }}</h6>
-                                <p class="mb-1 small text-muted">
-                                    {{ notification.message|truncatewords:8 }}
-                                </p>
-                                <small class="text-muted">
-                                    <i class="fas fa-clock me-1"></i>Il y a {{ notification.get_time_ago }}
-                                </small>
-                            </div>
-                            <div class="notification-actions">
-                                <button class="btn btn-sm btn-link p-0 text-success" 
-                                        onclick="marquerNotificationLueDashboard('{{ notification.id }}')"
-                                        title="Marquer comme lu">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                            </div>
-                        </div>
-                        {% if notification.url_action %}
-                        <div class="mt-2">
-                            <a href="{{ notification.url_action }}" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-external-link-alt me-1"></i>Voir
-                            </a>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
                     
-                    {% if notifications_non_lues|length > 5 %}
-                    <div class="list-group-item text-center">
-                        <a href="{% url 'core:notifications_list' %}" class="btn btn-sm btn-link">
-                            Voir {{ notifications_non_lues|length|add:"-5" }} autre(s) notification(s)
-                        </a>
+                    <!-- Aide rapide -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">
+                                <i class="fas fa-question-circle me-2"></i>Aide rapide
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="list-group list-group-flush">
+                                <a href="{% url 'core:guide_technique' %}" class="list-group-item list-group-item-action border-0 px-0">
+                                    <div class="d-flex align-items-start">
+                                        <i class="fas fa-book me-3 text-primary mt-1"></i>
+                                        <div>
+                                            <h6 class="mb-1">Guide d'utilisation</h6>
+                                            <small class="text-muted">Documentation complète du système de gestion des lancements, procédures détaillées et exemples pratiques</small>
+                                        </div>
+                                    </div>
+                                </a>
+                                <div class="list-group-item border-0 px-0">
+                                    <div class="d-flex align-items-start">
+                                        <i class="fas fa-info-circle me-3 text-info mt-1"></i>
+                                        <div>
+                                            <h6 class="mb-1">À propos du guide</h6>
+                                            <small class="text-muted">Le guide technique contient toutes les informations nécessaires pour utiliser efficacement le système : création de collaborateurs, gestion des ateliers, lancements de production et génération de rapports</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        {% endif %}
-        
-        <!-- Aide rapide -->
-        <div class="card mt-3">
-            <div class="card-header bg-light">
-                <h6 class="mb-0">
-                    <i class="fas fa-question-circle me-2"></i>Aide rapide
-                </h6>
-            </div>
-            <div class="card-body">
-                <div class="list-group list-group-flush">
-                    <a href="#" class="list-group-item list-group-item-action border-0 px-0">
-                        <i class="fas fa-book me-2 text-primary"></i>Guide d'utilisation
-                    </a>
-                    <a href="#" class="list-group-item list-group-item-action border-0 px-0">
-                        <i class="fas fa-video me-2 text-success"></i>Tutoriels vidéo
-                    </a>
-                    <a href="#" class="list-group-item list-group-item-action border-0 px-0">
-                        <i class="fas fa-headset me-2 text-info"></i>Support technique
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Message d'information système -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="alert alert-info dashboard-welcome-alert">
-            <h5><i class="icon fas fa-info-circle"></i> Système opérationnel</h5>
-            <p class="mb-0">
-                Système de gestion des lancements AIC Métallurgie configuré avec succès. 
-                {% if user.user_role %}
-                Vous êtes connecté avec le rôle <strong>{{ user.user_role.name }}</strong>.
-                {% else %}
-                Contactez votre administrateur pour obtenir un rôle et des permissions.
-                {% endif %}
-            </p>
+                    <!-- Message d'information système -->
+                    <div class="alert alert-info dashboard-welcome-alert">
+                        <h5><i class="icon fas fa-info-circle"></i> Système opérationnel</h5>
+                        <p class="mb-0">
+                            Système de gestion des lancements AIC Métallurgie configuré avec succès. 
+                            {% if user.user_role %}
+                            Vous êtes connecté avec le rôle <strong>{{ user.user_role.name }}</strong>.
+                            {% else %}
+                            Contactez votre administrateur pour obtenir un rôle et des permissions.
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -426,10 +439,11 @@ function updateActivitiesTimeline(activites) {
     
     if (activites.length === 0) {
         timeline.innerHTML = `
-            <div class="text-center py-4">
+            <div class="text-center py-5 empty-state">
                 <div class="text-muted">
                     <i class="fas fa-history fa-3x mb-3"></i>
                     <p class="mb-0">Aucune activité récente</p>
+                    <small>Les nouvelles activités apparaîtront ici</small>
                 </div>
             </div>
         `;
@@ -437,7 +451,7 @@ function updateActivitiesTimeline(activites) {
     }
     
     let html = '';
-    activites.slice(0, 10).forEach(activite => {
+    activites.slice(0, 15).forEach(activite => {
         html += `
             <div class="timeline-item" data-activite-id="${activite.id}">
                 <div class="timeline-marker">
@@ -563,7 +577,28 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         refreshActivities();
     }, 10000);
+    
+    // Égaliser les hauteurs après le chargement
+    setTimeout(equalizeHeights, 100);
 });
+
+// Fonction pour égaliser les hauteurs
+function equalizeHeights() {
+    const activityCard = document.querySelector('.dashboard-activity-card');
+    const rightColumn = document.querySelector('.dashboard-right-column');
+    
+    if (activityCard && rightColumn) {
+        // Réinitialiser les hauteurs
+        activityCard.style.height = 'auto';
+        rightColumn.style.height = 'auto';
+        
+        // Calculer la hauteur de la colonne de droite
+        const rightColumnHeight = rightColumn.offsetHeight;
+        
+        // Appliquer la hauteur à la carte d'activité
+        activityCard.style.height = rightColumnHeight + 'px';
+    }
+}
 
 // Fonction utilitaire pour créer des notifications toast réutilisée
 if (typeof showNotificationToast === 'undefined') {
@@ -607,16 +642,163 @@ if (typeof showNotificationToast === 'undefined') {
         return container;
     }
 }
+
+// Écouter les redimensionnements de fenêtre
+window.addEventListener('resize', equalizeHeights);
 </script>
 
 <!-- CSS personnalisé pour le dashboard -->
 <style>
-/* Styles pour la timeline des activités */
-.timeline {
+/* Styles pour égaliser les hauteurs */
+.dashboard-main-row {
+    display: flex;
+    align-items: stretch;
+}
+
+.dashboard-activity-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+/* Carte de bienvenue améliorée */
+.dashboard-main-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 15px;
+    overflow: hidden;
     position: relative;
-    max-height: 500px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    transition: all 0.4s ease;
+}
+
+.dashboard-main-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.4);
+}
+
+.dashboard-particles {
+    padding: 2rem;
+    position: relative;
+    z-index: 2;
+}
+
+.dashboard-particles::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: float 20s infinite linear;
+    z-index: -1;
+}
+
+.dashboard-particles::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: pulse 3s infinite ease-in-out;
+}
+
+.dashboard-main-card .card-title {
+    color: white;
+    font-weight: 700;
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.dashboard-main-card .card-title i {
+    background: rgba(255,255,255,0.2);
+    padding: 8px;
+    border-radius: 50%;
+    margin-right: 15px !important;
+    animation: glow 2s infinite alternate;
+}
+
+.dashboard-main-card .text-muted {
+    color: rgba(255,255,255,0.9) !important;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Animations */
+@keyframes float {
+    0% { transform: translate(0px, 0px) rotate(0deg); }
+    33% { transform: translate(30px, -30px) rotate(120deg); }
+    66% { transform: translate(-20px, 20px) rotate(240deg); }
+    100% { transform: translate(0px, 0px) rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.7; }
+    50% { transform: scale(1.2); opacity: 0.3; }
+}
+
+@keyframes glow {
+    from { box-shadow: 0 0 5px rgba(255,255,255,0.5); }
+    to { box-shadow: 0 0 20px rgba(255,255,255,0.8), 0 0 30px rgba(255,255,255,0.6); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .dashboard-particles {
+        padding: 1.5rem;
+    }
+    
+    .dashboard-main-card .card-title {
+        font-size: 1.5rem;
+    }
+    
+    .dashboard-main-card .card-title i {
+        margin-right: 10px !important;
+        padding: 6px;
+    }
+}
+.dashboard-activity-body {
+    flex: 1;
+    overflow: hidden;
+}
+
+.dashboard-right-column {
+    display: flex;
+    flex-direction: column;
+    height: fit-content;
+}
+
+/* Styles pour la timeline des activités étendue */
+.timeline-extended {
+    position: relative;
+    height: calc(100% - 60px); /* Déduire la hauteur du header */
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 1rem;
+    min-height: 600px; /* Hauteur minimum */
+}
+
+.timeline-extended::-webkit-scrollbar {
+    width: 6px;
+}
+
+.timeline-extended::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.timeline-extended::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.timeline-extended::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
 
 .timeline-item {
@@ -625,6 +807,13 @@ if (typeof showNotificationToast === 'undefined') {
     margin-bottom: 1.5rem;
     padding-left: 0.5rem;
     position: relative;
+    opacity: 0;
+    transform: translateX(-20px);
+    animation: slideInTimeline 0.3s ease forwards;
+}
+
+.timeline-item:nth-child(n) {
+    animation-delay: calc(var(--item-index, 0) * 0.05s);
 }
 
 .timeline-item:last-child {
@@ -638,7 +827,7 @@ if (typeof showNotificationToast === 'undefined') {
     top: 2.5rem;
     bottom: -1.5rem;
     width: 2px;
-    background-color: #e9ecef;
+    background: linear-gradient(180deg, #e9ecef 0%, #dee2e6 100%);
 }
 
 .timeline-item:last-child::before {
@@ -649,7 +838,7 @@ if (typeof showNotificationToast === 'undefined') {
     width: 2.25rem;
     height: 2.25rem;
     border-radius: 50%;
-    background-color: #fff;
+    background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
     border: 2px solid #e9ecef;
     display: flex;
     align-items: center;
@@ -658,62 +847,159 @@ if (typeof showNotificationToast === 'undefined') {
     flex-shrink: 0;
     position: relative;
     z-index: 1;
+    font-size: 0.9rem;
+    color: #6c757d;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
 }
 
 .timeline-content {
     flex: 1;
-    background-color: #f8f9fa;
-    border-radius: 0.375rem;
-    padding: 1rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 0.5rem;
+    padding: 1.2rem;
     border-left: 4px solid #dee2e6;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.timeline-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(0,123,255,0.3) 50%, transparent 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .timeline-title {
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 600;
-    color: #495057;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
 }
 
 .timeline-text {
     font-size: 0.9rem;
-    color: #6c757d;
-    line-height: 1.4;
+    color: #5a6c7d;
+    line-height: 1.5;
+    margin-bottom: 0.75rem;
 }
 
 .timeline-time {
     font-size: 0.8rem;
+    color: #8a9199;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 .timeline-user {
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid #dee2e6;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e9ecef;
 }
 
-/* Hover effects */
+.timeline-user small {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* États hover améliorés */
 .timeline-item:hover .timeline-content {
-    background-color: #e9ecef;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     border-left-color: #007bff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.timeline-item:hover .timeline-content::before {
+    opacity: 1;
 }
 
 .timeline-item:hover .timeline-marker {
     border-color: #007bff;
-    background-color: #007bff;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
     color: white;
+    transform: scale(1.1);
+}
+
+/* Animation pour les nouveaux éléments */
+@keyframes slideInTimeline {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* État vide amélioré */
+.empty-state {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    min-height: 400px;
+}
+
+.empty-state i {
+    color: #ced4da;
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    color: #6c757d;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.empty-state small {
+    color: #adb5bd;
+    font-size: 0.9rem;
 }
 
 /* Styles pour les notifications dans le dashboard */
 .notification-dashboard-item {
     transition: all 0.3s ease;
+    border-radius: 0.375rem;
+    margin-bottom: 0.25rem;
 }
 
 .notification-dashboard-item:hover {
     background-color: #f8f9fa;
+    transform: translateX(2px);
+}
+
+.notification-icon {
+    width: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .notification-icon i {
     width: 1.5rem;
     text-align: center;
+    color: #007bff;
+}
+
+.notification-actions {
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+.notification-dashboard-item:hover .notification-actions {
+    opacity: 1;
 }
 
 /* Animation pour les cartes */
@@ -723,13 +1009,50 @@ if (typeof showNotificationToast === 'undefined') {
 
 .dashboard-animate:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-/* Responsive adjustments */
+/* Styles pour les cartes de la colonne de droite */
+.dashboard-right-column .card {
+    transition: all 0.3s ease;
+    border: 1px solid #e3e6f0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.dashboard-right-column .card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+    transform: translateY(-1px);
+}
+
+/* Amélioration de l'alerte système */
+.dashboard-welcome-alert {
+    border-left: 4px solid #17a2b8;
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    border-color: #b8daff;
+}
+
+.dashboard-welcome-alert .icon {
+    color: #138496;
+}
+
+/* Responsive amélioré */
 @media (max-width: 768px) {
+    .dashboard-main-row {
+        flex-direction: column;
+    }
+    
+    .dashboard-activity-card {
+        height: auto !important;
+        margin-bottom: 1rem;
+    }
+    
+    .timeline-extended {
+        height: 400px;
+        min-height: 300px;
+    }
+    
     .timeline-content {
-        padding: 0.75rem;
+        padding: 1rem;
     }
     
     .timeline-marker {
@@ -745,6 +1068,73 @@ if (typeof showNotificationToast === 'undefined') {
     .timeline-text {
         font-size: 0.85rem;
     }
+}
+
+@media (max-width: 576px) {
+    .timeline-extended {
+        padding: 0.75rem;
+        height: 350px;
+    }
+    
+    .timeline-item {
+        margin-bottom: 1rem;
+    }
+    
+    .timeline-content {
+        padding: 0.75rem;
+    }
+}
+
+/* Améliorations pour l'accessibilité */
+.timeline-item:focus-within .timeline-content {
+    border-left-color: #007bff;
+    outline: 2px solid rgba(0, 123, 255, 0.25);
+    outline-offset: 2px;
+}
+
+/* Animation de chargement pour la timeline */
+.timeline-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+}
+
+.timeline-loading .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Amélioration des actions rapides */
+.card-header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.card-header-actions .btn {
+    transition: all 0.2s ease;
+}
+
+.card-header-actions .btn:hover {
+    transform: scale(1.05);
+}
+
+/* Indicateur de scroll */
+.timeline-extended::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        rgba(0, 123, 255, 0.1) 10%,
+        rgba(0, 123, 255, 0.1) 90%,
+        transparent 100%
+    );
+    pointer-events: none;
 }
 </style>
 {% endblock %}

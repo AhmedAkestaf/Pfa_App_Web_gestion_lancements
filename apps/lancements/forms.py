@@ -1,3 +1,5 @@
+# apps/lancements/forms.py - COMPLET avec suppression de la vérification atelier-catégorie
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -11,6 +13,7 @@ from apps.collaborateurs.models import Collaborateur
 class LancementForm(forms.ModelForm):
     """
     Formulaire pour créer et modifier un lancement avec gestion d'erreurs détaillée
+    MODIFICATION: Suppression de la vérification atelier-catégorie
     """
     
     class Meta:
@@ -241,9 +244,9 @@ class LancementForm(forms.ModelForm):
                 if poids_debitage < 0:
                     raise ValidationError("Le poids de débitage ne peut pas être négatif.")
                 
-                if poids_debitage > Decimal('1000000'):
-                    raise ValidationError("Le poids de débitage semble anormalement élevé (> 1000 tonnes).")
-            
+                if poids_debitage > Decimal('100000000000'):
+                    raise ValidationError("Le poids de débitage semble anormalement élevé (> 100000000 tonnes).")
+
             return poids_debitage
             
         except (ValueError, TypeError) as e:
@@ -265,8 +268,8 @@ class LancementForm(forms.ModelForm):
                 if poids_assemblage < 0:
                     raise ValidationError("Le poids d'assemblage ne peut pas être négatif.")
                 
-                if poids_assemblage > Decimal('1000000'):
-                    raise ValidationError("Le poids d'assemblage semble anormalement élevé (> 1000 tonnes).")
+                if poids_assemblage > Decimal('100000000000'):
+                    raise ValidationError("Le poids d'assemblage semble anormalement élevé (> 100000000 tonnes).")
             
             return poids_assemblage
             
@@ -277,13 +280,11 @@ class LancementForm(forms.ModelForm):
 
     def clean(self):
         """
-        Validation globale du formulaire
+        Validation globale du formulaire - MODIFICATION: Suppression vérification atelier-catégorie
         """
         cleaned_data = super().clean()
         
         try:
-            atelier = cleaned_data.get('atelier')
-            categorie = cleaned_data.get('categorie')
             poids_debitage = cleaned_data.get('poids_debitage', Decimal('0'))
             poids_assemblage = cleaned_data.get('poids_assemblage', Decimal('0'))
             
@@ -298,23 +299,8 @@ class LancementForm(forms.ModelForm):
             else:
                 poids_assemblage = Decimal('0')
             
-            # Vérifier que l'atelier peut traiter cette catégorie
-            if atelier and categorie:
-                try:
-                    from apps.ateliers.models import AtelierCategorie
-                    if not AtelierCategorie.objects.filter(atelier=atelier, categorie=categorie).exists():
-                        self.add_error_with_context(
-                            'categorie',
-                            f"L'atelier '{atelier.nom_atelier}' ne peut pas traiter "
-                            f"la catégorie '{categorie.nom_categorie}'.",
-                            "ATELIER-CATEGORIE"
-                        )
-                except Exception as e:
-                    self.add_error_with_context(
-                        'atelier',
-                        f"Erreur lors de la vérification atelier-catégorie: {str(e)}",
-                        "ATELIER-CATEGORIE"
-                    )
+            # SUPPRIMÉ: La vérification atelier-catégorie
+            # Cette logique sera gérée automatiquement lors de la sauvegarde
             
             # Vérifier que les poids ne sont pas tous les deux à zéro
             if poids_debitage == Decimal('0') and poids_assemblage == Decimal('0'):

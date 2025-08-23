@@ -6,7 +6,7 @@ class RapportProductionAdmin(admin.ModelAdmin):
     """
     Configuration de l'interface d'administration pour les Rapports.
     """
-    list_display = ('type_rapport', 'date_debut', 'date_fin', 'nb_lancements', 'poids_total', 'created_at')
+    list_display = ('type_rapport', 'date_debut', 'date_fin', 'nb_lancements', 'poids_debitage', 'poids_assemblage', 'poids_total', 'created_at')
     list_filter = ('type_rapport', 'date_debut', 'created_at')
     search_fields = ('type_rapport',)
     ordering = ('-date_debut',)

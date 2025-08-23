@@ -214,12 +214,6 @@
                                             </div>
                                         {% endif %}
                                     </div>
-                                    <div class="col-md-2 d-flex align-items-end">
-                                        <div class="total-weight w-100">
-                                            <strong id="poids-total">0.00 kg</strong>
-                                            <br><small>Total</small>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -323,28 +317,9 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Calculateur de poids automatique
-    function updateTotalWeight() {
-        const poidsDebitage = parseFloat(document.getElementById('id_poids_debitage').value) || 0;
-        const poidsAssemblage = parseFloat(document.getElementById('id_poids_assemblage').value) || 0;
-        const total = poidsDebitage + poidsAssemblage;
-        
-        document.getElementById('poids-total').textContent = total.toFixed(2) + ' kg';
-        
-        // Mise à jour de la couleur selon le poids
-        const totalElement = document.querySelector('.total-weight');
-        if (total > 100) {
-            totalElement.style.background = 'linear-gradient(135deg, #dc3545, #e83e8c)';
-        } else if (total > 50) {
-            totalElement.style.background = 'linear-gradient(135deg, #ffc107, #fd7e14)';
-        } else {
-            totalElement.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
-        }
-    }
 
-    // Écouteurs pour les champs de poids
-    document.getElementById('id_poids_debitage').addEventListener('input', updateTotalWeight);
-    document.getElementById('id_poids_assemblage').addEventListener('input', updateTotalWeight);
+
+
 
     // Génération automatique du numéro de lancement
     function generateLancementNumber() {
@@ -394,19 +369,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Calcul initial du poids
-    updateTotalWeight();
+
 });
 
 // Fonction pour réinitialiser le formulaire
 function resetForm() {
     if (confirm('Êtes-vous sûr de vouloir réinitialiser le formulaire ?')) {
         document.getElementById('lancementForm').reset();
-        document.getElementById('poids-total').textContent = '0.00 kg';
         
-        // Réinitialiser la couleur du poids total
-        const totalElement = document.querySelector('.total-weight');
-        totalElement.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
     }
 }
 

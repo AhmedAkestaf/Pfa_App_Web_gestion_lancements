@@ -1,3 +1,4 @@
+# Dans votre fichier models.py
 from django.db import models
 from django.utils import timezone
 from apps.lancements.models import Lancement
@@ -22,8 +23,10 @@ class RapportProduction(models.Model):
         ('annuel', 'Annuel'),
     ], verbose_name="Type de rapport")
     
-    # Métriques calculées
+    # Métriques calculées - AJOUT DES CHAMPS MANQUANTS
     nb_lancements = models.IntegerField(default=0, verbose_name="Nombre de lancements")
+    poids_debitage = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Poids débitage total")
+    poids_assemblage = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Poids assemblage total")
     poids_total = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Poids total traité")
     
     # Dates de création et modification

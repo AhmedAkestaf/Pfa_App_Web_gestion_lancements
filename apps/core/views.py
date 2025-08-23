@@ -1089,3 +1089,73 @@ def creer_notification_test(request):
         'success': False,
         'message': 'Non autorisé'
     })
+
+@login_required
+def guide_technique_view(request):
+    """Vue pour afficher le guide technique"""
+    context = {
+        'title': 'Guide Technique',
+        'sections': [
+            {
+                'id': 'overview',
+                'title': 'Vue d\'ensemble du système',
+                'icon': 'fas fa-home',
+                'description': 'Architecture et fonctionnement général'
+            },
+            {
+                'id': 'collaborateurs',
+                'title': 'Gestion des collaborateurs',
+                'icon': 'fas fa-users',
+                'description': 'Création, modification et gestion des utilisateurs'
+            },
+            {
+                'id': 'roles',
+                'title': 'Rôles et permissions',
+                'icon': 'fas fa-shield-alt',
+                'description': 'Système de sécurité et autorisations'
+            },
+            {
+                'id': 'ateliers',
+                'title': 'Gestion des ateliers',
+                'icon': 'fas fa-industry',
+                'description': 'Configuration et administration des ateliers'
+            },
+            {
+                'id': 'categories',
+                'title': 'Gestion des catégories',
+                'icon': 'fas fa-tags',
+                'description': 'Classification des activités et compétences'
+            },
+            {
+                'id': 'affaires',
+                'title': 'Gestion des affaires',
+                'icon': 'fas fa-briefcase',
+                'description': 'Suivi des projets et contrats clients'
+            },
+            {
+                'id': 'associations',
+                'title': 'Système d\'associations',
+                'icon': 'fas fa-link',
+                'description': 'Relations entre collaborateurs, ateliers et catégories'
+            },
+            {
+                'id': 'lancements',
+                'title': 'Gestion des lancements',
+                'icon': 'fas fa-rocket',
+                'description': 'Création et suivi des ordres de fabrication'
+            },
+            {
+                'id': 'rapports',
+                'title': 'Rapports et graphiques',
+                'icon': 'fas fa-chart-bar',
+                'description': 'Analyses statistiques et exports de données'
+            },
+            {
+                'id': 'admin',
+                'title': 'Administration avancée',
+                'icon': 'fas fa-cog',
+                'description': 'Configuration système et maintenance'
+            }
+        ]
+    }
+    return render(request, 'core/guide_technique.html', context)

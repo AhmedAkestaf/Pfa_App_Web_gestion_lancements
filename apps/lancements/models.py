@@ -1,7 +1,13 @@
+# apps/lancements/models.py - MODIFIÉ avec associations automatiques
+
 from django.db import models
 from apps.collaborateurs.models import Collaborateur
 from apps.ateliers.models import Atelier, Categorie
 from apps.core.models import Affaire
+import logging
+
+# Configuration du logger
+logger = logging.getLogger(__name__)
 
 class Lancement(models.Model):
     """
@@ -114,6 +120,83 @@ class Lancement(models.Model):
         if self.statut in ['termine']:
             return False
         return self.date_lancement < timezone.now().date()
+
+    def create_associations(self):
+        """
+        Crée automatiquement les associations dans les tables :
+        - CollaborateurAtelier
+        - CollaborateurCategorie  
+        - AtelierCategorie
+        """
+        try:
+            # Import des modèles d'association
+            from apps.ateliers.models import (
+                CollaborateurAtelier, 
+                CollaborateurCategorie, 
+                AtelierCategorie
+            )
+            
+            # Vérifier que tous les éléments nécessaires sont présents
+            if not all([self.collaborateur_id, self.atelier_id, self.categorie_id]):
+                logger.warning(f"⚠️ Données manquantes pour créer les associations du lancement {self.num_lanc}")
+                return
+            
+            associations_created = 0
+            
+            # 1. ASSOCIATION COLLABORATEUR-ATELIER
+            try:
+                collab_atelier, created = CollaborateurAtelier.objects.get_or_create(
+                    collaborateur_id=self.collaborateur_id,
+                    atelier_id=self.atelier_id
+                )
+                if created:
+                    associations_created += 1
+                    logger.info(f"✅ Association CollaborateurAtelier créée : "
+                               f"Collaborateur({self.collaborateur_id}) ↔ Atelier({self.atelier_id})")
+            except Exception as e:
+                logger.error(f"❌ Erreur création CollaborateurAtelier : {str(e)}")
+            
+            # 2. ASSOCIATION COLLABORATEUR-CATEGORIE
+            try:
+                collab_categorie, created = CollaborateurCategorie.objects.get_or_create(
+                    collaborateur_id=self.collaborateur_id,
+                    categorie_id=self.categorie_id
+                )
+                if created:
+                    associations_created += 1
+                    logger.info(f"✅ Association CollaborateurCategorie créée : "
+                               f"Collaborateur({self.collaborateur_id}) ↔ Categorie({self.categorie_id})")
+            except Exception as e:
+                logger.error(f"❌ Erreur création CollaborateurCategorie : {str(e)}")
+            
+            # 3. ASSOCIATION ATELIER-CATEGORIE
+            try:
+                atelier_categorie, created = AtelierCategorie.objects.get_or_create(
+                    atelier_id=self.atelier_id,
+                    categorie_id=self.categorie_id
+                )
+                if created:
+                    associations_created += 1
+                    logger.info(f"✅ Association AtelierCategorie créée : "
+                               f"Atelier({self.atelier_id}) ↔ Categorie({self.categorie_id})")
+            except Exception as e:
+                logger.error(f"❌ Erreur création AtelierCategorie : {str(e)}")
+            
+            # Log du résumé
+            logger.info(f"📊 Lancement {self.num_lanc} : {associations_created} nouvelles associations créées")
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur générale lors de la création des associations pour {self.num_lanc} : {str(e)}")
+
+    def save(self, *args, **kwargs):
+        """
+        Méthode save() personnalisée pour créer automatiquement les associations
+        """
+        # Sauvegarder d'abord le lancement
+        super().save(*args, **kwargs)
+        
+        # Puis créer les associations automatiquement
+        self.create_associations()
 
     class Meta:
         db_table = 'lancement'

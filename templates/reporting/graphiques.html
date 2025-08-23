@@ -129,17 +129,6 @@
     border-bottom: 1px solid #dee2e6;
 }
 
-.icon-container {
-    width: 30px;
-    height: 30px;
-    font-size: 0.75rem;
-}
-
-.progress-custom {
-    width: 60px;
-    height: 8px;
-}
-
 /* Style pour les légendes personnalisées */
 .affaire-legend {
     display: flex;
@@ -165,6 +154,11 @@
     height: 16px;
     border-radius: 3px;
     flex-shrink: 0;
+}
+
+.progress-custom {
+    width: 60px;
+    height: 8px;
 }
 
 @media (max-width: 768px) {
@@ -205,7 +199,8 @@
     },
     "affaires": {
         "labels": [{% for affaire in top_affaires %}"{{ affaire.code_affaire|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
-        "values": [{% for affaire in top_affaires %}{{ affaire.poids_total|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
+        "values": [{% for affaire in top_affaires %}{{ affaire.poids_debitage|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
+        "percentages": [{% for affaire in top_affaires %}{{ affaire.pourcentage|floatformat:1|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
         "colors": ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#38f9d7"]
     },
     "categories": {
@@ -308,15 +303,15 @@
                 <div class="col-xl-3 col-md-6">
                     <div class="metric-mini">
                         <i class="fas fa-weight-hanging fa-2x text-success mb-2"></i>
-                        <h4 class="text-success">{{ dashboard_stats.poids_total|floatformat:0|default:0 }}kg</h4>
-                        <small class="text-muted">Production Totale</small>
+                        <h4 class="text-success">{{ dashboard_stats.poids__debitage_total|floatformat:0|default:0 }}kg</h4>
+                        <small class="text-muted">Poids debitage</small>
                     </div>
                 </div>
                 <div class="col-xl-3 col-md-6">
                     <div class="metric-mini">
-                        <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
-                        <h4 class="text-warning">{{ dashboard_stats.efficacite|floatformat:1|default:0 }}%</h4>
-                        <small class="text-muted">Efficacité Moyenne</small>
+                        <i class="fas fa-weight-hanging fa-2x text-success mb-2"></i>
+                        <h4 class="text-success">{{ dashboard_stats.poids__assemblage_total|floatformat:0|default:0 }}kg</h4>
+                        <small class="text-muted">Poids assemblage</small>
                     </div>
                 </div>
                 <div class="col-xl-3 col-md-6">
@@ -414,7 +409,6 @@
                                         <th>Lancements</th>
                                         <th>Poids Débitage</th>
                                         <th>Poids Assemblage</th>
-                                        <th>Total</th>
                                         <th>Efficacité</th>
                                     </tr>
                                 </thead>
@@ -435,7 +429,6 @@
                                         <td><span class="badge bg-secondary">{{ atelier.nb_lancements|default:0 }}</span></td>
                                         <td class="text-danger fw-bold">{{ atelier.poids_debitage|floatformat:1|default:0 }} kg</td>
                                         <td class="text-success fw-bold">{{ atelier.poids_assemblage|floatformat:1|default:0 }} kg</td>
-                                        <td class="fw-bold">{{ atelier.poids_total|floatformat:1|default:0 }} kg</td>
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <div class="progress me-2 progress-custom">
@@ -563,6 +556,32 @@ function getChartData() {
     return JSON.parse(dataScript.textContent);
 }
 
+// Fonction utilitaire pour calculer la luminosité d'une couleur
+function getBrightness(color) {
+    let r, g, b;
+    
+    if (color.startsWith('#')) {
+        const hex = color.slice(1);
+        r = parseInt(hex.substr(0, 2), 16);
+        g = parseInt(hex.substr(2, 2), 16);
+        b = parseInt(hex.substr(4, 2), 16);
+    } else if (color.startsWith('rgb')) {
+        const matches = color.match(/\d+/g);
+        if (matches && matches.length >= 3) {
+            r = parseInt(matches[0]);
+            g = parseInt(matches[1]);
+            b = parseInt(matches[2]);
+        } else {
+            return 128; // Valeur par défaut
+        }
+    } else {
+        return 128; // Valeur par défaut
+    }
+    
+    // Formule pour calculer la luminosité perçue
+    return (r * 299 + g * 587 + b * 114) / 1000;
+}
+
 // Initialisation des graphiques
 document.addEventListener('DOMContentLoaded', function() {
     initializeCharts();
@@ -583,7 +602,7 @@ function populateAffairesLegend() {
     
     if (legendContainer && data.affaires.labels) {
         legendContainer.innerHTML = '';
-        data.affaires.labels.forEach((label, index) => {
+        data.affaires.labels.forEach((label, index) => {            
             const legendItem = document.createElement('div');
             legendItem.className = 'affaire-legend-item';
             legendItem.innerHTML = `
@@ -598,7 +617,7 @@ function populateAffairesLegend() {
 function initializeCharts() {
     const data = getChartData();
     
-    // Graphique collaborateurs (barres empilées) avec noms en bas
+    // Graphique collaborateurs (barres empilées)
     const ctx1 = document.getElementById('poidsCollaborateurChart').getContext('2d');
     const collaborateursData = {
         labels: data.collaborateurs.labels,
@@ -655,7 +674,7 @@ function initializeCharts() {
         }
     });
 
-    // Graphique affaires (camembert)
+    // Graphique affaires (camembert) avec labels sur les segments
     const ctx2 = document.getElementById('poidsAffaireChart').getContext('2d');
     const affairesData = {
         labels: data.affaires.labels,
@@ -672,18 +691,65 @@ function initializeCharts() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false },
+                legend: { 
+                    display: false 
+                },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            const percentage = data.affaires.percentages[context.dataIndex];
                             return context.label + ': ' + context.parsed + ' kg (' + percentage + '%)';
                         }
                     }
                 }
+            },
+            layout: {
+                padding: 20
             }
-        }
+        },
+        plugins: [{
+            id: 'pieLabels',
+            afterDatasetsDraw: function(chart) {
+                const ctx = chart.ctx;
+                const chartData = chart.data;
+                const meta = chart.getDatasetMeta(0);
+                
+                ctx.save();
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                meta.data.forEach((arc, index) => {
+                    // Calculer la position du centre de chaque segment
+                    const { x, y } = arc.tooltipPosition();
+                    const percentage = data.affaires.percentages[index];
+                    const label = data.affaires.labels[index];
+                    const value = data.affaires.values[index];
+                    
+                    // N'afficher le texte que si le segment est assez grand (> 3%)
+                    if (percentage > 3) {
+                        // Couleur du texte (blanc pour les segments foncés, noir pour les clairs)
+                        const bgColor = affaireColors[index % affaireColors.length];
+                        const brightness = getBrightness(bgColor);
+                        ctx.fillStyle = brightness > 128 ? '#000000' : '#FFFFFF';
+                        
+                        // Afficher seulement le tonnage et le pourcentage sur le segment
+                        const lines = [
+                            `${parseFloat(value).toFixed(1)} kg`,
+                            `${percentage}%`
+                        ];
+                        
+                        // Dessiner chaque ligne
+                        lines.forEach((line, lineIndex) => {
+                            const yOffset = (lineIndex - 0.5) * 14; // Espacement vertical centré
+                            ctx.fillText(line, x, y + yOffset);
+                        });
+                    }
+                });
+                
+                ctx.restore();
+            }
+        }]
     });
 
     // Graphique des catégories (barres horizontales)
@@ -703,7 +769,7 @@ function initializeCharts() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            indexAxis: 'y', // Barres horizontales
+            indexAxis: 'y',
             scales: {
                 x: {
                     beginAtZero: true,
@@ -750,13 +816,11 @@ function fullscreen() {
     }
 }
 
-// Fonctions d'export - MODIFIÉES POUR UTILISER export_dashboard_data
 function exportDashboard(format) {
     if (!format) {
         format = 'excel';
     }
     
-    // Validation des dates
     const dateDebut = document.getElementById('date_debut').value;
     const dateFin = document.getElementById('date_fin').value;
     
@@ -772,17 +836,14 @@ function exportDashboard(format) {
     
     showNotification('Préparation de l\'export en cours...', 'info');
     
-    // MODIFICATION : Utilisation de la nouvelle URL export_dashboard_data
     const exportUrl = `{% url 'reporting:export_dashboard_data' %}`;
     
-    // Création d'un formulaire temporaire pour l'export
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = exportUrl;
     form.target = '_blank';
     form.style.display = 'none';
     
-    // Ajout du token CSRF
     const csrfTokenValue = getCookie('csrftoken');
     if (csrfTokenValue) {
         const csrfInput = document.createElement('input');
@@ -792,14 +853,12 @@ function exportDashboard(format) {
         form.appendChild(csrfInput);
     }
     
-    // Paramètres d'export spécifiques au dashboard
     const params = {
         'format': format,
         'date_debut': dateDebut,
         'date_fin': dateFin
     };
     
-    // Ajout des paramètres au formulaire
     Object.keys(params).forEach(key => {
         if (params[key]) {
             const input = document.createElement('input');
@@ -810,7 +869,6 @@ function exportDashboard(format) {
         }
     });
     
-    // Soumission du formulaire
     document.body.appendChild(form);
     
     try {
@@ -820,7 +878,6 @@ function exportDashboard(format) {
         showNotification('Erreur lors du lancement de l\'export', 'error');
         console.error('Export error:', error);
     } finally {
-        // Nettoyage
         setTimeout(() => {
             if (form.parentNode) {
                 document.body.removeChild(form);
@@ -842,7 +899,6 @@ function exportCharts(format) {
 }
 
 function exportChartsAsPNG() {
-    // Export des graphiques en PNG
     const charts = [
         { chart: poidsCollaborateurChart, name: 'poids_collaborateurs' },
         { chart: poidsAffaireChart, name: 'poids_affaires' },
@@ -857,7 +913,7 @@ function exportChartsAsPNG() {
                 link.download = `graphique_${item.name}.png`;
                 link.href = url;
                 link.click();
-            }, index * 500); // Délai pour éviter les conflits
+            }, index * 500);
         }
     });
     
@@ -865,7 +921,6 @@ function exportChartsAsPNG() {
 }
 
 function exportChartsAsPDF() {
-    // Pour l'export PDF des graphiques, on utilise aussi export_dashboard_data
     const dateDebut = document.getElementById('date_debut').value;
     const dateFin = document.getElementById('date_fin').value;
     
@@ -875,7 +930,6 @@ function exportChartsAsPDF() {
     form.target = '_blank';
     form.style.display = 'none';
     
-    // Token CSRF
     const csrfTokenValue = getCookie('csrftoken');
     if (csrfTokenValue) {
         const csrfInput = document.createElement('input');
@@ -906,7 +960,6 @@ function exportChartsAsPDF() {
     showNotification('Export PDF du dashboard en cours...', 'info');
 }
 
-// Fonction utilitaire pour récupérer les cookies
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -922,9 +975,7 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Fonction pour afficher les notifications
 function showNotification(message, type = 'info') {
-    // Suppression des anciennes notifications
     const existingAlerts = document.querySelectorAll('.alert.position-fixed');
     existingAlerts.forEach(alert => {
         if (alert.parentNode) {
@@ -932,7 +983,6 @@ function showNotification(message, type = 'info') {
         }
     });
 
-    // Création d'une notification Bootstrap
     const alertDiv = document.createElement('div');
     const alertClass = type === 'error' ? 'danger' : type;
     alertDiv.className = `alert alert-${alertClass} alert-dismissible fade show position-fixed`;
@@ -953,7 +1003,6 @@ function showNotification(message, type = 'info') {
     
     document.body.appendChild(alertDiv);
     
-    // Suppression automatique après 5 secondes
     setTimeout(() => {
         if (alertDiv && alertDiv.parentNode) {
             alertDiv.classList.remove('show');
@@ -966,7 +1015,6 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-// Auto-refresh des données toutes les 5 minutes
 setInterval(refreshData, 300000);
 </script>
 {% endblock %}

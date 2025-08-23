@@ -74,6 +74,15 @@
     padding: 1rem;
     border-radius: 10px;
     text-align: center;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.weight-display.empty {
+    background: linear-gradient(135deg, #6c757d, #adb5bd);
+    opacity: 0.7;
 }
 
 .timeline-item {
@@ -98,23 +107,75 @@
     position: sticky;
     top: 20px;
 }
+
+.metrics-card {
+    text-align: center;
+    padding: 1rem;
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #007bff;
+    margin-bottom: 0.25rem;
+}
+
+.metric-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .weight-display {
+        margin-bottom: 1rem;
+    }
+    
+    .action-buttons {
+        position: static;
+        margin-top: 2rem;
+    }
+}
+
+/* Animation pour les barres de progression */
+.progress-bar {
+    transition: width 1s ease-in-out;
+}
+
+/* Style pour les éléments vides */
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+}
 </style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Définir les largeurs des barres de progression
-    const debitageBar = document.getElementById('debitage-bar');
-    const assemblageBar = document.getElementById('assemblage-bar');
+    // Animation des barres de progression
+    const progressBars = document.querySelectorAll('.progress-bar[data-width]');
+    progressBars.forEach(function(bar) {
+        const width = bar.getAttribute('data-width');
+        setTimeout(function() {
+            bar.style.width = width + '%';
+        }, 300);
+    });
     
-    if (debitageBar && assemblageBar) {
-        const debitageWidth = debitageBar.getAttribute('data-width');
-        const assemblageWidth = assemblageBar.getAttribute('data-width');
-        
-        debitageBar.style.width = debitageWidth + '%';
-        assemblageBar.style.width = assemblageWidth + '%';
-    }
+    // Tooltips pour les informations supplémentaires
+    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(function(tooltip) {
+        new bootstrap.Tooltip(tooltip);
+    });
 });
 </script>
 {% endblock %}
@@ -205,8 +266,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
 
-            <!-- Données de production -->
-            <div class="card detail-card mb-4">
+            <!-- Données de production - Version optimisée -->
+            <div class="card detail-card mb-3">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">
                         <i class="fas fa-weight me-2"></i>
@@ -214,30 +275,46 @@ document.addEventListener('DOMContentLoaded', function() {
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="weight-display">
-                                <h4 class="mb-1">{{ lancement.poids_debitage|floatformat:2 }} kg</h4>
-                                <small>Poids Débitage</small>
+                    {% with total_debitage=lancement.poids_debitage|floatformat:2 total_assemblage=lancement.poids_assemblage|floatformat:2 %}
+                    {% if lancement.poids_debitage > 0 or lancement.poids_assemblage > 0 %}
+                        <div class="row">
+                            {% if lancement.poids_debitage > 0 %}
+                            <div class="col-md-6 mb-3">
+                                <div class="weight-display">
+                                    <h4 class="mb-1">{{ total_debitage }} kg</h4>
+                                    <small>Poids Débitage</small>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if lancement.poids_assemblage > 0 %}
+                            <div class="col-md-6 mb-3">
+                                <div class="weight-display">
+                                    <h4 class="mb-1">{{ total_assemblage }} kg</h4>
+                                    <small>Poids Assemblage</small>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Total si les deux poids existent -->
+                        {% if lancement.poids_debitage > 0 and lancement.poids_assemblage > 0 %}
+                        <div class="row mt-3">
+                            <div class="col-12">
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="weight-display">
-                                <h4 class="mb-1">{{ lancement.poids_assemblage|floatformat:2 }} kg</h4>
-                                <small>Poids Assemblage</small>
-                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-weight-hanging"></i>
+                            <p class="mb-0">Aucun poids de production défini</p>
                         </div>
-                        <div class="col-md-4">
-                            <div class="weight-display" style="background: linear-gradient(135deg, #fd7e14, #e83e8c);">
-                                <h4 class="mb-1">{{ lancement.get_poids_total|floatformat:2 }} kg</h4>
-                                <small>Poids Total</small>
-                            </div>
-                        </div>
-                    </div>
+                    {% endif %}
+                    {% endwith %}
                 </div>
             </div>
 
-            <!-- Observations -->
+            <!-- Observations - Affichage conditionnel -->
             {% if lancement.observations %}
             <div class="card detail-card mb-4">
                 <div class="card-header bg-light">
@@ -323,8 +400,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <!-- Lien vers l'affaire -->
                         <div class="d-flex align-items-center mb-3 p-2 bg-light rounded">
                             <i class="fas fa-briefcase text-primary me-3"></i>
-                            <div>
-                                <strong>Affaire: {{ lancement.affaire.code_affaire }}</strong>
+                            <div class="flex-grow-1">
+                                <strong>{{ lancement.affaire.code_affaire }}</strong>
                                 <br><small class="text-muted">{{ lancement.affaire.client }}</small>
                                 <br><a href="{% url 'core:affaire_detail' lancement.affaire.pk %}" class="btn btn-sm btn-outline-primary mt-1">
                                     Voir l'affaire
@@ -335,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <!-- Lien vers l'atelier -->
                         <div class="d-flex align-items-center mb-3 p-2 bg-light rounded">
                             <i class="fas fa-industry text-info me-3"></i>
-                            <div>
+                            <div class="flex-grow-1">
                                 <strong>{{ lancement.atelier.nom_atelier }}</strong>
                                 <br><small class="text-muted">{{ lancement.atelier.get_type_atelier_display }}</small>
                                 <br><a href="{% url 'ateliers:detail' lancement.atelier.pk %}" class="btn btn-sm btn-outline-info mt-1">
@@ -347,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <!-- Lien vers le collaborateur -->
                         <div class="d-flex align-items-center p-2 bg-light rounded">
                             <i class="fas fa-user text-success me-3"></i>
-                            <div>
+                            <div class="flex-grow-1">
                                 <strong>{{ lancement.collaborateur.get_full_name }}</strong>
                                 <br><small class="text-muted">Responsable du lancement</small>
                                 <br><a href="{% url 'collaborateurs:detail' lancement.collaborateur.pk %}" class="btn btn-sm btn-outline-success mt-1">
@@ -358,7 +435,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
 
-                <!-- Métriques rapides -->
+                <!-- Métriques rapides - Version optimisée -->
+                {% with total_poids=lancement.get_poids_total %}
+                {% if total_poids > 0 %}
                 <div class="card detail-card">
                     <div class="card-header bg-light">
                         <h5 class="mb-0">
@@ -367,49 +446,68 @@ document.addEventListener('DOMContentLoaded', function() {
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-6">
-                                <div class="border-end">
-                                    <h4 class="text-primary">{{ lancement.date_lancement|timesince }}</h4>
-                                    <small class="text-muted">Depuis le lancement</small>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <h4 class="text-info">{{ lancement.get_poids_total|floatformat:1 }}kg</h4>
-                                <small class="text-muted">Poids total</small>
-                            </div>
+                        <!-- Temps depuis le lancement -->
+                        <div class="metrics-card mb-3">
+                            <div class="metric-value">{{ lancement.date_lancement|timesince }}</div>
+                            <div class="metric-label">Depuis le lancement</div>
                         </div>
                         
                         <hr>
                         
                         <!-- Répartition des poids -->
                         <div class="mb-3">
-                            <label class="form-label small">Répartition des poids</label>
-                            <div class="progress" style="height: 25px;" id="weight-progress">
-                                {% with total=lancement.get_poids_total %}
-                                {% if total > 0 %}
+                            <label class="form-label small fw-bold">Répartition des poids</label>
+                            <div class="progress" style="height: 25px;">
                                     <div class="progress-bar bg-success" 
-                                         id="debitage-bar"
-                                         data-width="{% widthratio lancement.poids_debitage total 100 %}"
-                                         title="Débitage {{ lancement.poids_debitage|floatformat:1 }}kg">
-                                        Débitage {{ lancement.poids_debitage|floatformat:1 }}kg
+                                         data-width="{% widthratio lancement.poids_debitage total_poids 100 %}"
+                                         data-bs-toggle="tooltip" 
+                                         title="Débitage: {{ lancement.poids_debitage|floatformat:1 }}kg ({% widthratio lancement.poids_debitage total_poids 100 %}%)">
+                                        {% if lancement.poids_debitage|floatformat:0|add:"0" >= 1000 %}{{ lancement.poids_debitage|floatformat:0 }}kg{% else %}{{ lancement.poids_debitage|floatformat:1 }}kg{% endif %}
                                     </div>
+                                
                                     <div class="progress-bar bg-info" 
-                                         id="assemblage-bar"
-                                         data-width="{% widthratio lancement.poids_assemblage total 100 %}"
-                                         title="Assemblage {{ lancement.poids_assemblage|floatformat:1 }}kg">
-                                        Assemblage {{ lancement.poids_assemblage|floatformat:1 }}kg
+                                         data-width="{% widthratio lancement.poids_assemblage total_poids 100 %}"
+                                         data-bs-toggle="tooltip"
+                                         title="Assemblage: {{ lancement.poids_assemblage|floatformat:1 }}kg ({% widthratio lancement.poids_assemblage total_poids 100 %}%)">
+                                        {% if lancement.poids_assemblage|floatformat:0|add:"0" >= 1000 %}{{ lancement.poids_assemblage|floatformat:0 }}kg{% else %}{{ lancement.poids_assemblage|floatformat:1 }}kg{% endif %}
                                     </div>
-                                {% else %}
-                                    <div class="progress-bar bg-secondary" style="width: 100%">
-                                        Aucun poids défini
-                                    </div>
-                                {% endif %}
-                                {% endwith %}
+                                
                             </div>
+                            
+                            <!-- Légende -->
+                            <div class="d-flex justify-content-between mt-2 small">
+                                    <span><i class="fas fa-square text-success me-1"></i>Débitage</span>
+                                    <span><i class="fas fa-square text-info me-1"></i>Assemblage</span>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+                {% else %}
+                <!-- État vide pour les métriques -->
+                <div class="card detail-card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            Métriques
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="metrics-card mb-3">
+                            <div class="metric-value">{{ lancement.date_lancement|timesince }}</div>
+                            <div class="metric-label">Depuis le lancement</div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="empty-state">
+                            <i class="fas fa-chart-bar"></i>
+                            <p class="mb-0 small">Aucune donnée de production disponible</p>
                         </div>
                     </div>
                 </div>
+                {% endif %}
+                {% endwith %}
             </div>
         </div>
     </div>
