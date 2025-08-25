@@ -19,4 +19,6 @@ urlpatterns = [
     # APIs et vues AJAX 
     path('api/data/', views.get_lancements_data, name='api_data'),
     path('<int:pk>/update-status/', views.update_lancement_status, name='update_status'),
+    path('ajax/categories-by-affaire/', views.get_categories_by_affaire, name='ajax_categories_by_affaire'),
+
 ]

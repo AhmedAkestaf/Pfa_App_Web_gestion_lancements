@@ -29,6 +29,64 @@ from apps.core.models import Affaire
 from apps.core.utils.permissions import permission_required
 
 
+# =============================================================================
+# FONCTION UTILITAIRE DE FORMATAGE FRANÇAIS
+# =============================================================================
+
+def number_format_french(value, decimal_places=3, unit="kg", include_unit=True):
+    """
+    Fonction utilitaire pour formater les nombres avec le format français
+    - Espaces comme séparateurs de milliers
+    - Virgule comme séparateur décimal
+    - Nombre de décimales configurable (défaut: 3)
+    """
+    try:
+        if value is None:
+            formatted = "0" + ",000" if decimal_places >= 3 else (",0" * decimal_places if decimal_places > 0 else "")
+            return f"{formatted} {unit}" if include_unit else formatted
+        
+        # Convertir en float si nécessaire
+        float_value = float(value)
+        
+        # Si la valeur est 0, retourner directement
+        if float_value == 0:
+            formatted = "0" + (",000" if decimal_places >= 3 else f",{'0' * decimal_places}" if decimal_places > 0 else "")
+            return f"{formatted} {unit}" if include_unit else formatted
+        
+        # Formatter avec le nombre de décimales spécifié
+        formatted = f"{float_value:.{decimal_places}f}"
+        
+        # Séparer la partie entière et décimale
+        if '.' in formatted:
+            integer_part, decimal_part = formatted.split('.')
+        else:
+            integer_part = formatted
+            decimal_part = "0" * decimal_places if decimal_places > 0 else ""
+        
+        # Ajouter les espaces comme séparateurs de milliers
+        integer_formatted = ""
+        for i, digit in enumerate(reversed(integer_part)):
+            if i > 0 and i % 3 == 0:
+                integer_formatted = " " + integer_formatted
+            integer_formatted = digit + integer_formatted
+        
+        # Retourner le résultat formaté avec virgule comme séparateur décimal
+        if decimal_places > 0:
+            result = f"{integer_formatted},{decimal_part}"
+        else:
+            result = integer_formatted
+            
+        return f"{result} {unit}" if include_unit else result
+        
+    except (ValueError, TypeError):
+        formatted = "0" + (",000" if decimal_places >= 3 else f",{'0' * decimal_places}" if decimal_places > 0 else "")
+        return f"{formatted} {unit}" if include_unit else formatted
+
+
+# =============================================================================
+# VUES PRINCIPALES
+# =============================================================================
+
 @login_required
 @permission_required('rapports', 'read')
 def rapports_list(request):
@@ -105,7 +163,7 @@ def rapports_list(request):
 @permission_required('rapports', 'read')
 def rapport_detail(request, rapport_id):
     """
-    Vue pour afficher les détails d'un rapport spécifique - CORRIGÉE
+    Vue pour afficher les détails d'un rapport spécifique
     """
     rapport = get_object_or_404(RapportProduction, id=rapport_id)
 
@@ -114,7 +172,7 @@ def rapport_detail(request, rapport_id):
         date_lancement__range=[rapport.date_debut, rapport.date_fin]
     )
 
-    # Statistiques par atelier - CORRECTION COMPLÈTE
+    # Statistiques par atelier
     stats_ateliers = lancements.values(
         'atelier__id', 'atelier__nom_atelier', 'atelier__type_atelier'
     ).annotate(
@@ -123,11 +181,11 @@ def rapport_detail(request, rapport_id):
         poids_assemblage=Sum('poids_assemblage')
     )
 
-    # CALCUL DES TOTAUX GLOBAUX D'ABORD
+    # Calcul des totaux globaux
     total_debitage_global = sum(float(stat['poids_debitage'] or 0) for stat in stats_ateliers)
     total_assemblage_global = sum(float(stat['poids_assemblage'] or 0) for stat in stats_ateliers)
 
-    # Traitement des statistiques avec pourcentages CORRECTS
+    # Traitement des statistiques avec pourcentages
     stats_ateliers_list = []
     
     for stat in stats_ateliers:
@@ -157,8 +215,7 @@ def rapport_detail(request, rapport_id):
     # Tri par poids total décroissant
     stats_ateliers_list.sort(key=lambda x: x['poids_total'], reverse=True)
 
-    # Statistiques par collaborateur - SOLUTION SANS AVG SUR AGGREGATES
-    # D'abord récupérer les données de base
+    # Statistiques par collaborateur
     stats_collaborateurs_base = lancements.values(
         'collaborateur__id', 
         'collaborateur__nom_collaborateur', 
@@ -169,16 +226,14 @@ def rapport_detail(request, rapport_id):
         poids_assemblage=Sum('poids_assemblage')
     )
 
-
-    # Ensuite calculer les moyennes manuellement
+    # Calcul des moyennes manuellement
     stats_collaborateurs_list = []
     for stat in stats_collaborateurs_base:
-        # Calcul du poids total
         debitage = stat['poids_debitage'] or 0
         assemblage = stat['poids_assemblage'] or 0
         stat['poids_total'] = debitage + assemblage
         
-        # Calcul des moyennes (poids total / nombre de lancements)
+        # Calcul des moyennes
         if stat['nb_lancements'] > 0:
             stat['moyenne_debitage'] = debitage / stat['nb_lancements']
             stat['moyenne_assemblage'] = assemblage / stat['nb_lancements']
@@ -258,7 +313,6 @@ def rapport_detail(request, rapport_id):
 def graphiques(request):
     """
     Vue pour les tableaux de bord avec graphiques
-    Modifiée pour utiliser des dates de début/fin au lieu de périodes prédéfinies
     """
     from datetime import datetime, timedelta
     from django.utils import timezone
@@ -276,7 +330,6 @@ def graphiques(request):
             date_debut = datetime.strptime(date_debut_str, '%Y-%m-%d').date()
             date_fin = datetime.strptime(date_fin_str, '%Y-%m-%d').date()
         except ValueError:
-            # En cas d'erreur de format, utiliser les dates par défaut
             date_fin = timezone.now().date()
             date_debut = date_fin - timedelta(days=30)
     
@@ -305,12 +358,12 @@ def graphiques(request):
         'total_lancements': lancements.count(),
         'poids__debitage_total': poids_debitage_total,
         'poids__assemblage_total': poids_assemblage_total,
-        'efficacite': 85.5,  # Simulation - vous pouvez calculer la vraie efficacité
-        'delai_moyen': 5,  # Simulation - calculer le vrai délai moyen
-        'completion_rate': 78.2,  # Simulation
+        'efficacite': 85.5,
+        'delai_moyen': 5,
+        'completion_rate': 78.2,
     }
 
-    # Top collaborateurs pour les graphiques - avec noms complets
+    # Top collaborateurs pour les graphiques
     top_collaborateurs_data = lancements.values(
         'collaborateur__nom_collaborateur',
         'collaborateur__prenom_collaborateur'
@@ -341,15 +394,15 @@ def graphiques(request):
     top_collaborateurs_list.sort(key=lambda x: x['poids_total'], reverse=True)
     top_collaborateurs = top_collaborateurs_list[:10]
 
-    # MODIFICATION PRINCIPALE: Top affaires par poids débitage uniquement
+    # Top affaires par poids débitage uniquement
     top_affaires_data = lancements.values(
         'affaire__code_affaire'
     ).annotate(
         poids_debitage=Sum('poids_debitage'),
-        poids_assemblage=Sum('poids_assemblage')  # On garde pour les statistiques mais on n'utilise que débitage
+        poids_assemblage=Sum('poids_assemblage')
     )
 
-    # Traitement des top affaires - UTILISATION DU POIDS DÉBITAGE UNIQUEMENT
+    # Traitement des top affaires
     top_affaires_list = []
     total_poids_debitage_affaires = 0
     
@@ -358,8 +411,8 @@ def graphiques(request):
         
         affaire_data = {
             'code_affaire': affaire['affaire__code_affaire'],
-            'poids_debitage': poids_debitage,  # Nouveau: poids débitage séparé
-            'poids_total': poids_debitage  # Pour compatibilité avec le template, on met le débitage ici
+            'poids_debitage': poids_debitage,
+            'poids_total': poids_debitage
         }
         top_affaires_list.append(affaire_data)
         total_poids_debitage_affaires += poids_debitage
@@ -368,14 +421,14 @@ def graphiques(request):
     top_affaires_list.sort(key=lambda x: x['poids_debitage'], reverse=True)
     top_affaires = top_affaires_list[:8]
 
-    # Calcul des pourcentages pour les affaires (basé sur le poids débitage)
+    # Calcul des pourcentages pour les affaires
     for affaire in top_affaires:
         if total_poids_debitage_affaires > 0:
             affaire['pourcentage'] = (affaire['poids_debitage'] / total_poids_debitage_affaires) * 100
         else:
             affaire['pourcentage'] = 0
 
-    # Nouvelle analyse : Répartition par catégories (remplace l'évolution temporelle)
+    # Répartition par catégories
     repartition_categories = lancements.values(
         'categorie__nom_categorie'
     ).annotate(
@@ -401,7 +454,7 @@ def graphiques(request):
     # Tri par poids total décroissant
     categories_list.sort(key=lambda x: x['poids_total'], reverse=True)
 
-    # Performance des ateliers - CORRECTION DU RELATED_NAME
+    # Performance des ateliers
     performance_ateliers = Atelier.objects.annotate(
         nb_lancements=Count('lancements', filter=Q(
             lancements__date_lancement__range=[date_debut, date_fin]
@@ -422,7 +475,7 @@ def graphiques(request):
         assemblage = atelier.poids_assemblage or 0
         atelier.poids_total = debitage + assemblage
         
-        # Simulation d'efficacité basée sur le nombre de lancements et le poids
+        # Simulation d'efficacité
         base_efficacite = 70
         bonus_lancements = min(25, (atelier.nb_lancements or 0) * 2)
         bonus_poids = min(5, atelier.poids_total / 100)
@@ -433,17 +486,12 @@ def graphiques(request):
     # Tri par poids total décroissant
     performance_ateliers_list.sort(key=lambda x: x.poids_total, reverse=True)
 
-    # Meilleur performer (atelier avec le plus gros poids)
+    # Insights
     top_performer = performance_ateliers_list[0] if performance_ateliers_list else None
-
-    # Top collaborateur (celui avec le plus gros poids total)
     top_collaborateur = top_collaborateurs[0] if top_collaborateurs else None
-
-    # Top affaire (celle avec le plus gros pourcentage de débitage)
     top_affaire = top_affaires[0] if top_affaires else None
 
-    # Tendance (simulation basée sur la comparaison avec la période précédente)
-    # Calcul de la période précédente (même durée)
+    # Tendance (simulation)
     duree_periode = (date_fin - date_debut).days + 1
     date_debut_precedente = date_debut - timedelta(days=duree_periode)
     date_fin_precedente = date_debut - timedelta(days=1)
@@ -497,6 +545,7 @@ def graphiques(request):
 
     return render(request, 'reporting/graphiques.html', context)
 
+
 @login_required
 @permission_required('rapports', 'read')
 def export_page(request):
@@ -511,10 +560,10 @@ def export_page(request):
     affaires = Affaire.objects.all().order_by('code_affaire')
     
     # Exports récents (simulation)
-    recent_exports = []  # À implémenter avec un modèle d'historique d'exports
+    recent_exports = []
     
     # Statistiques d'export
-    total_exports = 25  # Simulation
+    total_exports = 25
     
     context = {
         'ateliers': ateliers,
@@ -527,11 +576,15 @@ def export_page(request):
     return render(request, 'reporting/export.html', context)
 
 
+# =============================================================================
+# FONCTIONS D'EXPORT AVEC FORMATAGE FRANÇAIS
+# =============================================================================
+
 @login_required
 @permission_required('rapports', 'export')
 def process_export(request):
     """
-    Traitement de l'export des données - Version mise à jour
+    Traitement de l'export des données avec formatage français
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Méthode non autorisée'})
@@ -584,7 +637,6 @@ def process_export(request):
 
         # Génération du fichier selon le format
         if format_export == 'excel':
-            # Vérifier si c'est un export dashboard ou standard
             if include_stats and not detailed_data:
                 return generate_dashboard_excel(lancements, date_debut, date_fin)
             else:
@@ -619,49 +671,14 @@ def process_export(request):
         return JsonResponse({'success': False, 'error': f'Erreur lors de l\'export: {str(e)}'})
 
 
-# Fonctions utilitaires pour les exports des graphiques
-@login_required 
-@permission_required('rapports', 'export')
-def export_charts(request):
-    """
-    Export des graphiques (placeholder - à implémenter selon vos besoins)
-    """
-    # Cette fonction peut être utilisée pour générer des images des graphiques
-    # ou rediriger vers d'autres types d'exports
-    
-    messages.info(request, 'Utilisez les boutons "Exporter PNG" ou "Exporter PDF" sur la page des graphiques.')
-    return redirect('reporting:graphiques')
-
-
-@login_required
-@permission_required('rapports', 'export') 
-def export_detailed_charts(request):
-    """
-    Export détaillé des graphiques (placeholder)
-    """
-    messages.info(request, 'Export détaillé des graphiques en cours de développement.')
-    return redirect('reporting:graphiques')
-
-
-# Fonction pour améliorer la gestion des erreurs d'export
-def handle_export_error(request, error_message, redirect_url='reporting:export'):
-    """
-    Gestion centralisée des erreurs d'export
-    """
-    messages.error(request, f'Erreur d\'export: {error_message}')
-    return redirect(redirect_url)
-
-
 def generate_excel_export(lancements, date_debut, date_fin, include_stats, detailed_data):
     """
-    Génération d'un fichier Excel
+    Génération d'un fichier Excel avec formatage français des nombres
     """
-    # Création d'un fichier temporaire
     output = BytesIO()
-    
     workbook = xlsxwriter.Workbook(output)
     
-    # Styles
+    # Styles avec format français
     header_format = workbook.add_format({
         'bold': True,
         'bg_color': '#4472C4',
@@ -674,9 +691,11 @@ def generate_excel_export(lancements, date_debut, date_fin, include_stats, detai
         'align': 'left'
     })
     
-    number_format = workbook.add_format({
+    # Format numérique français : espace comme séparateur de milliers, virgule pour décimales
+    number_format_french = workbook.add_format({
         'border': 1,
-        'num_format': '#,##0.00'
+        'num_format': '#,##0.000',
+        'align': 'right'
     })
 
     # Feuille principale - Données des lancements
@@ -694,7 +713,7 @@ def generate_excel_export(lancements, date_debut, date_fin, include_stats, detai
     for col, header in enumerate(headers):
         worksheet.write(0, col, header, header_format)
     
-    # Écriture des données
+    # Écriture des données avec formatage français
     for row, lancement in enumerate(lancements, 1):
         worksheet.write(row, 0, lancement.num_lanc, data_format)
         worksheet.write(row, 1, lancement.date_lancement.strftime('%d/%m/%Y'), data_format)
@@ -706,20 +725,18 @@ def generate_excel_export(lancements, date_debut, date_fin, include_stats, detai
         worksheet.write(row, 7, lancement.atelier.get_type_atelier_display(), data_format)
         worksheet.write(row, 8, lancement.collaborateur.get_full_name(), data_format)
         worksheet.write(row, 9, lancement.categorie.nom_categorie, data_format)
-        worksheet.write(row, 10, float(lancement.poids_debitage), number_format)
-        worksheet.write(row, 11, float(lancement.poids_assemblage), number_format)
+        worksheet.write(row, 10, float(lancement.poids_debitage), number_format_french)
+        worksheet.write(row, 11, float(lancement.poids_assemblage), number_format_french)
         worksheet.write(row, 12, lancement.get_statut_display(), data_format)
         worksheet.write(row, 13, lancement.observations or '', data_format)
 
     # Ajustement de la largeur des colonnes
     worksheet.set_column('A:N', 15)
 
-
     total_debitage = lancements.aggregate(Sum('poids_debitage'))['poids_debitage__sum'] or 0
     total_assemblage = lancements.aggregate(Sum('poids_assemblage'))['poids_assemblage__sum'] or 0
 
-    # Feuille statistiques si demandée
-    # Dans la fonction generate_excel_export, section des statistiques
+    # Feuille statistiques avec formatage français
     if include_stats:
         stats_worksheet = workbook.add_worksheet('Statistiques')
 
@@ -727,28 +744,27 @@ def generate_excel_export(lancements, date_debut, date_fin, include_stats, detai
         stats_worksheet.write('A1', 'Période d\'analyse', header_format)
         stats_worksheet.write('B1', f'{date_debut.strftime("%d/%m/%Y")} - {date_fin.strftime("%d/%m/%Y")}', data_format)
 
-    
         stats_worksheet.write('A2', 'Nombre total de lancements', header_format)
         stats_worksheet.write('B2', lancements.count(), data_format)
     
-        # Calcul des poids totaux CORRIGÉS
+        # Calcul des poids totaux avec formatage français
         total_debitage = sum(float(l.poids_debitage or 0) for l in lancements)
         total_assemblage = sum(float(l.poids_assemblage or 0) for l in lancements)
     
-        stats_worksheet.write('A3', 'Poids débitage total (kg)', header_format)
-        stats_worksheet.write('B3', total_debitage, number_format)
+        stats_worksheet.write('A3', 'Poids débitage total', header_format)
+        stats_worksheet.write('B3', number_format_french(total_debitage), data_format)
     
-        stats_worksheet.write('A4', 'Poids assemblage total (kg)', header_format)
-        stats_worksheet.write('B4', total_assemblage, number_format)
+        stats_worksheet.write('A4', 'Poids assemblage total', header_format)
+        stats_worksheet.write('B4', number_format_french(total_assemblage), data_format)
     
-        # Statistiques par atelier - SECTION CORRIGÉE
+        # Statistiques par atelier avec formatage français
         stats_worksheet.write('A6', 'Statistiques par Atelier', header_format)
         stats_worksheet.write('A7', 'Atelier', header_format)
         stats_worksheet.write('B7', 'Nb Lancements', header_format)
         stats_worksheet.write('C7', 'Poids Débitage', header_format)
         stats_worksheet.write('D7', 'Poids Assemblage', header_format)
     
-        # Calcul des statistiques par atelier - CORRECTION ICI
+        # Calcul des statistiques par atelier
         ateliers_stats = {}
         for lancement in lancements:
             atelier = lancement.atelier.nom_atelier if lancement.atelier else 'Non défini'
@@ -757,19 +773,19 @@ def generate_excel_export(lancements, date_debut, date_fin, include_stats, detai
                     'nb': 0, 
                     'poids_debitage': 0, 
                     'poids_assemblage': 0
-            }
+                }
             ateliers_stats[atelier]['nb'] += 1
             ateliers_stats[atelier]['poids_debitage'] += float(lancement.poids_debitage or 0)
             ateliers_stats[atelier]['poids_assemblage'] += float(lancement.poids_assemblage or 0)
     
-    # Écriture des statistiques par atelier
+        # Écriture des statistiques par atelier avec formatage français
         row = 8
         for atelier, stats in ateliers_stats.items():
             stats_worksheet.write(row, 0, atelier, data_format)
             stats_worksheet.write(row, 1, stats['nb'], data_format)
-            stats_worksheet.write(row, 2, stats['poids_debitage'], number_format)
-            stats_worksheet.write(row, 3, stats['poids_assemblage'], number_format)
-        row += 1
+            stats_worksheet.write(row, 2, number_format_french(stats['poids_debitage'], include_unit=False), data_format)
+            stats_worksheet.write(row, 3, number_format_french(stats['poids_assemblage'], include_unit=False), data_format)
+            row += 1
 
     workbook.close()
     output.seek(0)
@@ -787,7 +803,7 @@ def generate_excel_export(lancements, date_debut, date_fin, include_stats, detai
 
 def generate_pdf_export(lancements, date_debut, date_fin, include_graphics, include_stats):
     """
-    Génération d'un fichier PDF
+    Génération d'un fichier PDF avec formatage français
     """
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4)
@@ -799,22 +815,21 @@ def generate_pdf_export(lancements, date_debut, date_fin, include_graphics, incl
     story.append(Paragraph(f"Rapport de Production - {date_debut.strftime('%d/%m/%Y')} au {date_fin.strftime('%d/%m/%Y')}", title_style))
     story.append(Spacer(1, 12))
 
-    # Statistiques si demandées
+    # Statistiques avec formatage français
     if include_stats:
         story.append(Paragraph("Statistiques Générales", styles['Heading2']))
         
-        # Calcul du poids total
-        total_debitage = lancements.aggregate(Sum('poids_debitage'))['poids_debitage__sum'] or 0
-        total_assemblage = lancements.aggregate(Sum('poids_assemblage'))['poids_assemblage__sum'] or 0
+        # Calcul du poids total avec formatage français
+        total_debitage = sum(float(l.poids_debitage or 0) for l in lancements)
+        total_assemblage = sum(float(l.poids_assemblage or 0) for l in lancements)
 
         stats_data = [
             ['Métrique', 'Valeur'],
             ['Nombre de lancements', str(lancements.count())],
-            ['Poids débitage total', f'{total_debitage:.2f} kg'],      # Séparer
-            ['Poids assemblage total', f'{total_assemblage:.2f} kg'],   # Séparer
+            ['Poids débitage total', number_format_french(total_debitage)],
+            ['Poids assemblage total', number_format_french(total_assemblage)],
             ['Période', f'{date_debut.strftime("%d/%m/%Y")} - {date_fin.strftime("%d/%m/%Y")}']
         ]
-    
         
         stats_table = Table(stats_data)
         stats_table.setStyle(TableStyle([
@@ -831,21 +846,23 @@ def generate_pdf_export(lancements, date_debut, date_fin, include_graphics, incl
         story.append(stats_table)
         story.append(Spacer(1, 12))
 
-    # Tableau des lancements
+    # Tableau des lancements avec formatage français
     story.append(Paragraph("Détail des Lancements", styles['Heading2']))
     
-    # Données du tableau (limitées pour le PDF)
     table_data = [['N° Lanc.', 'Date', 'Affaire', 'Atelier', 'Collaborateur', 'Débitage', 'Assemblage']]
     
     for lancement in lancements[:50]:  # Limiter à 50 pour le PDF
+        poids_debitage = float(lancement.poids_debitage or 0)
+        poids_assemblage = float(lancement.poids_assemblage or 0)
+        
         table_data.append([
             lancement.num_lanc,
             lancement.date_lancement.strftime('%d/%m/%Y'),
             lancement.affaire.code_affaire,
             lancement.atelier.nom_atelier,
             lancement.collaborateur.get_full_name()[:20],
-            f"{lancement.poids_debitage:.1f}Kg",
-            f"{lancement.poids_assemblage:.1f}Kg"
+            number_format_french(poids_debitage, include_unit=False),
+            number_format_french(poids_assemblage, include_unit=False)
         ])
 
     table = Table(table_data)
@@ -879,7 +896,7 @@ def generate_pdf_export(lancements, date_debut, date_fin, include_graphics, incl
 
 def generate_csv_export(lancements, detailed_data):
     """
-    Génération d'un fichier CSV
+    Génération d'un fichier CSV avec formatage français
     """
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="export_lancements.csv"'
@@ -902,8 +919,11 @@ def generate_csv_export(lancements, detailed_data):
     
     writer.writerow(headers)
     
-    # Données
+    # Données avec formatage français
     for lancement in lancements:
+        poids_debitage = number_format_french(lancement.poids_debitage, include_unit=False)
+        poids_assemblage = number_format_french(lancement.poids_assemblage, include_unit=False)
+        
         row = [
             lancement.num_lanc,
             lancement.date_lancement.strftime('%d/%m/%Y'),
@@ -914,8 +934,8 @@ def generate_csv_export(lancements, detailed_data):
             lancement.atelier.nom_atelier,
             lancement.collaborateur.get_full_name(),
             lancement.categorie.nom_categorie,
-            str(lancement.poids_debitage).replace('.', ','),
-            str(lancement.poids_assemblage).replace('.', ','),
+            poids_debitage,
+            poids_assemblage,
             lancement.get_statut_display()
         ]
         
@@ -959,7 +979,6 @@ def generate_json_export(lancements, detailed_data):
             'poids': {
                 'debitage': float(lancement.poids_debitage),
                 'assemblage': float(lancement.poids_assemblage),
-                
             },
             'statut': lancement.statut
         }
@@ -981,310 +1000,15 @@ def generate_json_export(lancements, detailed_data):
     return {'response': response, 'filename': 'export_lancements.json'}
 
 
-@login_required
-@permission_required('rapports', 'create')
-@require_http_methods(["POST"])
-def generate_rapport(request):
-    """
-    Génération d'un nouveau rapport de production
-    """
-    try:
-        type_rapport = request.POST.get('type_rapport')
-        date_debut = datetime.strptime(request.POST.get('date_debut'), '%Y-%m-%d').date()
-        date_fin = datetime.strptime(request.POST.get('date_fin'), '%Y-%m-%d').date()
-
-        # Calcul des métriques - Correction
-        lancements = Lancement.objects.filter(
-            date_lancement__range=[date_debut, date_fin]
-        )
-        
-        nb_lancements = lancements.count()
-        
-        # Calcul correct du poids total
-        lancements_aggregation = lancements.aggregate(
-            total_debitage=Sum('poids_debitage'),
-            total_assemblage=Sum('poids_assemblage')
-        )
-        total_debitage = (lancements_aggregation['total_debitage'] or 0)
-        total_assemblage = (lancements_aggregation['total_assemblage'] or 0)
-        poids_total = total_debitage + total_assemblage
-
-        # Création du rapport
-        rapport = RapportProduction.objects.create(
-            date_debut=date_debut,
-            date_fin=date_fin,
-            type_rapport=type_rapport,
-            nb_lancements=nb_lancements,
-            poids_debitage=total_debitage,
-            poids_assemblage=total_assemblage,
-            poids_total=poids_total
-        )
-
-        messages.success(request, f'Rapport {type_rapport} généré avec succès.')
-        return redirect('reporting:rapport_detail', rapport_id=rapport.id)
-
-    except Exception as e:
-        messages.error(request, f'Erreur lors de la génération du rapport: {str(e)}')
-        return redirect('reporting:rapports_list')
-
-
-@login_required
-@require_http_methods(["DELETE"])
-def delete_rapport(request, rapport_id):
-    """
-    Suppression d'un rapport
-    """
-    try:
-        rapport = get_object_or_404(RapportProduction, id=rapport_id)
-        rapport.delete()
-        return JsonResponse({'success': True})
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
-
-
-# Vues pour les téléchargements
-@login_required
-@permission_required('rapports', 'export')
-def download_excel(request):
-    """
-    Vue pour télécharger le dernier export Excel
-    """
-    # Cette vue peut être utilisée pour servir des fichiers Excel temporaires
-    # ou rediriger vers process_export avec format=excel
-    return redirect('reporting:process_export')
-
-
-@login_required
-@permission_required('rapports', 'export')
-def download_pdf(request):
-    """
-    Vue pour télécharger le dernier export PDF
-    """
-    return redirect('reporting:process_export')
-
-
-@login_required
-@permission_required('rapports', 'export')
-def download_csv(request):
-    """
-    Vue pour télécharger le dernier export CSV
-    """
-    return redirect('reporting:process_export')
-
-
-@login_required
-@permission_required('rapports', 'export')
-def download_json(request):
-    """
-    Vue pour télécharger le dernier export JSON
-    """
-    return redirect('reporting:process_export')
-
-
-# API pour les données du dashboard
-@login_required
-@permission_required('rapports', 'read')
-def dashboard_data_api(request):
-    """
-    API pour récupérer les données du dashboard
-    """
-    # Paramètres
-    periode = int(request.GET.get('periode', 30))
-    date_fin = timezone.now().date()
-    date_debut = date_fin - timedelta(days=periode)
-
-    # Requête des lancements
-    lancements = Lancement.objects.filter(
-        date_lancement__range=[date_debut, date_fin]
-    )
-
-    # Correction pour le calcul du poids total
-    lancements_aggregation = lancements.aggregate(
-        total_debitage=Sum('poids_debitage'),
-        total_assemblage=Sum('poids_assemblage')
-    )
-    poids_total = (lancements_aggregation['total_debitage'] or 0) + (lancements_aggregation['total_assemblage'] or 0)
-
-    # Données du dashboard
-    data = {
-        'total_lancements': lancements.count(),
-        'poids_total': float(poids_total),
-        'efficacite': 85.5,  # Simulation
-        'delai_moyen': 5,    # Simulation
-    }
-
-    return JsonResponse(data)
-
-
-@login_required
-@permission_required('rapports', 'read')
-def chart_data_api(request, chart_type):
-    """
-    API pour récupérer des données spécifiques de graphiques
-    """
-    periode = int(request.GET.get('periode', 30))
-    date_fin = timezone.now().date()
-    date_debut = date_fin - timedelta(days=periode)
-
-    lancements = Lancement.objects.filter(
-        date_lancement__range=[date_debut, date_fin]
-    )
-
-    if chart_type == 'ateliers':
-        # Correction pour les données des ateliers
-        data = list(lancements.values('atelier__nom_atelier').annotate(
-            count=Count('id'),
-            poids_debitage=Sum('poids_debitage'),
-            poids_assemblage=Sum('poids_assemblage')
-        ).annotate(
-            poids=F('poids_debitage') + F('poids_assemblage')
-        ))
-    elif chart_type == 'collaborateurs':
-        # Correction pour les données des collaborateurs
-        data = list(lancements.values(
-            'collaborateur__nom_collaborateur',
-            'collaborateur__prenom_collaborateur'
-        ).annotate(
-            count=Count('id'),
-            poids_debitage=Sum('poids_debitage'),
-            poids_assemblage=Sum('poids_assemblage')
-        ).annotate(
-            poids=F('poids_debitage') + F('poids_assemblage')
-        )[:10])
-    else:
-        data = []
-
-    return JsonResponse({'data': data})
-
-
-@login_required
-@permission_required('rapports', 'export')
-def export_dashboard(request):
-    """
-    Export du dashboard complet
-    """
-    messages.info(request, 'Export du dashboard en cours de développement.')
-    return redirect('reporting:graphiques')
-
-
-@login_required
-@permission_required('rapports', 'export')
-def export_charts(request):
-    """
-    Export des graphiques
-    """
-    messages.info(request, 'Export des graphiques en cours de développement.')
-    return redirect('reporting:graphiques')
-
-
-@login_required
-@permission_required('rapports', 'export')
-def export_detailed_charts(request):
-    """
-    Export détaillé des graphiques
-    """
-    messages.info(request, 'Export détaillé en cours de développement.')
-    return redirect('reporting:graphiques')
-
-
-@login_required
-@permission_required('rapports', 'create')
-def regenerate_rapport(request, rapport_id):
-    """
-    Régénérer un rapport existant
-    """
-    rapport = get_object_or_404(RapportProduction, id=rapport_id)
-    
-    # Recalcul des métriques - Correction
-    lancements = Lancement.objects.filter(
-        date_lancement__range=[rapport.date_debut, rapport.date_fin]
-    )
-    
-    rapport.nb_lancements = lancements.count()
-    
-    # Correction pour le calcul du poids total
-    lancements_aggregation = lancements.aggregate(
-        total_debitage=Sum('poids_debitage'),
-        total_assemblage=Sum('poids_assemblage')
-    )
-    rapport.poids_debitage = (lancements_aggregation['total_debitage'] or 0)
-    rapport.poids_assemblage = (lancements_aggregation['total_assemblage'] or 0)
-    rapport.poids_total = rapport.poids_debitage + rapport.poids_assemblage
-    rapport.save()
-    
-    messages.success(request, 'Rapport régénéré avec succès.')
-    return redirect('reporting:rapport_detail', rapport_id=rapport.id)
-
-
-@login_required
-@permission_required('rapports', 'read')
-def download_rapport_pdf(request, rapport_id):
-    """
-    Télécharger un rapport spécifique en PDF avec tableau détaillé
-    """
-    rapport = get_object_or_404(RapportProduction, id=rapport_id)
-
-    # Récupérer les lancements de la période
-    lancements = Lancement.objects.filter(
-        date_lancement__range=[rapport.date_debut, rapport.date_fin]
-    ).select_related('atelier', 'collaborateur', 'affaire', 'categorie')
-
-    # Générer le PDF avec le nouveau format
-    return generate_rapport_pdf(lancements, rapport.date_debut, rapport.date_fin)
-
-@login_required
-@permission_required('rapports', 'read')
-def download_rapport_excel(request, rapport_id):
-    """
-    Télécharger un rapport spécifique en Excel avec tableau détaillé
-    """
-    rapport = get_object_or_404(RapportProduction, id=rapport_id)
-
-    # Récupérer les lancements de la période
-    lancements = Lancement.objects.filter(
-        date_lancement__range=[rapport.date_debut, rapport.date_fin]
-    ).select_related('atelier', 'collaborateur', 'affaire', 'categorie')
-
-    # Générer l'Excel avec le nouveau format
-    return generate_rapport_excel(lancements, rapport.date_debut, rapport.date_fin)
-
-# Ajoutez aussi cette vue pour le CSV des rapports
-@login_required
-@permission_required('rapports', 'read')
-def download_rapport_csv(request, rapport_id):
-    """
-    Télécharger un rapport spécifique en CSV avec tableau détaillé
-    """
-    rapport = get_object_or_404(RapportProduction, id=rapport_id)
-
-    # Récupérer les lancements de la période
-    lancements = Lancement.objects.filter(
-        date_lancement__range=[rapport.date_debut, rapport.date_fin]
-    ).select_related('atelier', 'collaborateur', 'affaire', 'categorie')
-
-    # Générer le CSV avec le nouveau format
-    return generate_rapport_csv(lancements, rapport.date_debut, rapport.date_fin)
-
-@login_required
-@permission_required('rapports', 'delete')
-@require_http_methods(["DELETE"])
-def delete_export_history(request, export_id):
-    """
-    Supprimer un historique d'export (à implémenter avec un modèle)
-    """
-    # Placeholder pour la suppression d'historique d'exports
-    # Vous devrez créer un modèle ExportHistory si nécessaire
-    return JsonResponse({
-        'success': True, 
-        'message': 'Historique supprimé (fonctionnalité à implémenter)'
-    })
-# Ajoutez ces vues à votre fichier views.py existant
+# =============================================================================
+# FONCTIONS D'EXPORT DASHBOARD AVEC FORMATAGE FRANÇAIS
+# =============================================================================
 
 @login_required
 @permission_required('rapports', 'export')
 def export_dashboard_data(request):
     """
-    Export spécifique pour les données du dashboard
+    Export spécifique pour les données du dashboard avec formatage français
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Méthode non autorisée'})
@@ -1321,7 +1045,7 @@ def export_dashboard_data(request):
 
 def generate_dashboard_excel(lancements, date_debut, date_fin):
     """
-    Génération Excel spécifique pour le dashboard - VERSION CORRIGÉE
+    Génération Excel dashboard avec formatage français
     """
     output = BytesIO()
     workbook = xlsxwriter.Workbook(output)
@@ -1336,12 +1060,11 @@ def generate_dashboard_excel(lancements, date_debut, date_fin):
     })
     
     data_format = workbook.add_format({'border': 1})
-    number_format = workbook.add_format({'border': 1, 'num_format': '#,##0.00'})
+    number_format = workbook.add_format({'border': 1, 'num_format': '#,##0.000'})
     
     # Feuille principale
     worksheet = workbook.add_worksheet('Dashboard')
     
-    # Variables pour le suivi des lignes
     current_row = 0
     
     # En-tête du rapport
@@ -1349,9 +1072,9 @@ def generate_dashboard_excel(lancements, date_debut, date_fin):
     current_row += 1
     
     worksheet.merge_range(f'A{current_row+1}:E{current_row+1}', f'Période: {date_debut.strftime("%d/%m/%Y")} - {date_fin.strftime("%d/%m/%Y")}', data_format)
-    current_row += 2  # Laisser une ligne vide
+    current_row += 2
     
-    # STATISTIQUES GÉNÉRALES
+    # STATISTIQUES GÉNÉRALES avec formatage français
     worksheet.merge_range(f'A{current_row+1}:B{current_row+1}', 'STATISTIQUES GÉNÉRALES', header_format)
     current_row += 1
     
@@ -1367,32 +1090,33 @@ def generate_dashboard_excel(lancements, date_debut, date_fin):
     
     stats_data = [
         ['Nombre total de lancements', total_lancements],
-        ['Poids total débitage (kg)', total_debitage],
-        ['Poids total assemblage (kg)', total_assemblage],
+        ['Poids total débitage', number_format_french(total_debitage)],
+        ['Poids total assemblage', number_format_french(total_assemblage)],
         ['Nombre de jours analysés', (date_fin - date_debut).days + 1]
     ]
     
     # Écriture des statistiques
     for stat in stats_data:
         current_row += 1
-        worksheet.write(current_row, 0, stat[0], data_format)  # Colonne A
-        if isinstance(stat[1], (int, float)) and stat[1] != int(stat[1]):
-            worksheet.write(current_row, 1, stat[1], number_format)  # Colonne B
+        worksheet.write(current_row, 0, stat[0], data_format)
+        if isinstance(stat[1], str) and 'kg' in stat[1]:
+            worksheet.write(current_row, 1, stat[1], data_format)
+        elif isinstance(stat[1], (int, float)) and stat[1] != int(stat[1]):
+            worksheet.write(current_row, 1, stat[1], number_format)
         else:
-            worksheet.write(current_row, 1, stat[1], data_format)  # Colonne B
+            worksheet.write(current_row, 1, stat[1], data_format)
     
-    current_row += 2  # Laisser une ligne vide
+    current_row += 2
     
-    # TOP COLLABORATEURS
+    # TOP COLLABORATEURS avec formatage français
     worksheet.merge_range(f'A{current_row+1}:C{current_row+1}', 'TOP COLLABORATEURS', header_format)
     current_row += 1
     
-    # En-têtes collaborateurs
     collab_headers = ['Collaborateur', 'Poids Débitage', 'Poids Assemblage']
     for col, header in enumerate(collab_headers):
-        worksheet.write(current_row, col, header, header_format)  # Ligne actuelle, colonnes A, B, C
+        worksheet.write(current_row, col, header, header_format)
     
-    # Données collaborateurs
+    # Données collaborateurs avec formatage français
     collab_data = lancements.values(
         'collaborateur__nom_collaborateur',
         'collaborateur__prenom_collaborateur'
@@ -1414,25 +1138,24 @@ def generate_dashboard_excel(lancements, date_debut, date_fin):
     
     collab_list.sort(key=lambda x: x['debitage'], reverse=True)
     
-    # Écriture des données collaborateurs
-    for collab in collab_list[:10]:  # Top 10
+    # Écriture des données collaborateurs avec formatage français
+    for collab in collab_list[:10]:
         current_row += 1
-        worksheet.write(current_row, 0, collab['nom'], data_format)           # Colonne A
-        worksheet.write(current_row, 1, collab['debitage'], number_format)    # Colonne B
-        worksheet.write(current_row, 2, collab['assemblage'], number_format)  # Colonne C
+        worksheet.write(current_row, 0, collab['nom'], data_format)
+        worksheet.write(current_row, 1, number_format_french(collab['debitage'], include_unit=False), data_format)
+        worksheet.write(current_row, 2, number_format_french(collab['assemblage'], include_unit=False), data_format)
     
-    current_row += 2  # Laisser une ligne vide
+    current_row += 2
     
-    # TOP AFFAIRES
+    # TOP AFFAIRES avec formatage français
     worksheet.merge_range(f'A{current_row+1}:C{current_row+1}', 'TOP AFFAIRES', header_format)
     current_row += 1
     
-    # En-têtes affaires
     affaire_headers = ['Code Affaire', 'Poids Débitage', 'Pourcentage']
     for col, header in enumerate(affaire_headers):
-        worksheet.write(current_row, col, header, header_format)  # Ligne actuelle, colonnes A, B, C
+        worksheet.write(current_row, col, header, header_format)
     
-    # Données affaires
+    # Données affaires avec formatage français
     affaire_data = lancements.values('affaire__code_affaire').annotate(
         poids_debitage=Sum('poids_debitage')
     )
@@ -1450,18 +1173,18 @@ def generate_dashboard_excel(lancements, date_debut, date_fin):
     
     affaire_list.sort(key=lambda x: x['poids_debitage'], reverse=True)
     
-    # Écriture des données affaires
-    for affaire in affaire_list[:8]:  # Top 8
+    # Écriture des données affaires avec formatage français
+    for affaire in affaire_list[:8]:
         current_row += 1
         pourcentage = (affaire['poids_debitage'] / total_debitage_affaires * 100) if total_debitage_affaires > 0 else 0
-        worksheet.write(current_row, 0, affaire['code'], data_format)                    # Colonne A
-        worksheet.write(current_row, 1, affaire['poids_debitage'], number_format)       # Colonne B
-        worksheet.write(current_row, 2, f"{pourcentage:.1f}%", data_format)             # Colonne C
+        worksheet.write(current_row, 0, affaire['code'], data_format)
+        worksheet.write(current_row, 1, number_format_french(affaire['poids_debitage'], include_unit=False), data_format)
+        worksheet.write(current_row, 2, f"{pourcentage:.1f}%".replace('.', ','), data_format)
     
     # Ajustement des largeurs de colonnes
-    worksheet.set_column('A:A', 25)  # Noms/codes plus longs
-    worksheet.set_column('B:C', 15)  # Valeurs numériques
-    worksheet.set_column('D:E', 12)  # Colonnes supplémentaires si nécessaire
+    worksheet.set_column('A:A', 25)
+    worksheet.set_column('B:C', 15)
+    worksheet.set_column('D:E', 12)
     
     workbook.close()
     output.seek(0)
@@ -1475,9 +1198,10 @@ def generate_dashboard_excel(lancements, date_debut, date_fin):
     
     return response
 
+
 def generate_dashboard_pdf(lancements, date_debut, date_fin):
     """
-    Génération PDF spécifique pour le dashboard
+    Génération PDF dashboard avec formatage français
     """
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4)
@@ -1490,7 +1214,7 @@ def generate_dashboard_pdf(lancements, date_debut, date_fin):
     story.append(Paragraph(f"Période: {date_debut.strftime('%d/%m/%Y')} - {date_fin.strftime('%d/%m/%Y')}", styles['Normal']))
     story.append(Spacer(1, 20))
 
-    # Statistiques générales
+    # Statistiques générales avec formatage français
     story.append(Paragraph("STATISTIQUES GÉNÉRALES", styles['Heading2']))
     
     total_lancements = lancements.count()
@@ -1502,8 +1226,8 @@ def generate_dashboard_pdf(lancements, date_debut, date_fin):
     stats_data = [
         ['Métrique', 'Valeur'],
         ['Nombre de lancements', str(total_lancements)],
-        ['Poids débitage', f"{float(aggregation['total_debitage'] or 0):.2f} kg"],
-        ['Poids assemblage', f"{float(aggregation['total_assemblage'] or 0):.2f} kg"],
+        ['Poids débitage', number_format_french(aggregation['total_debitage'] or 0)],
+        ['Poids assemblage', number_format_french(aggregation['total_assemblage'] or 0)],
         ['Durée d\'analyse', f"{(date_fin - date_debut).days + 1} jour(s)"]
     ]
     
@@ -1522,7 +1246,7 @@ def generate_dashboard_pdf(lancements, date_debut, date_fin):
     story.append(stats_table)
     story.append(Spacer(1, 20))
 
-    # Top Collaborateurs
+    # Top Collaborateurs avec formatage français
     story.append(Paragraph("TOP COLLABORATEURS", styles['Heading2']))
     
     collab_data = lancements.values(
@@ -1533,7 +1257,7 @@ def generate_dashboard_pdf(lancements, date_debut, date_fin):
         poids_assemblage=Sum('poids_assemblage')
     )
     
-    collab_table_data = [['Collaborateur', 'Débitage (kg)', 'Assemblage (kg)']]
+    collab_table_data = [['Collaborateur', 'Débitage', 'Assemblage']]
     
     collab_list = []
     for collab in collab_data:
@@ -1549,11 +1273,12 @@ def generate_dashboard_pdf(lancements, date_debut, date_fin):
     
     collab_list.sort(key=lambda x: x['total'], reverse=True)
     
+    # Formatage français dans le tableau PDF
     for collab in collab_list[:10]:
         collab_table_data.append([
             collab['nom'],
-            f"{collab['debitage']:.1f}",
-            f"{collab['assemblage']:.1f}"
+            number_format_french(collab['debitage'], include_unit=False),
+            number_format_french(collab['assemblage'], include_unit=False)
         ])
     
     collab_table = Table(collab_table_data)
@@ -1583,7 +1308,7 @@ def generate_dashboard_pdf(lancements, date_debut, date_fin):
 
 def generate_dashboard_csv(lancements, date_debut, date_fin):
     """
-    Génération CSV spécifique pour le dashboard
+    Génération CSV dashboard avec formatage français
     """
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     filename = f'dashboard_{date_debut}_{date_fin}.csv'
@@ -1598,7 +1323,7 @@ def generate_dashboard_csv(lancements, date_debut, date_fin):
     writer.writerow([f'DASHBOARD - {date_debut} à {date_fin}'])
     writer.writerow([])
     
-    # Statistiques générales
+    # Statistiques générales avec formatage français
     writer.writerow(['STATISTIQUES GENERALES'])
     total_lancements = lancements.count()
     aggregation = lancements.aggregate(
@@ -1607,11 +1332,11 @@ def generate_dashboard_csv(lancements, date_debut, date_fin):
     )
     
     writer.writerow(['Nombre de lancements', total_lancements])
-    writer.writerow(['Poids débitage (kg)', str(aggregation['total_debitage'] or 0).replace('.', ',')])
-    writer.writerow(['Poids assemblage (kg)', str(aggregation['total_assemblage'] or 0).replace('.', ',')])
+    writer.writerow(['Poids débitage', number_format_french(aggregation['total_debitage'] or 0, include_unit=False)])
+    writer.writerow(['Poids assemblage', number_format_french(aggregation['total_assemblage'] or 0, include_unit=False)])
     writer.writerow([])
     
-    # Collaborateurs
+    # Collaborateurs avec formatage français
     writer.writerow(['TOP COLLABORATEURS'])
     writer.writerow(['Collaborateur', 'Poids Débitage', 'Poids Assemblage'])
     
@@ -1637,28 +1362,31 @@ def generate_dashboard_csv(lancements, date_debut, date_fin):
     
     collab_list.sort(key=lambda x: x['total'], reverse=True)
     
+    # Écriture des collaborateurs avec formatage français
     for collab in collab_list[:10]:
         writer.writerow([
             collab['nom'],
-            str(collab['debitage']).replace('.', ','),
-            str(collab['assemblage']).replace('.', ',')
+            number_format_french(collab['debitage'], include_unit=False),
+            number_format_french(collab['assemblage'], include_unit=False)
         ])
     
     return response
 
 
+# =============================================================================
+# FONCTIONS D'EXPORT RAPPORT DÉTAILLÉ AVEC FORMATAGE FRANÇAIS
+# =============================================================================
 
 @login_required
 @permission_required('rapports', 'export')
 def process_rapport_export(request):
     """
-    Traitement de l'export spécifique pour les rapports détaillés
+    Traitement de l'export spécifique pour les rapports détaillés avec formatage français
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Méthode non autorisée'})
 
     try:
-        # Récupération des paramètres
         format_export = request.POST.get('format')
         if not format_export:
             return JsonResponse({'success': False, 'error': 'Format d\'export requis'})
@@ -1725,7 +1453,7 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
 
     number_format = workbook.add_format({
         'border': 1,
-        'num_format': '#,##0.00',
+        'num_format': '#,##0.000',
         'align': 'right'
     })
 
@@ -1880,7 +1608,7 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
 
 def generate_rapport_csv(lancements, date_debut, date_fin):
     """
-    Génération CSV avec toutes les colonnes du tableau
+    Génération CSV avec formatage français
     """
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     filename = f'rapport_production_{date_debut.strftime("%Y%m%d")}_{date_fin.strftime("%Y%m%d")}.csv'
@@ -1893,28 +1621,17 @@ def generate_rapport_csv(lancements, date_debut, date_fin):
 
     # En-têtes
     headers = [
-        'Numéro Lancement',
-        'Date Lancement', 
-        'Date Réception',
-        'Affaire',
-        'Client', 
-        'Sous-livrable',
-        'Atelier',
-        'Type Atelier',
-        'Collaborateur',
-        'Catégorie',
-        'Poids Débitage',
-        'Poids Assemblage',
-        'Statut',
-        'Observations'
+        'Numéro Lancement', 'Date Lancement', 'Date Réception', 'Affaire', 'Client', 
+        'Sous-livrable', 'Atelier', 'Type Atelier', 'Collaborateur', 'Catégorie',
+        'Poids Débitage', 'Poids Assemblage', 'Statut', 'Observations'
     ]
 
     writer.writerow(headers)
 
-    # Données
+    # Données avec formatage français
     for lancement in lancements:
-        poids_debitage = float(lancement.poids_debitage or 0)
-        poids_assemblage = float(lancement.poids_assemblage or 0)
+        poids_debitage = number_format_french(lancement.poids_debitage, include_unit=False)
+        poids_assemblage = number_format_french(lancement.poids_assemblage, include_unit=False)
 
         row = [
             lancement.num_lanc,
@@ -1927,8 +1644,8 @@ def generate_rapport_csv(lancements, date_debut, date_fin):
             lancement.atelier.get_type_atelier_display() if lancement.atelier else '',
             lancement.collaborateur.get_full_name() if lancement.collaborateur else '',
             lancement.categorie.nom_categorie if lancement.categorie else '',
-            str(poids_debitage).replace('.', ','),
-            str(poids_assemblage).replace('.', ','),
+            poids_debitage,
+            poids_assemblage,
             lancement.get_statut_display() if hasattr(lancement, 'get_statut_display') else lancement.statut,
             lancement.observations or ''
         ]
@@ -1940,7 +1657,7 @@ def generate_rapport_csv(lancements, date_debut, date_fin):
 
 def generate_rapport_pdf(lancements, date_debut, date_fin):
     """
-    Génération PDF avec tableau détaillé
+    Génération PDF avec formatage français
     """
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=40, rightMargin=40)
@@ -1953,7 +1670,7 @@ def generate_rapport_pdf(lancements, date_debut, date_fin):
     story.append(Paragraph(f"Du {date_debut.strftime('%d/%m/%Y')} au {date_fin.strftime('%d/%m/%Y')}", styles['Normal']))
     story.append(Spacer(1, 20))
 
-    # Résumé des statistiques
+    # Résumé des statistiques avec formatage français
     total_lancements = lancements.count()
     aggregation = lancements.aggregate(
         total_debitage=Sum('poids_debitage'),
@@ -1965,8 +1682,8 @@ def generate_rapport_pdf(lancements, date_debut, date_fin):
     stats_data = [
         ['Métrique', 'Valeur'],
         ['Nombre de lancements', str(total_lancements)],
-        ['Poids total assemblage', f"{float(aggregation['total_assemblage'] or 0):.2f} kg"],
-        ['Poids total débitage', f"{float(aggregation['total_debitage'] or 0):.2f} kg"],
+        ['Poids total débitage', number_format_french(aggregation['total_debitage'] or 0)],
+        ['Poids total assemblage', number_format_french(aggregation['total_assemblage'] or 0)],
         ['Période d\'analyse', f"{(date_fin - date_debut).days + 1} jour(s)"]
     ]
 
@@ -1985,10 +1702,9 @@ def generate_rapport_pdf(lancements, date_debut, date_fin):
     story.append(stats_table)
     story.append(Spacer(1, 20))
 
-    # Tableau détaillé (première page avec en-têtes principaux)
+    # Tableau détaillé avec formatage français
     story.append(Paragraph("DÉTAIL DES LANCEMENTS", styles['Heading2']))
     
-    # Tableau simplifié pour le PDF (colonnes principales)
     table_data = [['N° Lanc.', 'Date', 'Affaire', 'Atelier', 'Collaborateur', 'Débitage', 'Assemblage']]
 
     for lancement in lancements[:50]:  # Limiter pour le PDF
@@ -2001,8 +1717,8 @@ def generate_rapport_pdf(lancements, date_debut, date_fin):
             lancement.affaire.code_affaire[:12] if lancement.affaire else '',
             lancement.atelier.nom_atelier[:15] if lancement.atelier else '',
             lancement.collaborateur.get_full_name()[:18] if lancement.collaborateur else '',
-            f'{poids_debitage:.1f}',
-            f'{poids_assemblage:.1f}'
+            number_format_french(poids_debitage, include_unit=False),
+            number_format_french(poids_assemblage, include_unit=False)
         ])
 
     table = Table(table_data)
@@ -2032,3 +1748,289 @@ def generate_rapport_pdf(lancements, date_debut, date_fin):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     return response
+
+
+# =============================================================================
+# VUES UTILITAIRES ET HELPERS
+# =============================================================================
+
+@login_required
+@permission_required('rapports', 'create')
+@require_http_methods(["POST"])
+def generate_rapport(request):
+    """
+    Génération d'un nouveau rapport de production
+    """
+    try:
+        type_rapport = request.POST.get('type_rapport')
+        date_debut = datetime.strptime(request.POST.get('date_debut'), '%Y-%m-%d').date()
+        date_fin = datetime.strptime(request.POST.get('date_fin'), '%Y-%m-%d').date()
+
+        # Calcul des métriques
+        lancements = Lancement.objects.filter(
+            date_lancement__range=[date_debut, date_fin]
+        )
+        
+        nb_lancements = lancements.count()
+        
+        # Calcul correct du poids total
+        lancements_aggregation = lancements.aggregate(
+            total_debitage=Sum('poids_debitage'),
+            total_assemblage=Sum('poids_assemblage')
+        )
+        total_debitage = (lancements_aggregation['total_debitage'] or 0)
+        total_assemblage = (lancements_aggregation['total_assemblage'] or 0)
+        poids_total = total_debitage + total_assemblage
+
+        # Création du rapport
+        rapport = RapportProduction.objects.create(
+            date_debut=date_debut,
+            date_fin=date_fin,
+            type_rapport=type_rapport,
+            nb_lancements=nb_lancements,
+            poids_debitage=total_debitage,
+            poids_assemblage=total_assemblage,
+            poids_total=poids_total
+        )
+
+        messages.success(request, f'Rapport {type_rapport} généré avec succès.')
+        return redirect('reporting:rapport_detail', rapport_id=rapport.id)
+
+    except Exception as e:
+        messages.error(request, f'Erreur lors de la génération du rapport: {str(e)}')
+        return redirect('reporting:rapports_list')
+
+
+@login_required
+@require_http_methods(["DELETE"])
+def delete_rapport(request, rapport_id):
+    """
+    Suppression d'un rapport
+    """
+    try:
+        rapport = get_object_or_404(RapportProduction, id=rapport_id)
+        rapport.delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+# Vues pour les téléchargements avec formatage français
+@login_required
+@permission_required('rapports', 'export')
+def download_rapport_pdf(request, rapport_id):
+    """
+    Télécharger un rapport spécifique en PDF
+    """
+    rapport = get_object_or_404(RapportProduction, id=rapport_id)
+    lancements = Lancement.objects.filter(
+        date_lancement__range=[rapport.date_debut, rapport.date_fin]
+    ).select_related('atelier', 'collaborateur', 'affaire', 'categorie')
+    return generate_rapport_pdf(lancements, rapport.date_debut, rapport.date_fin)
+
+
+@login_required
+@permission_required('rapports', 'export')
+def download_rapport_excel(request, rapport_id):
+    """
+    Télécharger un rapport spécifique en Excel
+    """
+    rapport = get_object_or_404(RapportProduction, id=rapport_id)
+    lancements = Lancement.objects.filter(
+        date_lancement__range=[rapport.date_debut, rapport.date_fin]
+    ).select_related('atelier', 'collaborateur', 'affaire', 'categorie')
+    return generate_rapport_excel(lancements, rapport.date_debut, rapport.date_fin)
+
+
+@login_required
+@permission_required('rapports', 'export')
+def download_rapport_csv(request, rapport_id):
+    """
+    Télécharger un rapport spécifique en CSV
+    """
+    rapport = get_object_or_404(RapportProduction, id=rapport_id)
+    lancements = Lancement.objects.filter(
+        date_lancement__range=[rapport.date_debut, rapport.date_fin]
+    ).select_related('atelier', 'collaborateur', 'affaire', 'categorie')
+    return generate_rapport_csv(lancements, rapport.date_debut, rapport.date_fin)
+
+
+# =============================================================================
+# API ET VUES ADDITIONNELLES
+# =============================================================================
+
+@login_required
+@permission_required('rapports', 'read')
+def dashboard_data_api(request):
+    """
+    API pour récupérer les données du dashboard avec formatage français
+    """
+    periode = int(request.GET.get('periode', 30))
+    date_fin = timezone.now().date()
+    date_debut = date_fin - timedelta(days=periode)
+
+    lancements = Lancement.objects.filter(
+        date_lancement__range=[date_debut, date_fin]
+    )
+
+    lancements_aggregation = lancements.aggregate(
+        total_debitage=Sum('poids_debitage'),
+        total_assemblage=Sum('poids_assemblage')
+    )
+    poids_total = (lancements_aggregation['total_debitage'] or 0) + (lancements_aggregation['total_assemblage'] or 0)
+
+    data = {
+        'total_lancements': lancements.count(),
+        'poids_total': float(poids_total),
+        'poids_total_formatted': number_format_french(poids_total),
+        'efficacite': 85.5,
+        'delai_moyen': 5,
+    }
+
+    return JsonResponse(data)
+
+
+@login_required
+@permission_required('rapports', 'read')
+def chart_data_api(request, chart_type):
+    """
+    API pour récupérer des données spécifiques de graphiques avec formatage français
+    """
+    periode = int(request.GET.get('periode', 30))
+    date_fin = timezone.now().date()
+    date_debut = date_fin - timedelta(days=periode)
+
+    lancements = Lancement.objects.filter(
+        date_lancement__range=[date_debut, date_fin]
+    )
+
+    if chart_type == 'ateliers':
+        data = list(lancements.values('atelier__nom_atelier').annotate(
+            count=Count('id'),
+            poids_debitage=Sum('poids_debitage'),
+            poids_assemblage=Sum('poids_assemblage')
+        ).annotate(
+            poids=F('poids_debitage') + F('poids_assemblage')
+        ))
+        
+        # Ajouter le formatage français
+        for item in data:
+            item['poids_formatted'] = number_format_french(item['poids'])
+            
+    elif chart_type == 'collaborateurs':
+        data = list(lancements.values(
+            'collaborateur__nom_collaborateur',
+            'collaborateur__prenom_collaborateur'
+        ).annotate(
+            count=Count('id'),
+            poids_debitage=Sum('poids_debitage'),
+            poids_assemblage=Sum('poids_assemblage')
+        ).annotate(
+            poids=F('poids_debitage') + F('poids_assemblage')
+        )[:10])
+        
+        # Ajouter le formatage français
+        for item in data:
+            item['poids_formatted'] = number_format_french(item['poids'])
+    else:
+        data = []
+
+    return JsonResponse({'data': data})
+
+
+@login_required
+@permission_required('rapports', 'create')
+def regenerate_rapport(request, rapport_id):
+    """
+    Régénérer un rapport existant
+    """
+    rapport = get_object_or_404(RapportProduction, id=rapport_id)
+    
+    lancements = Lancement.objects.filter(
+        date_lancement__range=[rapport.date_debut, rapport.date_fin]
+    )
+    
+    rapport.nb_lancements = lancements.count()
+    
+    lancements_aggregation = lancements.aggregate(
+        total_debitage=Sum('poids_debitage'),
+        total_assemblage=Sum('poids_assemblage')
+    )
+    rapport.poids_debitage = (lancements_aggregation['total_debitage'] or 0)
+    rapport.poids_assemblage = (lancements_aggregation['total_assemblage'] or 0)
+    rapport.poids_total = rapport.poids_debitage + rapport.poids_assemblage
+    rapport.save()
+    
+    messages.success(request, 'Rapport régénéré avec succès.')
+    return redirect('reporting:rapport_detail', rapport_id=rapport.id)
+
+
+@login_required
+@permission_required('rapports', 'delete')
+@require_http_methods(["DELETE"])
+def delete_export_history(request, export_id):
+    """
+    Supprimer un historique d'export
+    """
+    return JsonResponse({
+        'success': True, 
+        'message': 'Historique supprimé (fonctionnalité à implémenter)'
+    })
+
+
+# =============================================================================
+# VUES DE REDIRECTION POUR COMPATIBILITÉ
+# =============================================================================
+
+@login_required
+@permission_required('rapports', 'export')
+def export_charts(request):
+    messages.info(request, 'Utilisez les boutons "Exporter PNG" ou "Exporter PDF" sur la page des graphiques.')
+    return redirect('reporting:graphiques')
+
+
+@login_required
+@permission_required('rapports', 'export') 
+def export_detailed_charts(request):
+    messages.info(request, 'Export détaillé des graphiques en cours de développement.')
+    return redirect('reporting:graphiques')
+
+
+@login_required
+@permission_required('rapports', 'export')
+def download_excel(request):
+    return redirect('reporting:process_export')
+
+
+@login_required
+@permission_required('rapports', 'export')
+def download_pdf(request):
+    return redirect('reporting:process_export')
+
+
+@login_required
+@permission_required('rapports', 'export')
+def download_csv(request):
+    return redirect('reporting:process_export')
+
+
+@login_required
+@permission_required('rapports', 'export')
+def download_json(request):
+    return redirect('reporting:process_export')
+
+
+@login_required
+@permission_required('rapports', 'export')
+def export_dashboard(request):
+    messages.info(request, 'Export du dashboard en cours de développement.')
+    return redirect('reporting:graphiques')
+
+
+# Fonction pour améliorer la gestion des erreurs d'export
+def handle_export_error(request, error_message, redirect_url='reporting:export'):
+    """
+    Gestion centralisée des erreurs d'export
+    """
+    messages.error(request, f'Erreur d\'export: {error_message}')
+    return redirect(redirect_url)

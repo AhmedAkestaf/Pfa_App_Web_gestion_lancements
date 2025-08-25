@@ -47,12 +47,42 @@
     border-left: 4px solid #17a2b8;
 }
 
-.total-weight {
-    background: linear-gradient(135deg, #fd7e14, #e83e8c);
-    color: white;
+/* Styles pour le filtrage des catégories */
+.categories-info {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 8px;
     padding: 1rem;
-    border-radius: 10px;
-    text-align: center;
+    margin-top: 0.5rem;
+    display: none;
+}
+
+.categories-info.show {
+    display: block;
+}
+
+.categories-info.filtered {
+    background: #f3e5f5;
+    border-color: #ce93d8;
+}
+
+.categories-info.no-filter {
+    background: #fff3e0;
+    border-color: #ffcc02;
+}
+
+.categories-info.waiting {
+    background: #fff8e1;
+    border-color: #ffb74d;
+}
+
+.loading-spinner {
+    display: none;
+    margin-left: 0.5rem;
+}
+
+.loading-spinner.show {
+    display: inline-block;
 }
 
 .sticky-actions {
@@ -66,8 +96,10 @@
     margin-top: 0.25rem;
 }
 
-.select2-container {
-    width: 100% !important;
+/* Style pour le champ catégorie désactivé */
+#id_categorie:disabled {
+    background-color: #f8f9fa;
+    opacity: 0.6;
 }
 </style>
 {% endblock %}
@@ -98,7 +130,7 @@
                                 <div class="col-md-6 required-field">
                                     <label for="id_num_lanc" class="form-label">Numéro de lancement</label>
                                     {{ form.num_lanc }}
-                                    <div class="help-text">Format suggéré: LC-YYYY-XXX</div>
+                                    <div class="help-text">{{ form.num_lanc.help_text }}</div>
                                     {% if form.num_lanc.errors %}
                                         <div class="invalid-feedback d-block">
                                             {{ form.num_lanc.errors.0 }}
@@ -108,6 +140,7 @@
                                 <div class="col-md-6 required-field">
                                     <label for="id_affaire" class="form-label">Affaire</label>
                                     {{ form.affaire }}
+                                    <div class="help-text">{{ form.affaire.help_text }}</div>
                                     {% if form.affaire.errors %}
                                         <div class="invalid-feedback d-block">
                                             {{ form.affaire.errors.0 }}
@@ -137,6 +170,7 @@
                                 <div class="col-md-6 required-field">
                                     <label for="id_date_reception" class="form-label">Date de réception</label>
                                     {{ form.date_reception }}
+                                    <div class="help-text">{{ form.date_reception.help_text }}</div>
                                     {% if form.date_reception.errors %}
                                         <div class="invalid-feedback d-block">
                                             {{ form.date_reception.errors.0 }}
@@ -146,6 +180,7 @@
                                 <div class="col-md-6 required-field">
                                     <label for="id_date_lancement" class="form-label">Date de lancement prévue</label>
                                     {{ form.date_lancement }}
+                                    <div class="help-text">{{ form.date_lancement.help_text }}</div>
                                     {% if form.date_lancement.errors %}
                                         <div class="invalid-feedback d-block">
                                             {{ form.date_lancement.errors.0 }}
@@ -169,8 +204,25 @@
                                     {% endif %}
                                 </div>
                                 <div class="col-md-4 required-field">
-                                    <label for="id_categorie" class="form-label">Catégorie</label>
-                                    {{ form.categorie }}
+                                    <label for="id_categorie" class="form-label">
+                                        Catégorie
+                                        <span class="loading-spinner" id="categories-loading">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                        </span>
+                                    </label>
+                                    <select name="categorie" class="form-select" id="id_categorie" disabled required>
+                                        <option value="">Sélectionnez d'abord une affaire</option>
+                                    </select>
+                                    <div class="help-text">{{ form.categorie.help_text }}</div>
+                                    
+                                    <!-- Information sur le filtrage -->
+                                    <div class="categories-info waiting show" id="categories-info">
+                                        <div id="categories-message">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Veuillez d'abord sélectionner une affaire</strong> pour voir les catégories disponibles
+                                        </div>
+                                    </div>
+                                    
                                     {% if form.categorie.errors %}
                                         <div class="invalid-feedback d-block">
                                             {{ form.categorie.errors.0 }}
@@ -196,18 +248,20 @@
                             <div class="weight-calculator mb-3">
                                 <h6><i class="fas fa-calculator me-2"></i>Calculateur de poids</h6>
                                 <div class="row">
-                                    <div class="col-md-5 required-field">
+                                    <div class="col-md-6 required-field">
                                         <label for="id_poids_debitage" class="form-label">Poids débitage (kg)</label>
                                         {{ form.poids_debitage }}
+                                        <div class="help-text">{{ form.poids_debitage.help_text }}</div>
                                         {% if form.poids_debitage.errors %}
                                             <div class="invalid-feedback d-block">
                                                 {{ form.poids_debitage.errors.0 }}
                                             </div>
                                         {% endif %}
                                     </div>
-                                    <div class="col-md-5 required-field">
+                                    <div class="col-md-6 required-field">
                                         <label for="id_poids_assemblage" class="form-label">Poids assemblage (kg)</label>
                                         {{ form.poids_assemblage }}
+                                        <div class="help-text">{{ form.poids_assemblage.help_text }}</div>
                                         {% if form.poids_assemblage.errors %}
                                             <div class="invalid-feedback d-block">
                                                 {{ form.poids_assemblage.errors.0 }}
@@ -293,8 +347,8 @@
                         <div class="alert alert-info">
                             <h6><i class="fas fa-lightbulb me-2"></i>Conseils</h6>
                             <ul class="mb-0 small">
-                                <li>Vérifiez que l'affaire sélectionnée est active</li>
-                                <li>Assurez-vous que l'atelier a la capacité disponible</li>
+                                <li>Sélectionnez d'abord l'affaire pour filtrer les catégories</li>
+                                <li>Vérifiez que l'atelier a la capacité disponible</li>
                                 <li>Le collaborateur doit être qualifié pour la catégorie</li>
                                 <li>Les poids doivent être en kilogrammes</li>
                             </ul>
@@ -317,9 +371,107 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-
-
-
+    // Gestion du filtrage AJAX des catégories
+    const affaireSelect = document.getElementById('id_affaire');
+    const categorieSelect = document.getElementById('id_categorie');
+    const categoriesInfo = document.getElementById('categories-info');
+    const categoriesMessage = document.getElementById('categories-message');
+    const categoriesLoading = document.getElementById('categories-loading');
+    
+    // URL pour l'appel AJAX
+    const ajaxUrl = affaireSelect.getAttribute('data-url-categories') || '/lancements/ajax/categories-by-affaire/';
+    
+    // Fonction pour filtrer les catégories selon l'affaire
+    function filterCategoriesByAffaire(affaireId) {
+        if (!affaireId) {
+            // Désactiver le champ catégorie et afficher le message d'attente
+            categorieSelect.innerHTML = '<option value="">Sélectionnez d\'abord une affaire</option>';
+            categorieSelect.disabled = true;
+            
+            categoriesInfo.className = 'categories-info waiting show';
+            categoriesMessage.innerHTML = `
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Veuillez d'abord sélectionner une affaire</strong> pour voir les catégories disponibles
+            `;
+            return;
+        }
+        
+        // Afficher le spinner de chargement
+        categoriesLoading.classList.add('show');
+        categorieSelect.disabled = true;
+        
+        // Appel AJAX
+        fetch(`${ajaxUrl}?affaire_id=${affaireId}`)
+            .then(response => response.json())
+            .then(data => {
+                // Masquer le spinner
+                categoriesLoading.classList.remove('show');
+                
+                if (data.success) {
+                    // Vider le select des catégories
+                    categorieSelect.innerHTML = '<option value="">Sélectionnez une catégorie</option>';
+                    
+                    // Ajouter les nouvelles options
+                    data.categories.forEach(categorie => {
+                        const option = document.createElement('option');
+                        option.value = categorie.id;
+                        option.textContent = categorie.nom_categorie;
+                        categorieSelect.appendChild(option);
+                    });
+                    
+                    // Activer le champ catégorie
+                    categorieSelect.disabled = false;
+                    
+                    // Afficher le message informatif
+                    categoriesInfo.classList.remove('waiting', 'filtered', 'no-filter');
+                    categoriesInfo.classList.add('show');
+                    
+                    if (data.has_filter) {
+                        categoriesInfo.classList.add('filtered');
+                        categoriesMessage.innerHTML = `
+                            <i class="fas fa-filter me-2"></i>
+                            <strong>${data.count} catégorie(s) disponible(s)</strong> pour cette affaire
+                        `;
+                    } else {
+                        categoriesInfo.classList.add('no-filter');
+                        categoriesMessage.innerHTML = `
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Aucune restriction</strong> - Toutes les catégories sont disponibles
+                        `;
+                    }
+                } else {
+                    // Erreur
+                    console.error('Erreur lors du chargement des catégories:', data.error);
+                    categorieSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+                    categorieSelect.disabled = true;
+                    
+                    categoriesInfo.className = 'categories-info show';
+                    categoriesMessage.innerHTML = `
+                        <i class="fas fa-exclamation-triangle me-2 text-danger"></i>
+                        <strong>Erreur:</strong> ${data.error}
+                    `;
+                }
+            })
+            .catch(error => {
+                // Erreur réseau
+                console.error('Erreur réseau:', error);
+                categoriesLoading.classList.remove('show');
+                categorieSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+                categorieSelect.disabled = true;
+                
+                categoriesInfo.className = 'categories-info show';
+                categoriesMessage.innerHTML = `
+                    <i class="fas fa-exclamation-triangle me-2 text-danger"></i>
+                    <strong>Erreur réseau</strong> - Impossible de charger les catégories
+                `;
+            });
+    }
+    
+    // Écouteur d'événement pour le changement d'affaire
+    affaireSelect.addEventListener('change', function() {
+        const affaireId = this.value;
+        filterCategoriesByAffaire(affaireId);
+    });
 
     // Génération automatique du numéro de lancement
     function generateLancementNumber() {
@@ -357,19 +509,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('id_date_reception').addEventListener('change', validateDates);
     document.getElementById('id_date_lancement').addEventListener('change', validateDates);
-
-    // Filtrage des collaborateurs selon l'atelier sélectionné
-    document.getElementById('id_atelier').addEventListener('change', function() {
-        const atelierId = this.value;
-        const collaborateurSelect = document.getElementById('id_collaborateur');
-        
-        if (atelierId) {
-            // Ici, vous pourriez faire un appel AJAX pour filtrer les collaborateurs
-            // selon l'atelier sélectionné (optionnel)
-        }
-    });
-
-
 });
 
 // Fonction pour réinitialiser le formulaire
@@ -377,6 +516,19 @@ function resetForm() {
     if (confirm('Êtes-vous sûr de vouloir réinitialiser le formulaire ?')) {
         document.getElementById('lancementForm').reset();
         
+        // Réinitialiser le champ catégorie
+        const categorieSelect = document.getElementById('id_categorie');
+        categorieSelect.innerHTML = '<option value="">Sélectionnez d\'abord une affaire</option>';
+        categorieSelect.disabled = true;
+        
+        // Réinitialiser l'info des catégories
+        const categoriesInfo = document.getElementById('categories-info');
+        const categoriesMessage = document.getElementById('categories-message');
+        categoriesInfo.className = 'categories-info waiting show';
+        categoriesMessage.innerHTML = `
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Veuillez d'abord sélectionner une affaire</strong> pour voir les catégories disponibles
+        `;
     }
 }
 

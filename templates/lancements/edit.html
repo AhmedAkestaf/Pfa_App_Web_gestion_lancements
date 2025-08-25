@@ -48,12 +48,37 @@
     border-left: 4px solid #17a2b8;
 }
 
-.total-weight {
-    background: linear-gradient(135deg, #fd7e14, #e83e8c);
-    color: white;
+/* NOUVEAU: Styles pour le filtrage des catégories */
+.categories-info {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 8px;
     padding: 1rem;
-    border-radius: 10px;
-    text-align: center;
+    margin-top: 0.5rem;
+    display: none;
+}
+
+.categories-info.show {
+    display: block;
+}
+
+.categories-info.filtered {
+    background: #f3e5f5;
+    border-color: #ce93d8;
+}
+
+.categories-info.no-filter {
+    background: #fff3e0;
+    border-color: #ffcc02;
+}
+
+.loading-spinner {
+    display: none;
+    margin-left: 0.5rem;
+}
+
+.loading-spinner.show {
+    display: inline-block;
 }
 
 .sticky-actions {
@@ -65,13 +90,6 @@
     font-size: 0.875rem;
     color: #6c757d;
     margin-top: 0.25rem;
-}
-
-.readonly-info {
-    background: #e9ecef;
-    padding: 0.5rem;
-    border-radius: 5px;
-    border-left: 4px solid #6c757d;
 }
 
 .change-indicator {
@@ -114,7 +132,6 @@
                             <h5><i class="fas fa-info-circle me-2"></i>Informations de base</h5>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <!-- MODIFICATION : Utiliser le champ du formulaire -->
                                     <label for="id_num_lanc" class="form-label">{{ form.num_lanc.label }}</label>
                                     {{ form.num_lanc }}
                                     {% if form.num_lanc.help_text %}
@@ -129,6 +146,7 @@
                                 <div class="col-md-6 required-field">
                                     <label for="id_affaire" class="form-label">Affaire</label>
                                     {{ form.affaire }}
+                                    <div class="help-text">{{ form.affaire.help_text }}</div>
                                     {% if form.affaire.errors %}
                                         <div class="invalid-feedback d-block">
                                             {{ form.affaire.errors.0 }}
@@ -136,6 +154,7 @@
                                     {% endif %}
                                 </div>
                             </div>
+                            
                             <div class="row mt-3">
                                 <div class="col-md-12 required-field">
                                     <label for="id_sous_livrable" class="form-label">Description du sous-livrable</label>
@@ -157,6 +176,7 @@
                                 <div class="col-md-6 required-field">
                                     <label for="id_date_reception" class="form-label">Date de réception</label>
                                     {{ form.date_reception }}
+                                    <div class="help-text">{{ form.date_reception.help_text }}</div>
                                     {% if form.date_reception.errors %}
                                         <div class="invalid-feedback d-block">
                                             {{ form.date_reception.errors.0 }}
@@ -164,8 +184,9 @@
                                     {% endif %}
                                 </div>
                                 <div class="col-md-6 required-field">
-                                    <label for="id_date_lancement" class="form-label">Date de lancement</label>
+                                    <label for="id_date_lancement" class="form-label">Date de lancement prévue</label>
                                     {{ form.date_lancement }}
+                                    <div class="help-text">{{ form.date_lancement.help_text }}</div>
                                     {% if form.date_lancement.errors %}
                                         <div class="invalid-feedback d-block">
                                             {{ form.date_lancement.errors.0 }}
@@ -189,8 +210,20 @@
                                     {% endif %}
                                 </div>
                                 <div class="col-md-4 required-field">
-                                    <label for="id_categorie" class="form-label">Catégorie</label>
+                                    <label for="id_categorie" class="form-label">
+                                        Catégorie
+                                        <span class="loading-spinner" id="categories-loading">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                        </span>
+                                    </label>
                                     {{ form.categorie }}
+                                    <div class="help-text">{{ form.categorie.help_text }}</div>
+                                    
+                                    <!-- NOUVEAU: Information sur le filtrage -->
+                                    <div class="categories-info" id="categories-info">
+                                        <div id="categories-message"></div>
+                                    </div>
+                                    
                                     {% if form.categorie.errors %}
                                         <div class="invalid-feedback d-block">
                                             {{ form.categorie.errors.0 }}
@@ -216,18 +249,20 @@
                             <div class="weight-calculator mb-3">
                                 <h6><i class="fas fa-calculator me-2"></i>Calculateur de poids</h6>
                                 <div class="row">
-                                    <div class="col-md-5 required-field">
+                                    <div class="col-md-6 required-field">
                                         <label for="id_poids_debitage" class="form-label">Poids débitage (kg)</label>
                                         {{ form.poids_debitage }}
+                                        <div class="help-text">{{ form.poids_debitage.help_text }}</div>
                                         {% if form.poids_debitage.errors %}
                                             <div class="invalid-feedback d-block">
                                                 {{ form.poids_debitage.errors.0 }}
                                             </div>
                                         {% endif %}
                                     </div>
-                                    <div class="col-md-5 required-field">
+                                    <div class="col-md-6 required-field">
                                         <label for="id_poids_assemblage" class="form-label">Poids assemblage (kg)</label>
                                         {{ form.poids_assemblage }}
+                                        <div class="help-text">{{ form.poids_assemblage.help_text }}</div>
                                         {% if form.poids_assemblage.errors %}
                                             <div class="invalid-feedback d-block">
                                                 {{ form.poids_assemblage.errors.0 }}
@@ -238,28 +273,9 @@
                             </div>
                         </div>
 
-                        <!-- Section 5: Statut -->
+                        <!-- Section 5: Observations -->
                         <div class="form-section">
-                            <h5><i class="fas fa-flag me-2"></i>Statut</h5>
-                            <div class="row">
-                                <div class="col-md-6 required-field">
-                                    <label for="id_statut" class="form-label">Statut du lancement</label>
-                                    {{ form.statut }}
-                                    {% if form.statut.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.statut.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                    <div class="change-indicator" id="statut-change" style="display: none;">
-                                        <small><i class="fas fa-info-circle me-1"></i>Le statut a été modifié</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Section 6: Observations -->
-                        <div class="form-section">
-                            <h5><i class="fas fa-sticky-note me-2"></i>Observations</h5>
+                            <h5><i class="fas fa-sticky-note me-2"></i>Observations (optionnel)</h5>
                             <div class="row">
                                 <div class="col-md-12">
                                     <label for="id_observations" class="form-label">Observations et remarques</label>
@@ -270,6 +286,25 @@
                                             {{ form.observations.errors.0 }}
                                         </div>
                                     {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 6: Statut -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-flag me-2"></i>Statut Initial</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="id_statut" class="form-label">Statut</label>
+                                    {{ form.statut }}
+                                    {% if form.statut.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.statut.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="change-indicator" id="statut-change" style="display: none;">
+                                        <small><i class="fas fa-info-circle me-1"></i>Le statut a été modifié</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -339,19 +374,20 @@
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div class="alert alert-warning">
-                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Important</h6>
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-lightbulb me-2"></i>Conseils</h6>
                             <ul class="mb-0 small">
-                                <li>Le numéro de lancement ne peut pas être modifié</li>
-                                <li>Vérifiez la cohérence des dates</li>
-                                <li>Un changement de statut peut affecter le planning</li>
+                                <li>Sélectionnez d'abord l'affaire pour filtrer les catégories</li>
+                                <li>Vérifiez que l'atelier a la capacité disponible</li>
+                                <li>Le collaborateur doit être qualifié pour la catégorie</li>
+                                <li>Les poids doivent être en kilogrammes</li>
                             </ul>
                         </div>
                         
-                        <div class="alert alert-info">
-                            <h6><i class="fas fa-lightbulb me-2"></i>Conseil</h6>
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Attention</h6>
                             <p class="mb-0 small">
-                                Si vous changez l'atelier, vérifiez que le collaborateur est disponible dans ce nouvel atelier.
+                                Le numéro de lancement ne peut pas être modifié après création.
                             </p>
                         </div>
                     </div>
@@ -379,7 +415,107 @@ const originalValues = {
 };
 
 document.addEventListener('DOMContentLoaded', function() {
- 
+    // NOUVEAU: Gestion du filtrage AJAX des catégories
+    const affaireSelect = document.getElementById('id_affaire');
+    const categorieSelect = document.getElementById('id_categorie');
+    const categoriesInfo = document.getElementById('categories-info');
+    const categoriesMessage = document.getElementById('categories-message');
+    const categoriesLoading = document.getElementById('categories-loading');
+    
+    // URL pour l'appel AJAX (récupérée depuis l'attribut data)
+    const ajaxUrl = affaireSelect.getAttribute('data-url-categories') || '/lancements/ajax/categories-by-affaire/';
+    
+    // Fonction pour filtrer les catégories selon l'affaire
+    function filterCategoriesByAffaire(affaireId) {
+        if (!affaireId) {
+            // Réinitialiser les catégories
+            categorieSelect.innerHTML = '<option value="">Sélectionnez d\'abord une affaire</option>';
+            categoriesInfo.classList.remove('show');
+            return;
+        }
+        
+        // Afficher le spinner de chargement
+        categoriesLoading.classList.add('show');
+        categorieSelect.disabled = true;
+        
+        // Appel AJAX
+        fetch(`${ajaxUrl}?affaire_id=${affaireId}`)
+            .then(response => response.json())
+            .then(data => {
+                // Masquer le spinner
+                categoriesLoading.classList.remove('show');
+                categorieSelect.disabled = false;
+                
+                if (data.success) {
+                    // Vider le select des catégories
+                    categorieSelect.innerHTML = '<option value="">Sélectionnez une catégorie</option>';
+                    
+                    // Ajouter les nouvelles options
+                    data.categories.forEach(categorie => {
+                        const option = document.createElement('option');
+                        option.value = categorie.id;
+                        option.textContent = categorie.nom_categorie;
+                        // Sélectionner la catégorie actuelle si elle existe
+                        if (categorie.id == originalValues.categorie) {
+                            option.selected = true;
+                        }
+                        categorieSelect.appendChild(option);
+                    });
+                    
+                    // Afficher le message informatif
+                    categoriesInfo.classList.remove('filtered', 'no-filter');
+                    categoriesInfo.classList.add('show');
+                    
+                    if (data.has_filter) {
+                        categoriesInfo.classList.add('filtered');
+                        categoriesMessage.innerHTML = `
+                            <i class="fas fa-filter me-2"></i>
+                            <strong>${data.count} catégorie(s) disponible(s)</strong> pour cette affaire
+                        `;
+                    } else {
+                        categoriesInfo.classList.add('no-filter');
+                        categoriesMessage.innerHTML = `
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Aucune restriction</strong> - Toutes les catégories sont disponibles
+                        `;
+                    }
+                } else {
+                    // Erreur
+                    console.error('Erreur lors du chargement des catégories:', data.error);
+                    categorieSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+                    
+                    categoriesInfo.classList.add('show');
+                    categoriesMessage.innerHTML = `
+                        <i class="fas fa-exclamation-triangle me-2 text-danger"></i>
+                        <strong>Erreur:</strong> ${data.error}
+                    `;
+                }
+            })
+            .catch(error => {
+                // Erreur réseau
+                console.error('Erreur réseau:', error);
+                categoriesLoading.classList.remove('show');
+                categorieSelect.disabled = false;
+                categorieSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+                
+                categoriesInfo.classList.add('show');
+                categoriesMessage.innerHTML = `
+                    <i class="fas fa-exclamation-triangle me-2 text-danger"></i>
+                    <strong>Erreur réseau</strong> - Impossible de charger les catégories
+                `;
+            });
+    }
+    
+    // Écouteur d'événement pour le changement d'affaire
+    affaireSelect.addEventListener('change', function() {
+        const affaireId = this.value;
+        filterCategoriesByAffaire(affaireId);
+    });
+
+    // Charger les catégories au chargement de la page pour l'affaire actuelle
+    if (affaireSelect.value) {
+        filterCategoriesByAffaire(affaireSelect.value);
+    }
 
     // Détection des changements de statut
     const statutField = document.getElementById('id_statut');
@@ -407,9 +543,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('id_date_reception').addEventListener('change', validateDates);
     document.getElementById('id_date_lancement').addEventListener('change', validateDates);
-
-   
-    
 
     // Détection des changements dans le formulaire
     let formChanged = false;
@@ -441,8 +574,6 @@ function resetForm() {
         // Restaurer les valeurs originales
         document.getElementById('id_affaire').value = originalValues.affaire;
         document.getElementById('id_atelier').value = originalValues.atelier;
-        document.getElementById('id_categorie').value = originalValues.categorie;
-        document.getElementById('id_collaborateur').value = originalValues.collaborateur;
         document.getElementById('id_statut').value = originalValues.statut;
         document.getElementById('id_date_reception').value = originalValues.date_reception;
         document.getElementById('id_date_lancement').value = originalValues.date_lancement;
@@ -450,9 +581,8 @@ function resetForm() {
         document.getElementById('id_poids_assemblage').value = originalValues.poids_assemblage;
         document.getElementById('id_observations').value = originalValues.observations;
         
-        // Recalculer le poids total
-        const event = new Event('input');
-        document.getElementById('id_poids_debitage').dispatchEvent(event);
+        // Recharger les catégories pour l'affaire actuelle
+        filterCategoriesByAffaire(originalValues.affaire);
         
         // Masquer l'indicateur de changement de statut
         document.getElementById('statut-change').style.display = 'none';

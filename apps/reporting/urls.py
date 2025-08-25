@@ -24,6 +24,8 @@ urlpatterns = [
     # APIs pour les données
     path('api/dashboard-data/', views.dashboard_data_api, name='dashboard_data_api'),
     path('api/chart-data/<str:chart_type>/', views.chart_data_api, name='chart_data_api'),
+
+    
     
     # Actions sur les rapports
     path('rapport/<int:rapport_id>/delete/', views.delete_rapport, name='delete_rapport'),

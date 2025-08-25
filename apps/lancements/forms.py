@@ -1,20 +1,120 @@
-# apps/lancements/forms.py - COMPLET avec suppression de la vérification atelier-catégorie
+# apps/lancements/forms.py - COMPLET avec formatage français des poids
 
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from .models import Lancement
 from apps.ateliers.models import Atelier, Categorie
 from apps.core.models import Affaire
 from apps.collaborateurs.models import Collaborateur
+from apps.associations.models import AffaireCategorie
+
+class FrenchDecimalWidget(forms.NumberInput):
+    """
+    Widget personnalisé pour les poids avec format français
+    """
+    def __init__(self, attrs=None):
+        default_attrs = {
+            'class': 'form-control',
+            'step': '0.001',
+            'min': '0',
+            'placeholder': '0,000',
+            'pattern': r'^\d{1,3}(?:\s\d{3})*(?:,\d{3})?$'
+        }
+        if attrs:
+            default_attrs.update(attrs)
+        super().__init__(attrs=default_attrs)
+
+    def format_value(self, value):
+        """
+        Formate la valeur pour l'affichage dans le champ
+        """
+        if value is None or value == '':
+            return ''
+        
+        try:
+            decimal_value = Decimal(str(value))
+            if decimal_value == 0:
+                return '0,000'
+            
+            # Format avec 3 décimales
+            formatted = f"{decimal_value:.3f}"
+            
+            # Remplacer le point par une virgule
+            formatted = formatted.replace('.', ',')
+            
+            # Ajouter les espaces pour les milliers
+            if ',' in formatted:
+                integer_part, decimal_part = formatted.split(',')
+            else:
+                integer_part = formatted
+                decimal_part = "000"
+            
+            # Formater la partie entière avec espaces
+            integer_formatted = ""
+            for i, digit in enumerate(reversed(integer_part)):
+                if i > 0 and i % 3 == 0:
+                    integer_formatted = " " + integer_formatted
+                integer_formatted = digit + integer_formatted
+            
+            return f"{integer_formatted},{decimal_part}"
+            
+        except (InvalidOperation, ValueError, TypeError):
+            return '0,000'
+
+class FrenchDecimalField(forms.DecimalField):
+    """
+    Champ décimal personnalisé pour gérer le format français
+    """
+    widget = FrenchDecimalWidget
+
+    def to_python(self, value):
+        """
+        Convertit la valeur du format français vers un Decimal Python
+        """
+        if value in self.empty_values:
+            return None
+
+        if isinstance(value, str):
+            # Nettoyer la valeur : supprimer espaces et remplacer virgule par point
+            cleaned_value = value.replace(' ', '').replace(',', '.')
+            try:
+                return Decimal(cleaned_value)
+            except InvalidOperation:
+                raise ValidationError(
+                    'Format invalide. Utilisez le format : 1 234,567',
+                    code='invalid'
+                )
+        
+        return super().to_python(value)
 
 
 class LancementForm(forms.ModelForm):
     """
-    Formulaire pour créer et modifier un lancement avec gestion d'erreurs détaillée
-    MODIFICATION: Suppression de la vérification atelier-catégorie
+    Formulaire pour créer et modifier un lancement avec formatage français des poids
     """
+    
+    # Redéfinir les champs de poids avec le format français
+    poids_debitage = FrenchDecimalField(
+        max_digits=12,
+        decimal_places=3,
+        required=False,
+        help_text='Poids en kilogrammes (3 chiffres après la virgule)',
+        widget=FrenchDecimalWidget(attrs={
+            'placeholder': '0,000'
+        })
+    )
+    
+    poids_assemblage = FrenchDecimalField(
+        max_digits=12,
+        decimal_places=3,
+        required=False,
+        help_text='Poids en kilogrammes (3 chiffres après la virgule)',
+        widget=FrenchDecimalWidget(attrs={
+            'placeholder': '0,000'
+        })
+    )
     
     class Meta:
         model = Lancement
@@ -32,7 +132,9 @@ class LancementForm(forms.ModelForm):
             }),
             'affaire': forms.Select(attrs={
                 'class': 'form-select',
-                'required': True
+                'required': True,
+                'id': 'id_affaire',
+                'data-url-categories': '/lancements/ajax/categories-by-affaire/'
             }),
             'sous_livrable': forms.Textarea(attrs={
                 'class': 'form-control',
@@ -55,23 +157,12 @@ class LancementForm(forms.ModelForm):
             }),
             'categorie': forms.Select(attrs={
                 'class': 'form-select',
-                'required': True
+                'required': True,
+                'id': 'id_categorie'
             }),
             'collaborateur': forms.Select(attrs={
                 'class': 'form-select',
                 'required': True
-            }),
-            'poids_debitage': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'step': '0.01',
-                'min': '0',
-                'placeholder': '0.00'
-            }),
-            'poids_assemblage': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'step': '0.01',
-                'min': '0',
-                'placeholder': '0.00'
             }),
             'observations': forms.Textarea(attrs={
                 'class': 'form-control',
@@ -100,82 +191,93 @@ class LancementForm(forms.ModelForm):
         
         help_texts = {
             'num_lanc': 'Format recommandé: LC-YYYY-XXX (ex: LC-2024-001)',
+            'affaire': 'Sélectionnez d\'abord l\'affaire pour filtrer les catégories disponibles',
+            'categorie': 'Les catégories affichées dépendent de l\'affaire sélectionnée',
             'date_reception': 'Date à laquelle la demande a été reçue',
             'date_lancement': 'Date prévue pour le début de la production',
-            'poids_debitage': 'Poids en kilogrammes pour la phase de débitage',
-            'poids_assemblage': 'Poids en kilogrammes pour la phase d\'assemblage',
+            'poids_debitage': 'Format : 1 234,567 kg (3 chiffres après la virgule)',
+            'poids_assemblage': 'Format : 1 234,567 kg (3 chiffres après la virgule)',
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # CORRECTION PRINCIPALE : Si on est en mode modification (instance existe)
+        # Configuration pour la modification
         if self.instance.pk:
-            # Rendre le champ num_lanc non requis et en lecture seule
             self.fields['num_lanc'].required = False
             self.fields['num_lanc'].widget.attrs.update({
                 'readonly': True,
                 'class': 'form-control',
                 'style': 'background-color: #e9ecef;'
             })
-            # Ajouter un message d'aide spécifique pour la modification
             self.fields['num_lanc'].help_text = 'Le numéro de lancement ne peut pas être modifié'
         
-        # Filtrer les affaires actives pour les nouveaux lancements
+        # Filtrer les affaires actives
         if not self.instance.pk:
             self.fields['affaire'].queryset = Affaire.objects.filter(
                 statut__in=['en_cours', 'planifie']
             ).order_by('code_affaire')
         else:
-            # Pour la modification, inclure l'affaire actuelle même si elle n'est plus active
             self.fields['affaire'].queryset = Affaire.objects.all().order_by('code_affaire')
         
-        # Filtrer les ateliers actifs
+        # Filtrer les ateliers
         self.fields['atelier'].queryset = Atelier.objects.all().order_by('nom_atelier')
         
-        # Filtrer les catégories
-        self.fields['categorie'].queryset = Categorie.objects.all().order_by('nom_categorie')
+        # Configuration initiale des catégories
+        if self.instance.pk and self.instance.affaire_id:
+            # Mode modification : filtrer selon l'affaire existante
+            self._setup_categories_for_affaire(self.instance.affaire_id)
+        else:
+            # Mode création : toutes les catégories au début
+            self.fields['categorie'].queryset = Categorie.objects.all().order_by('nom_categorie')
         
         # Filtrer les collaborateurs actifs
         self.fields['collaborateur'].queryset = Collaborateur.objects.filter(
             is_active=True
         ).order_by('nom_collaborateur', 'prenom_collaborateur')
         
-        # Ajouter des placeholders vides pour les selects
+        # Placeholders pour les selects
         self.fields['affaire'].empty_label = "Sélectionnez une affaire"
         self.fields['atelier'].empty_label = "Sélectionnez un atelier"
-        self.fields['categorie'].empty_label = "Sélectionnez une catégorie"
+        self.fields['categorie'].empty_label = "Sélectionnez d'abord une affaire"
         self.fields['collaborateur'].empty_label = "Sélectionnez un collaborateur"
 
-    def add_error_with_context(self, field, message, context=""):
+    def _setup_categories_for_affaire(self, affaire_id):
         """
-        Ajoute une erreur avec contexte pour identifier la source du problème
+        Configure les catégories disponibles selon l'affaire sélectionnée
         """
-        if context:
-            full_message = f"[{context}] {message}"
-        else:
-            full_message = message
-        
-        if field:
-            self.add_error(field, full_message)
-        else:
-            self.add_error(None, full_message)
+        try:
+            # Récupérer les catégories associées à cette affaire
+            categories_ids = AffaireCategorie.objects.filter(
+                affaire_id=affaire_id
+            ).values_list('categorie_id', flat=True)
+            
+            if categories_ids:
+                # Filtrer les catégories
+                self.fields['categorie'].queryset = Categorie.objects.filter(
+                    id__in=categories_ids
+                ).order_by('nom_categorie')
+                self.fields['categorie'].empty_label = "Sélectionnez une catégorie"
+            else:
+                # Aucune catégorie associée : afficher toutes les catégories
+                self.fields['categorie'].queryset = Categorie.objects.all().order_by('nom_categorie')
+                self.fields['categorie'].empty_label = "Sélectionnez une catégorie (aucune restriction)"
+                
+        except Exception as e:
+            # En cas d'erreur, afficher toutes les catégories
+            self.fields['categorie'].queryset = Categorie.objects.all().order_by('nom_categorie')
+            self.fields['categorie'].empty_label = "Sélectionnez une catégorie"
 
     def clean_num_lanc(self):
-        """
-        Validation spéciale pour le numéro de lancement
-        """
+        """Validation spéciale pour le numéro de lancement"""
         num_lanc = self.cleaned_data.get('num_lanc')
         
-        # Si on est en mode modification et que le numéro n'a pas changé, c'est OK
         if self.instance.pk and self.instance.num_lanc == num_lanc:
             return num_lanc
         
-        # Si on est en mode création et que le numéro est vide, on génère automatiquement
         if not self.instance.pk and not num_lanc:
             return self.generate_lancement_number()
         
-        # Vérifier l'unicité du numéro
         if num_lanc:
             existing = Lancement.objects.filter(num_lanc=num_lanc)
             if self.instance.pk:
@@ -187,9 +289,7 @@ class LancementForm(forms.ModelForm):
         return num_lanc
 
     def clean_date_lancement(self):
-        """
-        Validation de la date de lancement
-        """
+        """Validation de la date de lancement"""
         try:
             date_lancement = self.cleaned_data.get('date_lancement')
             date_reception = self.cleaned_data.get('date_reception')
@@ -197,7 +297,6 @@ class LancementForm(forms.ModelForm):
             if not date_lancement:
                 raise ValidationError("La date de lancement est obligatoire.")
             
-            # La date de lancement ne peut pas être antérieure à la date de réception
             if date_reception and date_lancement < date_reception:
                 raise ValidationError(
                     "La date de lancement ne peut pas être antérieure à la date de réception."
@@ -209,16 +308,13 @@ class LancementForm(forms.ModelForm):
             raise ValidationError(f"[DATES] Erreur dans la validation de la date de lancement: {str(e)}")
 
     def clean_date_reception(self):
-        """
-        Validation de la date de réception
-        """
+        """Validation de la date de réception"""
         try:
             date_reception = self.cleaned_data.get('date_reception')
             
             if not date_reception:
                 raise ValidationError("La date de réception est obligatoire.")
             
-            # La date de réception ne peut pas être dans le futur (avec une marge d'un jour)
             tomorrow = timezone.now().date() + timezone.timedelta(days=1)
             if date_reception > tomorrow:
                 raise ValidationError(
@@ -231,64 +327,59 @@ class LancementForm(forms.ModelForm):
             raise ValidationError(f"[DATES] Erreur dans la validation de la date de réception: {str(e)}")
 
     def clean_poids_debitage(self):
-        """
-        Validation du poids de débitage
-        """
+        """Validation du poids de débitage avec format français"""
         try:
             poids_debitage = self.cleaned_data.get('poids_debitage')
             
             if poids_debitage is not None:
-                # Conversion en Decimal pour éviter les erreurs de type
-                poids_debitage = Decimal(str(poids_debitage))
-                
                 if poids_debitage < 0:
                     raise ValidationError("Le poids de débitage ne peut pas être négatif.")
                 
-                if poids_debitage > Decimal('100000000000'):
-                    raise ValidationError("Le poids de débitage semble anormalement élevé (> 100000000 tonnes).")
+                if poids_debitage > Decimal('999999999.999'):
+                    raise ValidationError("Le poids de débitage semble anormalement élevé.")
+                    
+                # Vérifier que les décimales n'excèdent pas 3 chiffres
+                if poids_debitage.as_tuple().exponent < -3:
+                    raise ValidationError("Maximum 3 chiffres après la virgule.")
 
             return poids_debitage
             
         except (ValueError, TypeError) as e:
-            raise ValidationError(f"[POIDS] Format de poids de débitage invalide: {str(e)}")
+            raise ValidationError(f"Format de poids de débitage invalide. Utilisez le format : 1 234,567")
         except Exception as e:
-            raise ValidationError(f"[POIDS] Erreur dans la validation du poids de débitage: {str(e)}")
+            raise ValidationError(f"Erreur dans la validation du poids de débitage: {str(e)}")
 
     def clean_poids_assemblage(self):
-        """
-        Validation du poids d'assemblage
-        """
+        """Validation du poids d'assemblage avec format français"""
         try:
             poids_assemblage = self.cleaned_data.get('poids_assemblage')
             
             if poids_assemblage is not None:
-                # Conversion en Decimal pour éviter les erreurs de type
-                poids_assemblage = Decimal(str(poids_assemblage))
-                
                 if poids_assemblage < 0:
                     raise ValidationError("Le poids d'assemblage ne peut pas être négatif.")
                 
-                if poids_assemblage > Decimal('100000000000'):
-                    raise ValidationError("Le poids d'assemblage semble anormalement élevé (> 100000000 tonnes).")
+                if poids_assemblage > Decimal('999999999.999'):
+                    raise ValidationError("Le poids d'assemblage semble anormalement élevé.")
+                    
+                # Vérifier que les décimales n'excèdent pas 3 chiffres
+                if poids_assemblage.as_tuple().exponent < -3:
+                    raise ValidationError("Maximum 3 chiffres après la virgule.")
             
             return poids_assemblage
             
         except (ValueError, TypeError) as e:
-            raise ValidationError(f"[POIDS] Format de poids d'assemblage invalide: {str(e)}")
+            raise ValidationError(f"Format de poids d'assemblage invalide. Utilisez le format : 1 234,567")
         except Exception as e:
-            raise ValidationError(f"[POIDS] Erreur dans la validation du poids d'assemblage: {str(e)}")
+            raise ValidationError(f"Erreur dans la validation du poids d'assemblage: {str(e)}")
 
     def clean(self):
-        """
-        Validation globale du formulaire - MODIFICATION: Suppression vérification atelier-catégorie
-        """
+        """Validation globale du formulaire"""
         cleaned_data = super().clean()
         
         try:
             poids_debitage = cleaned_data.get('poids_debitage', Decimal('0'))
             poids_assemblage = cleaned_data.get('poids_assemblage', Decimal('0'))
             
-            # Conversion en Decimal pour éviter les erreurs de type
             if poids_debitage is not None:
                 poids_debitage = Decimal(str(poids_debitage))
             else:
@@ -299,43 +390,48 @@ class LancementForm(forms.ModelForm):
             else:
                 poids_assemblage = Decimal('0')
             
-            # SUPPRIMÉ: La vérification atelier-catégorie
-            # Cette logique sera gérée automatiquement lors de la sauvegarde
-            
             # Vérifier que les poids ne sont pas tous les deux à zéro
             if poids_debitage == Decimal('0') and poids_assemblage == Decimal('0'):
-                self.add_error_with_context(
+                self.add_error(
                     'poids_debitage',
-                    "Au moins un des poids (débitage ou assemblage) doit être supérieur à zéro.",
-                    "POIDS-VALIDATION"
+                    "Au moins un des poids (débitage ou assemblage) doit être supérieur à zéro."
                 )
             
-            # Vérifier la cohérence des poids (assemblage généralement <= débitage)
-            if poids_debitage > Decimal('0') and poids_assemblage > poids_debitage * Decimal('1.5'):
-                self.add_error_with_context(
-                    None,
-                    "Attention: Le poids d'assemblage semble très élevé par rapport "
-                    "au poids de débitage. Veuillez vérifier.",
-                    "POIDS-COHERENCE"
-                )
+            # Vérification de cohérence affaire-catégorie
+            affaire = cleaned_data.get('affaire')
+            categorie = cleaned_data.get('categorie')
+            
+            if affaire and categorie:
+                # Vérifier si cette catégorie est associée à l'affaire
+                association_exists = AffaireCategorie.objects.filter(
+                    affaire=affaire,
+                    categorie=categorie
+                ).exists()
+                
+                # Si aucune association existe pour cette affaire, c'est OK (pas de restriction)
+                affaire_has_categories = AffaireCategorie.objects.filter(affaire=affaire).exists()
+                
+                if affaire_has_categories and not association_exists:
+                    self.add_error(
+                        'categorie',
+                        f"La catégorie '{categorie.nom_categorie}' n'est pas associée à l'affaire '{affaire.code_affaire}'. "
+                        "Veuillez sélectionner une catégorie associée à cette affaire."
+                    )
             
         except Exception as e:
-            self.add_error_with_context(
+            self.add_error(
                 None,
-                f"Erreur générale lors de la validation: {str(e)}",
-                "VALIDATION-GENERALE"
+                f"Erreur générale lors de la validation: {str(e)}"
             )
         
         return cleaned_data
 
     def save(self, commit=True):
-        """
-        Sauvegarde personnalisée du lancement
-        """
+        """Sauvegarde personnalisée du lancement"""
         try:
             lancement = super().save(commit=False)
             
-            # Générer un numéro automatique si pas fourni (pour création uniquement)
+            # Générer un numéro automatique si nécessaire
             if not lancement.pk and not lancement.num_lanc:
                 lancement.num_lanc = self.generate_lancement_number()
             
@@ -348,25 +444,20 @@ class LancementForm(forms.ModelForm):
             raise ValidationError(f"[SAUVEGARDE] Erreur lors de la sauvegarde: {str(e)}")
 
     def generate_lancement_number(self):
-        """
-        Génère automatiquement un numéro de lancement unique
-        """
+        """Génère automatiquement un numéro de lancement unique"""
         try:
             from datetime import datetime
             
             year = datetime.now().year
             month = datetime.now().month
             
-            # Compter le nombre de lancements ce mois-ci
             count = Lancement.objects.filter(
                 created_at__year=year,
                 created_at__month=month
             ).count() + 1
             
-            # Générer le numéro avec un format: LC-YYYYMM-XXX
             base_number = f"LC-{year}{month:02d}-{count:03d}"
             
-            # Vérifier l'unicité et incrémenter si nécessaire
             counter = 0
             while Lancement.objects.filter(num_lanc=base_number).exists():
                 counter += 1
@@ -375,7 +466,6 @@ class LancementForm(forms.ModelForm):
             return base_number
             
         except Exception as e:
-            # En cas d'erreur, générer un numéro basique
             import uuid
             return f"LC-{uuid.uuid4().hex[:8].upper()}"
 

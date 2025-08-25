@@ -4,6 +4,8 @@ from django.core.exceptions import ValidationError
 from .models import Role, Permission
 from .models import Affaire
 from apps.collaborateurs.models import Collaborateur
+from apps.ateliers.models import  Categorie
+from apps.associations.models import AffaireCategorie
 
 class RoleForm(forms.ModelForm):
     """Formulaire pour créer/modifier un rôle"""
@@ -247,18 +249,29 @@ class PermissionForm(forms.ModelForm):
         return cleaned_data
 
 class AffaireForm(forms.ModelForm):
-    """Formulaire pour créer/modifier une affaire"""
+    """Formulaire pour créer/modifier une affaire avec sélection de catégories"""
+    
+    # Nouveau champ pour les catégories (multi-sélection)
+    categories = forms.ModelMultipleChoiceField(
+        queryset=Categorie.objects.all().order_by('nom_categorie'),
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'form-check-input'
+        }),
+        required=False,
+        label='Catégories associées',
+        help_text='Sélectionnez une ou plusieurs catégories liées à cette affaire'
+    )
     
     class Meta:
         model = Affaire
         fields = ['code_affaire', 'client', 'livrable', 'responsable_affaire', 
-                 'date_debut', 'date_fin_prevue', 'statut']
+                 'date_debut', 'date_fin_prevue', 'statut', 'categories']  # Ajout categories
         widgets = {
             'code_affaire': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Ex: AFF-2024-001',
                 'maxlength': 50,
-                'required': True  # Seul champ obligatoire
+                'required': True
             }),
             'client': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -313,7 +326,14 @@ class AffaireForm(forms.ModelForm):
         self.fields['responsable_affaire'].required = False
         self.fields['date_debut'].required = False
         self.fields['date_fin_prevue'].required = False
-        self.fields['statut'].required = False  # A une valeur par défaut
+        self.fields['statut'].required = False
+        
+        # Si on modifie une affaire existante, pré-sélectionner ses catégories
+        if self.instance.pk:
+            categories_ids = AffaireCategorie.objects.filter(
+                affaire=self.instance
+            ).values_list('categorie_id', flat=True)
+            self.fields['categories'].initial = categories_ids
     
     def clean_code_affaire(self):
         """Validation du code affaire (SANS vérification d'unicité)"""
@@ -322,11 +342,10 @@ class AffaireForm(forms.ModelForm):
         if not code_affaire:
             raise ValidationError('Le code affaire est obligatoire.')
         
-        # SUPPRIMÉ: Plus de vérification d'unicité car les doublons sont maintenant autorisés
         return code_affaire
     
     def clean(self):
-        """Validation globale du formulaire - seulement si les dates sont remplies"""
+        """Validation globale du formulaire"""
         cleaned_data = super().clean()
         date_debut = cleaned_data.get('date_debut')
         date_fin_prevue = cleaned_data.get('date_fin_prevue')
@@ -337,6 +356,26 @@ class AffaireForm(forms.ModelForm):
                 raise ValidationError('La date de fin prévue doit être postérieure à la date de début.')
         
         return cleaned_data
+    
+    def save(self, commit=True):
+        """Sauvegarde personnalisée pour gérer les associations avec les catégories"""
+        affaire = super().save(commit=commit)
+        
+        if commit:
+            # Récupérer les catégories sélectionnées
+            categories_selectionnees = self.cleaned_data.get('categories', [])
+            
+            # Supprimer les anciennes associations
+            AffaireCategorie.objects.filter(affaire=affaire).delete()
+            
+            # Créer les nouvelles associations
+            for categorie in categories_selectionnees:
+                AffaireCategorie.objects.create(
+                    affaire=affaire,
+                    categorie=categorie
+                )
+        
+        return affaire
 
 
 class AffaireQuickCreateForm(forms.ModelForm):

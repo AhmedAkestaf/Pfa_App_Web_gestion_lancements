@@ -1,5 +1,6 @@
 {% extends 'base/base.html' %}
 {% load static %}
+{% load weight_formatting %}
 
 {% block title %}Liste des Lancements{% endblock %}
 
@@ -48,6 +49,21 @@
     border-radius: 15px;
     font-size: 0.75rem;
     font-weight: 600;
+}
+
+.weight-display {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    font-size: 0.85rem;
+    background: #090c0f;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border-left: 3px solid #17a2b8;
+}
+
+.weight-display.zero {
+    opacity: 0.5;
+    border-left-color: #6c757d;
 }
 
 .avatar {
@@ -219,7 +235,7 @@
                                         <th>Sous-livrable</th>
                                         <th>Atelier</th>
                                         <th>Collaborateur</th>
-                                        <th>Poids</th>
+                                        <th>Poids Production</th>
                                         <th>Date Lancement</th>
                                         <th>Statut</th>
                                         <th>Actions</th>
@@ -262,10 +278,14 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <small class="text-muted">
-                                                    Débitage: {{ lancement.poids_debitage|floatformat:1 }}kg<br>
-                                                    Assemblage: {{ lancement.poids_assemblage|floatformat:1 }}kg
-                                                </small>
+                                                <div class="weight-display {% if lancement.poids_debitage == 0 %}zero{% endif %}">
+                                                    <small>Débitage:</small><br>
+                                                    <strong>{{ lancement.poids_debitage|format_weight }}</strong>
+                                                </div>
+                                                <div class="weight-display {% if lancement.poids_assemblage == 0 %}zero{% endif %} mt-1">
+                                                    <small>Assemblage:</small><br>
+                                                    <strong>{{ lancement.poids_assemblage|format_weight }}</strong>
+                                                </div>
                                             </td>
                                             <td>
                                                 <div>

@@ -18,6 +18,9 @@ from .forms import LancementForm
 from apps.ateliers.models import Atelier
 from apps.core.models import Affaire
 from apps.collaborateurs.models import Collaborateur 
+from apps.associations.models import AffaireCategorie
+from django.views.decorators.http import require_GET
+
 
 
 # Configuration du logger
@@ -817,3 +820,52 @@ def lancement_export(request):
         messages.error(request, f"❌ Erreur lors de l'export: {str(e)}")
         logger.error(f"Erreur export lancements format {format_type}: {str(e)}", exc_info=True)
         return redirect('lancements:list')
+    
+
+@login_required
+@require_GET
+def get_categories_by_affaire(request):
+    """
+    Vue AJAX pour récupérer les catégories associées à une affaire
+    Utilisée pour filtrer les catégories dans le formulaire de lancement
+    """
+    try:
+        affaire_id = request.GET.get('affaire_id')
+        
+        if not affaire_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'ID affaire manquant'
+            }, status=400)
+        
+        # Récupérer les catégories associées à cette affaire
+        categories_ids = AffaireCategorie.objects.filter(
+            affaire_id=affaire_id
+        ).values_list('categorie_id', flat=True)
+        
+        # Si aucune catégorie associée, retourner toutes les catégories
+        if not categories_ids:
+            from apps.ateliers.models import Categorie
+            categories = Categorie.objects.all().values('id', 'nom_categorie')
+        else:
+            from apps.ateliers.models import Categorie
+            categories = Categorie.objects.filter(
+                id__in=categories_ids
+            ).values('id', 'nom_categorie')
+        
+        # Convertir en liste pour la sérialisation JSON
+        categories_list = list(categories)
+        
+        return JsonResponse({
+            'success': True,
+            'categories': categories_list,
+            'count': len(categories_list),
+            'has_filter': bool(categories_ids)  # Indique si un filtre a été appliqué
+        })
+        
+    except Exception as e:
+        logger.error(f"Erreur dans get_categories_by_affaire: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Erreur serveur: {str(e)}'
+        }, status=500)

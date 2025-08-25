@@ -1,5 +1,6 @@
 {% extends 'base/base.html' %}
 {% load static %}
+{% load weight_formatting %}
 
 {% block title %}Tableaux de Bord - Analytics{% endblock %}
 
@@ -303,14 +304,14 @@
                 <div class="col-xl-3 col-md-6">
                     <div class="metric-mini">
                         <i class="fas fa-weight-hanging fa-2x text-success mb-2"></i>
-                        <h4 class="text-success">{{ dashboard_stats.poids__debitage_total|floatformat:0|default:0 }}kg</h4>
+                        <h4 class="text-success">{{ dashboard_stats.poids__debitage_total|format_weight }}</h4>
                         <small class="text-muted">Poids debitage</small>
                     </div>
                 </div>
                 <div class="col-xl-3 col-md-6">
                     <div class="metric-mini">
                         <i class="fas fa-weight-hanging fa-2x text-success mb-2"></i>
-                        <h4 class="text-success">{{ dashboard_stats.poids__assemblage_total|floatformat:0|default:0 }}kg</h4>
+                        <h4 class="text-success">{{ dashboard_stats.poids__assemblage_total|format_weight }}</h4>
                         <small class="text-muted">Poids assemblage</small>
                     </div>
                 </div>
@@ -427,8 +428,8 @@
                                             <span class="badge bg-info">{{ atelier.get_type_atelier_display }}</span>
                                         </td>
                                         <td><span class="badge bg-secondary">{{ atelier.nb_lancements|default:0 }}</span></td>
-                                        <td class="text-danger fw-bold">{{ atelier.poids_debitage|floatformat:1|default:0 }} kg</td>
-                                        <td class="text-success fw-bold">{{ atelier.poids_assemblage|floatformat:1|default:0 }} kg</td>
+                                        <td class="text-danger fw-bold">{{ atelier.poids_debitage|format_weight }}</td>
+                                        <td class="text-success fw-bold">{{ atelier.poids_assemblage|format_weight }}</td>
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <div class="progress me-2 progress-custom">
@@ -550,6 +551,220 @@ const categorieColors = ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", 
 // Variables globales pour les graphiques
 let poidsCollaborateurChart, poidsAffaireChart, categoriesChart;
 
+// =============================================================================
+// FONCTIONS DE FORMATAGE FRANÇAIS
+// =============================================================================
+
+// Fonction utilitaire pour formater les nombres au format français
+function formatWeightFrench(value, unit = 'kg', includeUnit = true) {
+    if (value === null || value === undefined || value === '') {
+        return includeUnit ? '0,000 kg' : '0,000';
+    }
+    
+    try {
+        const numValue = parseFloat(value);
+        
+        if (numValue === 0) {
+            return includeUnit ? `0,000 ${unit}` : '0,000';
+        }
+        
+        // Formater avec 3 décimales
+        let formatted = numValue.toFixed(3);
+        
+        // Séparer la partie entière et décimale
+        const [integerPart, decimalPart] = formatted.split('.');
+        
+        // Ajouter les espaces comme séparateurs de milliers
+        const integerFormatted = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        
+        // Remplacer le point par une virgule pour les décimales
+        const result = `${integerFormatted},${decimalPart}`;
+        
+        return includeUnit ? `${result} ${unit}` : result;
+        
+    } catch (error) {
+        return includeUnit ? `0,000 ${unit}` : '0,000';
+    }
+}
+
+// Fonction pour formater les pourcentages au format français
+function formatPercentageFrench(value) {
+    if (value === null || value === undefined) return '0,0%';
+    
+    try {
+        const numValue = parseFloat(value);
+        return numValue.toFixed(1).replace('.', ',') + '%';
+    } catch (error) {
+        return '0,0%';
+    }
+}
+
+// =============================================================================
+// CONFIGURATION DES GRAPHIQUES AVEC FORMATAGE FRANÇAIS
+// =============================================================================
+
+// Configuration des options des graphiques avec formatage français
+const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        tooltip: {
+            callbacks: {
+                label: function(context) {
+                    const label = context.dataset.label || '';
+                    const value = context.parsed.y || context.parsed || 0;
+                    return `${label}: ${formatWeightFrench(value)}`;
+                }
+            }
+        }
+    },
+    scales: {
+        y: {
+            beginAtZero: true,
+            ticks: {
+                callback: function(value) {
+                    return formatWeightFrench(value);
+                }
+            }
+        }
+    }
+};
+
+// Options spécifiques pour le graphique des collaborateurs
+const collaborateurChartOptions = {
+    ...chartOptions,
+    scales: {
+        x: { 
+            stacked: true,
+            ticks: {
+                maxRotation: 45,
+                minRotation: 0
+            }
+        },
+        y: { 
+            stacked: true,
+            beginAtZero: true,
+            ticks: {
+                callback: function(value) {
+                    return formatWeightFrench(value);
+                }
+            }
+        }
+    },
+    plugins: {
+        ...chartOptions.plugins,
+        legend: { display: false },
+        tooltip: {
+            callbacks: {
+                label: function(context) {
+                    return `${context.dataset.label}: ${formatWeightFrench(context.parsed.y)}`;
+                }
+            }
+        }
+    }
+};
+
+// Options spécifiques pour le graphique camembert des affaires
+const affaireChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: { display: false },
+        tooltip: {
+            callbacks: {
+                label: function(context) {
+                    const data = getChartData();
+                    const percentage = data.affaires.percentages[context.dataIndex];
+                    const weight = formatWeightFrench(context.parsed);
+                    const percentageFrench = formatPercentageFrench(percentage);
+                    return `${context.label}: ${weight} (${percentageFrench})`;
+                }
+            }
+        }
+    },
+    layout: { padding: 20 }
+};
+
+// Options pour le graphique des catégories
+const categorieChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'y',
+    scales: {
+        x: {
+            beginAtZero: true,
+            ticks: {
+                callback: function(value) {
+                    return formatWeightFrench(value);
+                }
+            }
+        }
+    },
+    plugins: {
+        legend: { display: false },
+        tooltip: {
+            callbacks: {
+                label: function(context) {
+                    return `${context.label}: ${formatWeightFrench(context.parsed.x)}`;
+                }
+            }
+        }
+    }
+};
+
+// =============================================================================
+// PLUGIN PERSONNALISÉ POUR LABELS SUR CAMEMBERT
+// =============================================================================
+
+// Plugin personnalisé pour les labels sur le camembert avec formatage français
+const pieLabelsPlugin = {
+    id: 'pieLabels',
+    afterDatasetsDraw: function(chart) {
+        const ctx = chart.ctx;
+        const chartData = chart.data;
+        const meta = chart.getDatasetMeta(0);
+        
+        ctx.save();
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        const data = getChartData();
+        
+        meta.data.forEach((arc, index) => {
+            const { x, y } = arc.tooltipPosition();
+            const percentage = data.affaires.percentages[index];
+            const value = data.affaires.values[index];
+            
+            // N'afficher le texte que si le segment est assez grand (> 3%)
+            if (percentage > 3) {
+                // Couleur du texte
+                const bgColor = affaireColors[index % affaireColors.length];
+                const brightness = getBrightness(bgColor);
+                ctx.fillStyle = brightness > 128 ? '#000000' : '#FFFFFF';
+                
+                // Formater les valeurs au format français
+                const weightFormatted = formatWeightFrench(value, 'kg', false);
+                const percentageFormatted = formatPercentageFrench(percentage);
+                
+                const lines = [weightFormatted, percentageFormatted];
+                
+                // Dessiner chaque ligne
+                lines.forEach((line, lineIndex) => {
+                    const yOffset = (lineIndex - 0.5) * 14;
+                    ctx.fillText(line, x, y + yOffset);
+                });
+            }
+        });
+        
+        ctx.restore();
+    }
+};
+
+// =============================================================================
+// FONCTIONS UTILITAIRES
+// =============================================================================
+
 // Récupération des données depuis le JSON
 function getChartData() {
     const dataScript = document.getElementById('chart-data');
@@ -582,13 +797,142 @@ function getBrightness(color) {
     return (r * 299 + g * 587 + b * 114) / 1000;
 }
 
-// Initialisation des graphiques
-document.addEventListener('DOMContentLoaded', function() {
-    initializeCharts();
-    populateAffairesLegend();
-    initializeProgressBars();
-});
+// =============================================================================
+// INITIALISATION ET GESTION DES GRAPHIQUES
+// =============================================================================
 
+// Initialisation des graphiques avec formatage français
+function initializeCharts() {
+    const data = getChartData();
+    
+    // Graphique collaborateurs avec options françaises
+    const ctx1 = document.getElementById('poidsCollaborateurChart').getContext('2d');
+    poidsCollaborateurChart = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: data.collaborateurs.labels,
+            datasets: [
+                {
+                    label: 'Poids Débitage',
+                    data: data.collaborateurs.debitage,
+                    backgroundColor: colors.success,
+                    stack: 'Stack 0'
+                },
+                {
+                    label: 'Poids Assemblage',
+                    data: data.collaborateurs.assemblage,
+                    backgroundColor: colors.danger,
+                    stack: 'Stack 0'
+                }
+            ]
+        },
+        options: collaborateurChartOptions
+    });
+
+    // Graphique affaires avec formatage français et plugin personnalisé
+    const ctx2 = document.getElementById('poidsAffaireChart').getContext('2d');
+    poidsAffaireChart = new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: data.affaires.labels,
+            datasets: [{
+                data: data.affaires.values,
+                backgroundColor: affaireColors
+            }]
+        },
+        options: affaireChartOptions,
+        plugins: [pieLabelsPlugin]
+    });
+
+    // Graphique catégories avec formatage français
+    const ctx3 = document.getElementById('categoriesChart').getContext('2d');
+    categoriesChart = new Chart(ctx3, {
+        type: 'bar',
+        data: {
+            labels: data.categories.labels,
+            datasets: [{
+                label: 'Poids par Catégorie',
+                data: data.categories.values,
+                backgroundColor: categorieColors
+            }]
+        },
+        options: categorieChartOptions
+    });
+}
+
+// Fonction pour mettre à jour tous les graphiques avec formatage français
+function updateAllCharts(newData) {
+    if (poidsCollaborateurChart) {
+        poidsCollaborateurChart.data.labels = newData.collaborateurs.labels;
+        poidsCollaborateurChart.data.datasets[0].data = newData.collaborateurs.debitage;
+        poidsCollaborateurChart.data.datasets[1].data = newData.collaborateurs.assemblage;
+        poidsCollaborateurChart.update();
+    }
+    
+    if (poidsAffaireChart) {
+        poidsAffaireChart.data.labels = newData.affaires.labels;
+        poidsAffaireChart.data.datasets[0].data = newData.affaires.values;
+        poidsAffaireChart.update();
+        
+        // Mettre à jour la légende des affaires
+        populateAffairesLegend(newData.affaires);
+    }
+    
+    if (categoriesChart) {
+        categoriesChart.data.labels = newData.categories.labels;
+        categoriesChart.data.datasets[0].data = newData.categories.values;
+        categoriesChart.update();
+    }
+}
+
+// Fonction pour mettre à jour les données des graphiques lors des changements de filtre
+function updateChartData() {
+    const dateDebut = document.getElementById('date_debut').value;
+    const dateFin = document.getElementById('date_fin').value;
+    
+    if (!dateDebut || !dateFin) {
+        showNotification('Veuillez sélectionner une période valide', 'warning');
+        return;
+    }
+    
+    // Afficher un indicateur de chargement
+    document.querySelectorAll('.chart-container').forEach(container => {
+        container.style.opacity = '0.5';
+    });
+    
+    // Note: Remplacez cette URL par votre vraie URL d'API
+    const apiUrl = '/reporting/chart-data-api/all/'; // Ajustez selon votre configuration
+    
+    // Requête AJAX pour obtenir les nouvelles données
+    fetch(`${apiUrl}?date_debut=${dateDebut}&date_fin=${dateFin}`)
+        .then(response => response.json())
+        .then(data => {
+            // Mettre à jour les graphiques avec les nouvelles données formatées
+            updateAllCharts(data);
+            
+            // Restaurer l'opacité
+            document.querySelectorAll('.chart-container').forEach(container => {
+                container.style.opacity = '1';
+            });
+            
+            showNotification('Graphiques mis à jour', 'success');
+        })
+        .catch(error => {
+            console.error('Erreur lors de la mise à jour:', error);
+            showNotification('Erreur lors de la mise à jour des graphiques', 'error');
+            
+            // Restaurer l'opacité même en cas d'erreur
+            document.querySelectorAll('.chart-container').forEach(container => {
+                container.style.opacity = '1';
+            });
+        });
+}
+
+// =============================================================================
+// FONCTIONS D'INTERFACE UTILISATEUR
+// =============================================================================
+
+// Initialisation des barres de progression
 function initializeProgressBars() {
     document.querySelectorAll('.efficacite-bar').forEach(bar => {
         const efficacite = bar.getAttribute('data-efficacite') || 0;
@@ -596,8 +940,9 @@ function initializeProgressBars() {
     });
 }
 
-function populateAffairesLegend() {
-    const data = getChartData();
+// Remplissage de la légende des affaires
+function populateAffairesLegend(affairesData = null) {
+    const data = affairesData || getChartData();
     const legendContainer = document.getElementById('affaires-legend');
     
     if (legendContainer && data.affaires.labels) {
@@ -614,187 +959,34 @@ function populateAffairesLegend() {
     }
 }
 
-function initializeCharts() {
-    const data = getChartData();
+// =============================================================================
+// FONCTIONS D'EXPORT ET D'INTERACTION
+// =============================================================================
+
+// Fonction pour exporter les graphiques en PNG avec formatage français
+function exportChartsAsPNG() {
+    const charts = [
+        { chart: poidsCollaborateurChart, name: 'poids_collaborateurs' },
+        { chart: poidsAffaireChart, name: 'poids_affaires' },
+        { chart: categoriesChart, name: 'categories' }
+    ];
     
-    // Graphique collaborateurs (barres empilées)
-    const ctx1 = document.getElementById('poidsCollaborateurChart').getContext('2d');
-    const collaborateursData = {
-        labels: data.collaborateurs.labels,
-        datasets: [
-            {
-                label: 'Poids Débitage',
-                data: data.collaborateurs.debitage,
-                backgroundColor: colors.success,
-                stack: 'Stack 0'
-            },
-            {
-                label: 'Poids Assemblage',
-                data: data.collaborateurs.assemblage,
-                backgroundColor: colors.danger,
-                stack: 'Stack 0'
-            }
-        ]
-    };
-
-    poidsCollaborateurChart = new Chart(ctx1, {
-        type: 'bar',
-        data: collaborateursData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: { 
-                    stacked: true,
-                    ticks: {
-                        maxRotation: 45,
-                        minRotation: 0
-                    }
-                },
-                y: { 
-                    stacked: true,
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return value + ' kg';
-                        }
-                    }
-                }
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + context.parsed.y + ' kg';
-                        }
-                    }
-                }
-            }
+    charts.forEach((item, index) => {
+        if (item.chart) {
+            setTimeout(() => {
+                const url = item.chart.toBase64Image();
+                const link = document.createElement('a');
+                link.download = `graphique_${item.name}.png`;
+                link.href = url;
+                link.click();
+            }, index * 500);
         }
     });
-
-    // Graphique affaires (camembert) avec labels sur les segments
-    const ctx2 = document.getElementById('poidsAffaireChart').getContext('2d');
-    const affairesData = {
-        labels: data.affaires.labels,
-        datasets: [{
-            data: data.affaires.values,
-            backgroundColor: affaireColors
-        }]
-    };
-
-    poidsAffaireChart = new Chart(ctx2, {
-        type: 'doughnut',
-        data: affairesData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { 
-                    display: false 
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const percentage = data.affaires.percentages[context.dataIndex];
-                            return context.label + ': ' + context.parsed + ' kg (' + percentage + '%)';
-                        }
-                    }
-                }
-            },
-            layout: {
-                padding: 20
-            }
-        },
-        plugins: [{
-            id: 'pieLabels',
-            afterDatasetsDraw: function(chart) {
-                const ctx = chart.ctx;
-                const chartData = chart.data;
-                const meta = chart.getDatasetMeta(0);
-                
-                ctx.save();
-                ctx.font = 'bold 12px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                
-                meta.data.forEach((arc, index) => {
-                    // Calculer la position du centre de chaque segment
-                    const { x, y } = arc.tooltipPosition();
-                    const percentage = data.affaires.percentages[index];
-                    const label = data.affaires.labels[index];
-                    const value = data.affaires.values[index];
-                    
-                    // N'afficher le texte que si le segment est assez grand (> 3%)
-                    if (percentage > 3) {
-                        // Couleur du texte (blanc pour les segments foncés, noir pour les clairs)
-                        const bgColor = affaireColors[index % affaireColors.length];
-                        const brightness = getBrightness(bgColor);
-                        ctx.fillStyle = brightness > 128 ? '#000000' : '#FFFFFF';
-                        
-                        // Afficher seulement le tonnage et le pourcentage sur le segment
-                        const lines = [
-                            `${parseFloat(value).toFixed(1)} kg`,
-                            `${percentage}%`
-                        ];
-                        
-                        // Dessiner chaque ligne
-                        lines.forEach((line, lineIndex) => {
-                            const yOffset = (lineIndex - 0.5) * 14; // Espacement vertical centré
-                            ctx.fillText(line, x, y + yOffset);
-                        });
-                    }
-                });
-                
-                ctx.restore();
-            }
-        }]
-    });
-
-    // Graphique des catégories (barres horizontales)
-    const ctx3 = document.getElementById('categoriesChart').getContext('2d');
-    const categoriesData = {
-        labels: data.categories.labels,
-        datasets: [{
-            label: 'Poids par Catégorie (kg)',
-            data: data.categories.values,
-            backgroundColor: categorieColors
-        }]
-    };
-
-    categoriesChart = new Chart(ctx3, {
-        type: 'bar',
-        data: categoriesData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y',
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return value + ' kg';
-                        }
-                    }
-                }
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.label + ': ' + context.parsed.x + ' kg';
-                        }
-                    }
-                }
-            }
-        }
-    });
+    
+    showNotification('Export des graphiques terminé', 'success');
 }
 
-// Fonctions utilitaires
+// Fonctions utilitaires existantes mises à jour
 function updateCharts() {
     document.getElementById('filterForm').submit();
 }
@@ -836,7 +1028,8 @@ function exportDashboard(format) {
     
     showNotification('Préparation de l\'export en cours...', 'info');
     
-    const exportUrl = `{% url 'reporting:export_dashboard_data' %}`;
+    // Note: Remplacez par votre vraie URL d'export
+    const exportUrl = '/reporting/export/dashboard/';
     
     const form = document.createElement('form');
     form.method = 'POST';
@@ -898,35 +1091,13 @@ function exportCharts(format) {
     }
 }
 
-function exportChartsAsPNG() {
-    const charts = [
-        { chart: poidsCollaborateurChart, name: 'poids_collaborateurs' },
-        { chart: poidsAffaireChart, name: 'poids_affaires' },
-        { chart: categoriesChart, name: 'categories' }
-    ];
-    
-    charts.forEach((item, index) => {
-        if (item.chart) {
-            setTimeout(() => {
-                const url = item.chart.toBase64Image();
-                const link = document.createElement('a');
-                link.download = `graphique_${item.name}.png`;
-                link.href = url;
-                link.click();
-            }, index * 500);
-        }
-    });
-    
-    showNotification('Export des graphiques terminé', 'success');
-}
-
 function exportChartsAsPDF() {
     const dateDebut = document.getElementById('date_debut').value;
     const dateFin = document.getElementById('date_fin').value;
     
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = `{% url 'reporting:export_dashboard_data' %}`;
+    form.action = '/reporting/export/dashboard/'; // Ajustez l'URL selon votre configuration
     form.target = '_blank';
     form.style.display = 'none';
     
@@ -959,6 +1130,10 @@ function exportChartsAsPDF() {
     
     showNotification('Export PDF du dashboard en cours...', 'info');
 }
+
+// =============================================================================
+// FONCTIONS UTILITAIRES
+// =============================================================================
 
 function getCookie(name) {
     let cookieValue = null;
@@ -1015,6 +1190,18 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
+// =============================================================================
+// INITIALISATION PRINCIPALE
+// =============================================================================
+
+// Initialisation au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    populateAffairesLegend();
+    initializeProgressBars();
+});
+
+// Actualisation automatique toutes les 5 minutes
 setInterval(refreshData, 300000);
 </script>
 {% endblock %}

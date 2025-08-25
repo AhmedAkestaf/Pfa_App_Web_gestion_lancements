@@ -32,13 +32,13 @@ class Lancement(models.Model):
     # Données de production (poids en kg)
     poids_debitage = models.DecimalField(
         max_digits=10, 
-        decimal_places=2, 
+        decimal_places=3, 
         default=0, 
         verbose_name="Poids débitage (kg)"
     )
     poids_assemblage = models.DecimalField(
         max_digits=10, 
-        decimal_places=2, 
+        decimal_places=3, 
         default=0, 
         verbose_name="Poids assemblage (kg)"
     )

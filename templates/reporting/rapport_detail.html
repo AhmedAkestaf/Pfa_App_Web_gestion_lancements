@@ -1,5 +1,7 @@
 {% extends 'base/base.html' %}
 {% load static %}
+{% load weight_formatting %}
+
 
 {% block title %}Détail du Rapport {{ rapport.get_type_rapport_display }}{% endblock %}
 
@@ -243,7 +245,7 @@
                             <div class="text-warning mb-3">
                                 <i class="fas fa-cut fa-3x"></i>
                             </div>
-                            <h2 class="text-warning">{{ rapport.poids_debitage|floatformat:1|default:0 }}kg</h2>
+                            <h2 class="text-warning">{{ rapport.poids_debitage|format_weight }}</h2>
                             <p class="mb-0 text-muted">Poids Débitage</p>
                         </div>
                     </div>
@@ -254,7 +256,7 @@
                             <div class="text-success mb-3">
                                 <i class="fas fa-tools fa-3x"></i>
                             </div>
-                            <h2 class="text-success">{{ rapport.poids_assemblage|floatformat:1|default:0 }}kg</h2>
+                            <h2 class="text-success">{{ rapport.poids_assemblage|format_weight }}</h2>
                             <p class="mb-0 text-muted">Poids Assemblage</p>
                         </div>
                     </div>
@@ -301,7 +303,7 @@
                                 <div class="mt-2">
                                     <div class="d-flex justify-content-between mb-1">
                                         <small>Poids débitage</small>
-                                        <small><strong>{{ stat.poids_debitage|floatformat:1 }} kg</strong></small>
+                                        <small><strong>{{ stat.poids_debitage|format_weight }}</strong></small>
                                     </div>
                                     <div class="progress progress-custom mb-2">
                                         <div class="progress-bar progress-bar-custom progress-bar-debitage-{{ forloop.counter }}"
@@ -309,7 +311,7 @@
                                     </div>
                                     <div class="d-flex justify-content-between mb-1">
                                         <small>Poids assemblage</small>
-                                        <small><strong>{{ stat.poids_assemblage|floatformat:1 }} kg</strong></small>
+                                        <small><strong>{{ stat.poids_assemblage|format_weight }}</strong></small>
                                     </div>
                                     <div class="progress progress-custom">
                                         <div class="progress-bar bg-success progress-bar-assemblage-{{ forloop.counter }}"
@@ -351,8 +353,8 @@
                                         </span>
                                     </td>
                                     <td><span class="badge bg-secondary">{{ stat.nb_lancements }}</span></td>
-                                    <td><strong>{{ stat.poids_debitage|floatformat:1 }} kg</strong></td>
-                                    <td><strong>{{ stat.poids_assemblage|floatformat:1 }} kg</strong></td>
+                                    <td><strong>{{ stat.poids_debitage|format_weight }}</strong></td>
+                                    <td><strong>{{ stat.poids_assemblage|format_weight }}</strong></td>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="progress progress-custom progress-width-60 me-2">
@@ -403,8 +405,8 @@
                                     <h6 class="mb-1">{{ stat.collaborateur__nom_collaborateur }} {{ stat.collaborateur__prenom_collaborateur }}</h6>
                                     <small class="text-muted">{{ stat.nb_lancements }} lancements</small>
                                     <div class="mt-1">
-                                        <small>Débitage: <strong>{{ stat.poids_debitage|floatformat:1 }} kg</strong></small><br>
-                                        <small>Assemblage: <strong>{{ stat.poids_assemblage|floatformat:1 }} kg</strong></small>
+                                        <small>Débitage: <strong>{{ stat.poids_debitage|format_weight }}</strong></small><br>
+                                        <small>Assemblage: <strong>{{ stat.poids_assemblage|format_weight }}</strong></small>
                                     </div>
                                 </div>
                             </div>
@@ -440,10 +442,10 @@
                                         </div>
                                     </td>
                                     <td><span class="badge bg-primary">{{ stat.nb_lancements }}</span></td>
-                                    <td><strong>{{ stat.poids_debitage|floatformat:1 }} kg</strong></td>
-                                    <td><strong>{{ stat.poids_assemblage|floatformat:1 }} kg</strong></td>
-                                    <td>{{ stat.moyenne_debitage|floatformat:1 }} kg</td>
-                                    <td>{{ stat.moyenne_assemblage|floatformat:1 }} kg</td>
+                                    <td><strong>{{ stat.poids_debitage|format_weight }}</strong></td>
+                                    <td><strong>{{ stat.poids_assemblage|format_weight }}</strong></td>
+                                    <td>{{ stat.moyenne_debitage|format_weight }}</td>
+                                    <td>{{ stat.moyenne_assemblage|format_weight }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -485,8 +487,8 @@
                                     </td>
                                     <td>{{ stat.affaire__client|truncatechars:30 }}</td>
                                     <td><span class="badge bg-secondary">{{ stat.nb_lancements }}</span></td>
-                                    <td><strong>{{ stat.poids_debitage|floatformat:1 }} kg</strong></td>
-                                    <td><strong>{{ stat.poids_assemblage|floatformat:1 }} kg</strong></td>
+                                    <td><strong>{{ stat.poids_debitage|format_weight }}</strong></td>
+                                    <td><strong>{{ stat.poids_assemblage|format_weight }}</strong></td>
                                     <td>
                                         <span class="badge 
                                             {% if stat.affaire__statut == 'en_cours' %}bg-warning

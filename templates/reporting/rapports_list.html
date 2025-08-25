@@ -1,5 +1,7 @@
 {% extends 'base/base.html' %}
 {% load static %}
+{% load weight_formatting %}
+
 
 {% block title %}Rapports de Production{% endblock %}
 
@@ -127,7 +129,7 @@
                     <div class="card metric-card bg-warning text-white">
                         <div class="card-body text-center">
                             <i class="fas fa-weight-hanging fa-3x mb-3 opacity-75"></i>
-                            <h3>{{ total_poids_debitage|floatformat:0|default:0 }}kg</h3>
+                            <h3>{{ total_poids_debitage|format_weight }}</h3>
                             <p class="mb-0">Poids Débitage</p>
                         </div>
                     </div>
@@ -136,7 +138,7 @@
                     <div class="card metric-card bg-info text-white">
                         <div class="card-body text-center">
                             <i class="fas fa-tools fa-3x mb-3 opacity-75"></i>
-                            <h3>{{ total_poids_assemblage|floatformat:0|default:0 }}kg</h3>
+                            <h3>{{ total_poids_assemblage|format_weight }}</h3>
                             <p class="mb-0">Poids Assemblage</p>
                         </div>
                     </div>
@@ -269,7 +271,7 @@
                                                 <div class="d-flex align-items-center">
                                                     <i class="fas fa-cut text-warning me-2"></i>
                                                     <div>
-                                                        <strong>{{ rapport.poids_debitage|floatformat:1|default:0 }} kg</strong>
+                                                        <strong>{{ rapport.poids_debitage|format_weight }}</strong>
                                                     </div>
                                                 </div>
                                             </td>
@@ -277,7 +279,7 @@
                                                 <div class="d-flex align-items-center">
                                                     <i class="fas fa-tools text-info me-2"></i>
                                                     <div>
-                                                        <strong>{{ rapport.poids_assemblage|floatformat:1|default:0 }} kg</strong>
+                                                        <strong>{{ rapport.poids_assemblage|format_weight }}</strong>
                                                     </div>
                                                 </div>
                                             </td>

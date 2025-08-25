@@ -1,5 +1,6 @@
 {% extends 'base/base.html' %}
 {% load static %}
+{% load weight_formatting %}
 
 {% block title %}Détails du Lancement {{ lancement.num_lanc }}{% endblock %}
 
@@ -85,6 +86,20 @@
     opacity: 0.7;
 }
 
+.weight-value {
+    font-family: 'Courier New', monospace;
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+
+.weight-label {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 .timeline-item {
     border-left: 3px solid #e83e8c;
     padding-left: 1rem;
@@ -139,12 +154,6 @@
     }
 }
 
-/* Animation pour les barres de progression */
-.progress-bar {
-    transition: width 1s ease-in-out;
-}
-
-/* Style pour les éléments vides */
 .empty-state {
     text-align: center;
     padding: 2rem;
@@ -162,15 +171,6 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Animation des barres de progression
-    const progressBars = document.querySelectorAll('.progress-bar[data-width]');
-    progressBars.forEach(function(bar) {
-        const width = bar.getAttribute('data-width');
-        setTimeout(function() {
-            bar.style.width = width + '%';
-        }, 300);
-    });
-    
     // Tooltips pour les informations supplémentaires
     const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     tooltips.forEach(function(tooltip) {
@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
 
-            <!-- Données de production - Version optimisée -->
+            <!-- Données de production avec formatage français -->
             <div class="card detail-card mb-3">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">
@@ -275,14 +275,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     </h5>
                 </div>
                 <div class="card-body">
-                    {% with total_debitage=lancement.poids_debitage|floatformat:2 total_assemblage=lancement.poids_assemblage|floatformat:2 %}
                     {% if lancement.poids_debitage > 0 or lancement.poids_assemblage > 0 %}
                         <div class="row">
                             {% if lancement.poids_debitage > 0 %}
                             <div class="col-md-6 mb-3">
                                 <div class="weight-display">
-                                    <h4 class="mb-1">{{ total_debitage }} kg</h4>
-                                    <small>Poids Débitage</small>
+                                    <div class="weight-value">{{ lancement.poids_debitage|format_weight }}</div>
+                                    <div class="weight-label">Poids Débitage</div>
                                 </div>
                             </div>
                             {% endif %}
@@ -290,31 +289,22 @@ document.addEventListener('DOMContentLoaded', function() {
                             {% if lancement.poids_assemblage > 0 %}
                             <div class="col-md-6 mb-3">
                                 <div class="weight-display">
-                                    <h4 class="mb-1">{{ total_assemblage }} kg</h4>
-                                    <small>Poids Assemblage</small>
+                                    <div class="weight-value">{{ lancement.poids_assemblage|format_weight }}</div>
+                                    <div class="weight-label">Poids Assemblage</div>
                                 </div>
                             </div>
                             {% endif %}
                         </div>
-                        
-                        <!-- Total si les deux poids existent -->
-                        {% if lancement.poids_debitage > 0 and lancement.poids_assemblage > 0 %}
-                        <div class="row mt-3">
-                            <div class="col-12">
-                            </div>
-                        </div>
-                        {% endif %}
                     {% else %}
                         <div class="empty-state">
                             <i class="fas fa-weight-hanging"></i>
                             <p class="mb-0">Aucun poids de production défini</p>
                         </div>
                     {% endif %}
-                    {% endwith %}
                 </div>
             </div>
 
-            <!-- Observations - Affichage conditionnel -->
+            <!-- Observations -->
             {% if lancement.observations %}
             <div class="card detail-card mb-4">
                 <div class="card-header bg-light">
@@ -435,9 +425,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
 
-                <!-- Métriques rapides - Version optimisée -->
-                {% with total_poids=lancement.get_poids_total %}
-                {% if total_poids > 0 %}
+                <!-- Métriques rapides -->
+                {% if lancement.poids_debitage > 0 or lancement.poids_assemblage > 0 %}
                 <div class="card detail-card">
                     <div class="card-header bg-light">
                         <h5 class="mb-0">
@@ -446,7 +435,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         </h5>
                     </div>
                     <div class="card-body">
-                        <!-- Temps depuis le lancement -->
                         <div class="metrics-card mb-3">
                             <div class="metric-value">{{ lancement.date_lancement|timesince }}</div>
                             <div class="metric-label">Depuis le lancement</div>
@@ -454,37 +442,26 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         <hr>
                         
-                        <!-- Répartition des poids -->
+                        <!-- Résumé des poids -->
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Répartition des poids</label>
-                            <div class="progress" style="height: 25px;">
-                                    <div class="progress-bar bg-success" 
-                                         data-width="{% widthratio lancement.poids_debitage total_poids 100 %}"
-                                         data-bs-toggle="tooltip" 
-                                         title="Débitage: {{ lancement.poids_debitage|floatformat:1 }}kg ({% widthratio lancement.poids_debitage total_poids 100 %}%)">
-                                        {% if lancement.poids_debitage|floatformat:0|add:"0" >= 1000 %}{{ lancement.poids_debitage|floatformat:0 }}kg{% else %}{{ lancement.poids_debitage|floatformat:1 }}kg{% endif %}
-                                    </div>
-                                
-                                    <div class="progress-bar bg-info" 
-                                         data-width="{% widthratio lancement.poids_assemblage total_poids 100 %}"
-                                         data-bs-toggle="tooltip"
-                                         title="Assemblage: {{ lancement.poids_assemblage|floatformat:1 }}kg ({% widthratio lancement.poids_assemblage total_poids 100 %}%)">
-                                        {% if lancement.poids_assemblage|floatformat:0|add:"0" >= 1000 %}{{ lancement.poids_assemblage|floatformat:0 }}kg{% else %}{{ lancement.poids_assemblage|floatformat:1 }}kg{% endif %}
-                                    </div>
-                                
-                            </div>
-                            
-                            <!-- Légende -->
-                            <div class="d-flex justify-content-between mt-2 small">
-                                    <span><i class="fas fa-square text-success me-1"></i>Débitage</span>
-                                    <span><i class="fas fa-square text-info me-1"></i>Assemblage</span>
+                            <div class="row text-center">
+                                {% if lancement.poids_debitage > 0 %}
+                                <div class="col-6">
+                                    <div class="metric-value text-success">{{ lancement.poids_debitage|format_weight }}</div>
+                                    <div class="metric-label">Débitage</div>
+                                </div>
+                                {% endif %}
+                                {% if lancement.poids_assemblage > 0 %}
+                                <div class="col-6">
+                                    <div class="metric-value text-info">{{ lancement.poids_assemblage|format_weight }}</div>
+                                    <div class="metric-label">Assemblage</div>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
-                        
                     </div>
                 </div>
                 {% else %}
-                <!-- État vide pour les métriques -->
                 <div class="card detail-card">
                     <div class="card-header bg-light">
                         <h5 class="mb-0">
@@ -507,7 +484,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
                 {% endif %}
-                {% endwith %}
             </div>
         </div>
     </div>

@@ -282,24 +282,104 @@
 </nav>
 
 <style>
-.navbar-nav .nav-item.dropdown.me-2 {
-    margin-right: 0 !important;
-    margin-left: 0 !important;
-}
-.navbar-nav .nav-item a[href*="dashboard"] {
-    padding: auto;
-    margin-right: 0rem;
-    gap: 0rem;
-
-}
-.navbar-nav.me-auto {
-    margin-left: 4.5rem !important; /* Supprimer la marge gauche du menu */
-    padding-left: 0;
-}
 .navbar .container-fluid {
-    gap: -4rem; /* Supprime l'espace entre les éléments flex */
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
+    display: flex;
+    align-items: center;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    margin: 0 !important;
+}
+
+/* Logo et nom d'entreprise */
+.navbar-brand {
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0.75rem;
+    margin-right: 2.5rem !important; /* Espacement après le logo */
+}
+
+/* Menu principal */
+.navbar-nav.me-auto {
+    flex: 1;
+    justify-content: flex-start;
+    gap: 1.5rem !important; /* Espacement entre les éléments du menu */
+    margin-right: 1.5rem !important;
+}
+
+/* Éléments de navigation */
+.navbar-nav .nav-link {
+    padding: 0.625rem 1rem !important;
+    margin: 0 !important;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+/* Menu utilisateur (droite) */
+.navbar-nav:not(.me-auto) {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem !important; /* Espacement entre notification et profil */
+    margin-left: auto !important;
+}
+
+/* Correction des notifications */
+.navbar-nav .nav-link.position-relative {
+    position: relative;
+    min-width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.5rem !important;
+}
+
+.navbar-nav .position-absolute.top-0.start-100.translate-middle {
+    transform: translate(-30%, -30%) !important;
+    min-width: 18px;
+    height: 18px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 2px solid #007bff;
+    z-index: 10;
+}
+
+/* Correction globale pour tous les badges de notification */
+.navbar .badge.rounded-pill {
+    min-width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 2px solid #007bff;
+}
+
+/* Menu déroulant utilisateur */
+.nav-item.dropdown:last-child {
+    margin-left: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 991.98px) {
+    .navbar .container-fluid {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    
+    .navbar-nav.me-auto {
+        margin-right: 0 !important;
+        gap: 0.5rem !important;
+    }
+    
+    .navbar-nav:not(.me-auto) {
+        gap: 0.75rem !important;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
 }
 </style>
 <!-- Pass Django variables to JavaScript safely through data attributes -->
