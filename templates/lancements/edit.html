@@ -156,7 +156,28 @@
                             </div>
                             
                             <div class="row mt-3">
-                                <div class="col-md-12 required-field">
+                                <div class="col-md-6 required-field">
+                                    <label for="id_categorie" class="form-label">
+                                        Catégorie
+                                        <span class="loading-spinner" id="categories-loading">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                        </span>
+                                    </label>
+                                    {{ form.categorie }}
+                                    <div class="help-text">{{ form.categorie.help_text }}</div>
+                                    
+                                    <!-- NOUVEAU: Information sur le filtrage -->
+                                    <div class="categories-info" id="categories-info">
+                                        <div id="categories-message"></div>
+                                    </div>
+                                    
+                                    {% if form.categorie.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.categorie.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 required-field">
                                     <label for="id_sous_livrable" class="form-label">Description du sous-livrable</label>
                                     {{ form.sous_livrable }}
                                     <div class="help-text">Décrivez précisément ce qui doit être réalisé</div>
@@ -200,7 +221,7 @@
                         <div class="form-section">
                             <h5><i class="fas fa-users-cog me-2"></i>Affectation</h5>
                             <div class="row">
-                                <div class="col-md-4 required-field">
+                                <div class="col-md-6 required-field">
                                     <label for="id_atelier" class="form-label">Atelier</label>
                                     {{ form.atelier }}
                                     {% if form.atelier.errors %}
@@ -209,28 +230,7 @@
                                         </div>
                                     {% endif %}
                                 </div>
-                                <div class="col-md-4 required-field">
-                                    <label for="id_categorie" class="form-label">
-                                        Catégorie
-                                        <span class="loading-spinner" id="categories-loading">
-                                            <i class="fas fa-spinner fa-spin"></i>
-                                        </span>
-                                    </label>
-                                    {{ form.categorie }}
-                                    <div class="help-text">{{ form.categorie.help_text }}</div>
-                                    
-                                    <!-- NOUVEAU: Information sur le filtrage -->
-                                    <div class="categories-info" id="categories-info">
-                                        <div id="categories-message"></div>
-                                    </div>
-                                    
-                                    {% if form.categorie.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.categorie.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                                <div class="col-md-4 required-field">
+                                <div class="col-md-6 required-field">
                                     <label for="id_collaborateur" class="form-label">Collaborateur responsable</label>
                                     {{ form.collaborateur }}
                                     {% if form.collaborateur.errors %}

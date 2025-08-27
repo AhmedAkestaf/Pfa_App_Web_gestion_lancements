@@ -24,8 +24,7 @@ class Lancement(models.Model):
     
     # Dates importantes du processus
     date_reception = models.DateField(verbose_name="Date de réception")
-    date_lancement = models.DateField(verbose_name="Date de lancement")
-    
+    date_lancement = models.DateField(blank=True, null=True, verbose_name="Date de lancement prévue")    
     # Description du sous-livrable
     sous_livrable = models.TextField(verbose_name="Description du sous-livrable")
     

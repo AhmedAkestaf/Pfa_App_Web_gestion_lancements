@@ -149,7 +149,7 @@ class LancementForm(forms.ModelForm):
             'date_lancement': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date',
-                'required': True
+                'required': False
             }),
             'atelier': forms.Select(attrs={
                 'class': 'form-select',
@@ -295,7 +295,7 @@ class LancementForm(forms.ModelForm):
             date_reception = self.cleaned_data.get('date_reception')
             
             if not date_lancement:
-                raise ValidationError("La date de lancement est obligatoire.")
+                return None
             
             if date_reception and date_lancement < date_reception:
                 raise ValidationError(
