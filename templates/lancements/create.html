@@ -203,7 +203,7 @@
                                         </div>
                                     {% endif %}
                                 </div>
-                                <div class="col-md-6 required-field">
+                                <div class="col-md-6">
                                     <label for="id_date_lancement" class="form-label">Date de lancement prévue</label>
                                     {{ form.date_lancement }}
                                     <div class="help-text">{{ form.date_lancement.help_text }}</div>
@@ -534,7 +534,7 @@ function resetForm() {
 
 // Validation avant soumission
 document.getElementById('lancementForm').addEventListener('submit', function(e) {
-    const requiredFields = document.querySelectorAll('[required]');
+    const requiredFields = document.querySelectorAll('[required]:not(#id_date_lancement)');
     let isValid = true;
     
     requiredFields.forEach(field => {
