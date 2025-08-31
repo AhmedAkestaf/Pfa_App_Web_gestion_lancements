@@ -13,7 +13,12 @@ class Migration(migrations.Migration):
         # Solution complète en une seule migration
         migrations.RunSQL(
             sql="""
-            -- Supprimer toutes les contraintes uniques possibles
+            -- Supprimer d'abord les contraintes (pas les index)
+            ALTER TABLE affaire DROP CONSTRAINT IF EXISTS affaire_code_affaire_3c4b9f25_uniq CASCADE;
+            ALTER TABLE affaire DROP CONSTRAINT IF EXISTS core_affaire_code_affaire_3c4b9f25_uniq CASCADE;
+            ALTER TABLE affaire DROP CONSTRAINT IF EXISTS affaire_code_affaire_key CASCADE;
+            
+            -- Maintenant supprimer les index (ils seront supprimés automatiquement avec les contraintes)
             DROP INDEX IF EXISTS affaire_code_affaire_3c4b9f25_uniq CASCADE;
             DROP INDEX IF EXISTS core_affaire_code_affaire_3c4b9f25_uniq CASCADE;
             DROP INDEX IF EXISTS affaire_code_affaire_key CASCADE;
