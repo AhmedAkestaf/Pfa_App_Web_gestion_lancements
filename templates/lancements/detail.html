@@ -86,6 +86,18 @@
     opacity: 0.7;
 }
 
+.weight-display.assemblage {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.weight-display.debitage-1 {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.weight-display.debitage-2 {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+}
+
 .weight-value {
     font-family: 'Courier New', monospace;
     font-size: 1.3rem;
@@ -98,6 +110,18 @@
     opacity: 0.9;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+.production-type-badge {
+    background: linear-gradient(135deg, #fd7e14, #e83e8c);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    margin-bottom: 1rem;
 }
 
 .timeline-item {
@@ -192,7 +216,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             <i class="fas fa-rocket me-3"></i>
                             Lancement {{ lancement.num_lanc }}
                         </h1>
-                        <p class="mb-0 fs-5">{{ lancement.sous_livrable }}</p>
+                        <p class="mb-2 fs-5">{{ lancement.sous_livrable }}</p>
+                        <div class="production-type-badge">
+                            <i class="fas fa-cog me-2"></i>{{ lancement.get_type_production_display }}
+                        </div>
                     </div>
                     <div class="col-md-4 text-md-end">
                         <span class="badge fs-6 px-3 py-2
@@ -261,45 +288,85 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="info-label">Collaborateur responsable</div>
                                 <div class="info-value">{{ lancement.collaborateur.get_full_name }}</div>
                             </div>
+                            <div class="info-row">
+                                <div class="info-label">Type de production</div>
+                                <div class="info-value">
+                                    <span class="badge bg-primary">{{ lancement.get_type_production_display }}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Données de production avec formatage français -->
+            <!-- Données de production avec nouveaux champs -->
             <div class="card detail-card mb-3">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">
                         <i class="fas fa-weight me-2"></i>
-                        Données de Production
+                        Données de Production - {{ lancement.get_type_production_display }}
                     </h5>
                 </div>
                 <div class="card-body">
-                    {% if lancement.poids_debitage > 0 or lancement.poids_assemblage > 0 %}
-                        <div class="row">
-                            {% if lancement.poids_debitage > 0 %}
-                            <div class="col-md-6 mb-3">
-                                <div class="weight-display">
-                                    <div class="weight-value">{{ lancement.poids_debitage|format_weight }}</div>
-                                    <div class="weight-label">Poids Débitage</div>
+                    {% if lancement.type_production == 'assemblage' %}
+                        <!-- Mode Assemblage -->
+                        {% if lancement.poids_assemblage and lancement.poids_assemblage > 0 %}
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="weight-display assemblage">
+                                        <div class="weight-value">{{ lancement.poids_assemblage|format_weight }}</div>
+                                        <div class="weight-label">Poids Assemblage</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="weight-display">
+                                        <div class="weight-value">{{ lancement.get_poids_total_display }}</div>
+                                        <div class="weight-label">Poids Total</div>
+                                    </div>
                                 </div>
                             </div>
-                            {% endif %}
-                            
-                            {% if lancement.poids_assemblage > 0 %}
-                            <div class="col-md-6 mb-3">
-                                <div class="weight-display">
-                                    <div class="weight-value">{{ lancement.poids_assemblage|format_weight }}</div>
-                                    <div class="weight-label">Poids Assemblage</div>
+                        {% else %}
+                            <div class="empty-state">
+                                <i class="fas fa-weight-hanging"></i>
+                                <p class="mb-0">Aucun poids d'assemblage défini</p>
+                            </div>
+                        {% endif %}
+                        
+                    {% elif lancement.type_production == 'debitage' %}
+                        <!-- Mode Débitage -->
+                        {% if lancement.poids_debitage_1 and lancement.poids_debitage_1 > 0 or lancement.poids_debitage_2 and lancement.poids_debitage_2 > 0 %}
+                            <div class="row">
+                                {% if lancement.poids_debitage_1 and lancement.poids_debitage_1 > 0 %}
+                                <div class="col-md-4 mb-3">
+                                    <div class="weight-display debitage-1">
+                                        <div class="weight-value">{{ lancement.poids_debitage_1|format_weight }}</div>
+                                        <div class="weight-label">Poids Débitage 1</div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                {% if lancement.poids_debitage_2 and lancement.poids_debitage_2 > 0 %}
+                                <div class="col-md-4 mb-3">
+                                    <div class="weight-display debitage-2">
+                                        <div class="weight-value">{{ lancement.poids_debitage_2|format_weight }}</div>
+                                        <div class="weight-label">Poids Débitage 2</div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="col-md-4 mb-3">
+                                    <div class="weight-display">
+                                        <div class="weight-value">{{ lancement.get_poids_total_display }}</div>
+                                        <div class="weight-label">Poids Total</div>
+                                    </div>
                                 </div>
                             </div>
-                            {% endif %}
-                        </div>
-                    {% else %}
-                        <div class="empty-state">
-                            <i class="fas fa-weight-hanging"></i>
-                            <p class="mb-0">Aucun poids de production défini</p>
-                        </div>
+                        {% else %}
+                            <div class="empty-state">
+                                <i class="fas fa-weight-hanging"></i>
+                                <p class="mb-0">Aucun poids de débitage défini</p>
+                            </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -426,7 +493,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
 
                 <!-- Métriques rapides -->
-                {% if lancement.poids_debitage > 0 or lancement.poids_assemblage > 0 %}
                 <div class="card detail-card">
                     <div class="card-header bg-light">
                         <h5 class="mb-0">
@@ -442,48 +508,43 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         <hr>
                         
-                        <!-- Résumé des poids -->
+                        <!-- Résumé des poids selon le type de production -->
+                        {% if lancement.get_poids_total > 0 %}
                         <div class="mb-3">
                             <div class="row text-center">
-                                {% if lancement.poids_debitage > 0 %}
-                                <div class="col-6">
-                                    <div class="metric-value text-success">{{ lancement.poids_debitage|format_weight }}</div>
-                                    <div class="metric-label">Débitage</div>
-                                </div>
-                                {% endif %}
-                                {% if lancement.poids_assemblage > 0 %}
-                                <div class="col-6">
-                                    <div class="metric-value text-info">{{ lancement.poids_assemblage|format_weight }}</div>
+                                {% if lancement.type_production == 'assemblage' and lancement.poids_assemblage > 0 %}
+                                <div class="col-12 mb-2">
+                                    <div class="metric-value text-primary">{{ lancement.poids_assemblage|format_weight }}</div>
                                     <div class="metric-label">Assemblage</div>
                                 </div>
+                                {% elif lancement.type_production == 'debitage' %}
+                                    {% if lancement.poids_debitage_1 > 0 %}
+                                    <div class="col-6">
+                                        <div class="metric-value text-success">{{ lancement.poids_debitage_1|format_weight }}</div>
+                                        <div class="metric-label">Débitage 1</div>
+                                    </div>
+                                    {% endif %}
+                                    {% if lancement.poids_debitage_2 > 0 %}
+                                    <div class="col-6">
+                                        <div class="metric-value text-info">{{ lancement.poids_debitage_2|format_weight }}</div>
+                                        <div class="metric-label">Débitage 2</div>
+                                    </div>
+                                    {% endif %}
                                 {% endif %}
                             </div>
+                            <div class="text-center mt-2 pt-2 border-top">
+                                <div class="metric-value text-dark">{{ lancement.get_poids_total_display }}</div>
+                                <div class="metric-label">Total</div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-                {% else %}
-                <div class="card detail-card">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0">
-                            <i class="fas fa-chart-pie me-2"></i>
-                            Métriques
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="metrics-card mb-3">
-                            <div class="metric-value">{{ lancement.date_lancement|timesince }}</div>
-                            <div class="metric-label">Depuis le lancement</div>
-                        </div>
-                        
-                        <hr>
-                        
+                        {% else %}
                         <div class="empty-state">
                             <i class="fas fa-chart-bar"></i>
                             <p class="mb-0 small">Aucune donnée de production disponible</p>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
-                {% endif %}
             </div>
         </div>
     </div>

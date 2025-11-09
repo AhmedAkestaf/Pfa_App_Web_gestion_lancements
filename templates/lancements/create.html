@@ -40,14 +40,65 @@
     color: #dc3545;
 }
 
-.weight-calculator {
+/* NOUVEAU: Styles pour le toggle de type de production */
+.production-toggle {
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.production-toggle .form-check {
+    display: inline-block;
+    margin-right: 2rem;
+    margin-bottom: 1rem;
+}
+
+.production-toggle .form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.production-toggle .form-check-label {
+    font-weight: 500;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding-left: 0.5rem;
+}
+
+/* Styles pour les champs de poids selon le type */
+.weight-fields {
     background: #f8f9fa;
     padding: 1rem;
     border-radius: 10px;
     border-left: 4px solid #17a2b8;
+    transition: all 0.3s ease;
 }
 
-/* Styles pour le filtrage des catégories */
+.weight-field {
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    opacity: 1;
+}
+
+.weight-field.hidden {
+    display: none !important;
+    opacity: 0;
+}
+
+.weight-field.visible {
+    display: block !important;
+    opacity: 1;
+}
+
+/* Animation pour le changement de champs */
+.weight-fields.changing {
+    transform: scale(0.98);
+    opacity: 0.7;
+}
+
+/* Styles pour les catégories */
 .categories-info {
     background: #e3f2fd;
     border: 1px solid #bbdefb;
@@ -100,6 +151,27 @@
 #id_categorie:disabled {
     background-color: #f8f9fa;
     opacity: 0.6;
+}
+
+/* Indicateur de type de production actif */
+.production-indicator {
+    background: #28a745;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-block;
+    margin-left: 1rem;
+}
+
+/* Styles responsive pour les champs de poids */
+@media (max-width: 768px) {
+    .production-toggle .form-check {
+        display: block;
+        margin-right: 0;
+        margin-bottom: 1rem;
+    }
 }
 </style>
 {% endblock %}
@@ -241,32 +313,88 @@
                             </div>
                         </div>
 
-                        <!-- Section 4: Production -->
+                        <!-- Section 4: Type de Production et Poids -->
                         <div class="form-section">
-                            <h5><i class="fas fa-weight me-2"></i>Données de Production</h5>
+                            <h5>
+                                <i class="fas fa-cogs me-2"></i>
+                                Type de Production
+                                <span class="production-indicator" id="production-indicator" style="display: none;"></span>
+                            </h5>
                             
-                            <div class="weight-calculator mb-3">
-                                <h6><i class="fas fa-calculator me-2"></i>Calculateur de poids</h6>
+                            <!-- NOUVEAU: Toggle pour le type de production -->
+                            <div class="production-toggle">
+                                <h6><i class="fas fa-toggle-on me-2"></i>Sélectionnez le type de production</h6>
                                 <div class="row">
-                                    <div class="col-md-6 required-field">
-                                        <label for="id_poids_debitage" class="form-label">Poids débitage (kg)</label>
-                                        {{ form.poids_debitage }}
-                                        <div class="help-text">{{ form.poids_debitage.help_text }}</div>
-                                        {% if form.poids_debitage.errors %}
-                                            <div class="invalid-feedback d-block">
-                                                {{ form.poids_debitage.errors.0 }}
+                                    {% for choice in form.type_production %}
+                                        <div class="col-md-6">
+                                            <div class="form-check form-check-lg">
+                                                {{ choice.tag }}
+                                                <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                                    <i class="fas {% if choice.choice_value == 'assemblage' %}fa-puzzle-piece{% else %}fa-cut{% endif %} me-2"></i>
+                                                    {{ choice.choice_label }}
+                                                </label>
                                             </div>
-                                        {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="help-text mt-2">{{ form.type_production.help_text }}</div>
+                                {% if form.type_production.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.type_production.errors.0 }}
                                     </div>
-                                    <div class="col-md-6 required-field">
-                                        <label for="id_poids_assemblage" class="form-label">Poids assemblage (kg)</label>
-                                        {{ form.poids_assemblage }}
-                                        <div class="help-text">{{ form.poids_assemblage.help_text }}</div>
-                                        {% if form.poids_assemblage.errors %}
-                                            <div class="invalid-feedback d-block">
-                                                {{ form.poids_assemblage.errors.0 }}
+                                {% endif %}
+                            </div>
+
+                            <!-- NOUVEAU: Champs de poids dynamiques -->
+                            <div class="weight-fields" id="weight-fields">
+                                <h6><i class="fas fa-weight me-2"></i>Données de poids</h6>
+                                <div id="weight-fields-container">
+                                    <!-- Message d'attente -->
+                                    <div id="weight-waiting" class="text-center text-muted py-3">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>Sélectionnez d'abord un type de production</strong> pour afficher les champs de poids correspondants
+                                    </div>
+
+                                    <!-- Champ pour assemblage -->
+                                    <div class="weight-field hidden" id="assemblage-fields">
+                                        <div class="row">
+                                            <div class="col-md-12 required-field">
+                                                <label for="id_poids_assemblage" class="form-label">{{ form.poids_assemblage.label }}</label>
+                                                {{ form.poids_assemblage }}
+                                                <div class="help-text">{{ form.poids_assemblage.help_text }}</div>
+                                                {% if form.poids_assemblage.errors %}
+                                                    <div class="invalid-feedback d-block">
+                                                        {{ form.poids_assemblage.errors.0 }}
+                                                    </div>
+                                                {% endif %}
                                             </div>
-                                        {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <!-- Champs pour débitage -->
+                                    <div class="weight-field hidden" id="debitage-fields">
+                                        <div class="row">
+                                            <div class="col-md-6 required-field">
+                                                <label for="id_poids_debitage_1" class="form-label">{{ form.poids_debitage_1.label }}</label>
+                                                {{ form.poids_debitage_1 }}
+                                                <div class="help-text">{{ form.poids_debitage_1.help_text }}</div>
+                                                {% if form.poids_debitage_1.errors %}
+                                                    <div class="invalid-feedback d-block">
+                                                        {{ form.poids_debitage_1.errors.0 }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-6 required-field">
+                                                <label for="id_poids_debitage_2" class="form-label">{{ form.poids_debitage_2.label }}</label>
+                                                {{ form.poids_debitage_2 }}
+                                                <div class="help-text">{{ form.poids_debitage_2.help_text }}</div>
+                                                {% if form.poids_debitage_2.errors %}
+                                                    <div class="invalid-feedback d-block">
+                                                        {{ form.poids_debitage_2.errors.0 }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -348,6 +476,7 @@
                             <h6><i class="fas fa-lightbulb me-2"></i>Conseils</h6>
                             <ul class="mb-0 small">
                                 <li>Sélectionnez d'abord l'affaire pour filtrer les catégories</li>
+                                <li>Choisissez le type de production pour voir les champs de poids</li>
                                 <li>Vérifiez que l'atelier a la capacité disponible</li>
                                 <li>Le collaborateur doit être qualifié pour la catégorie</li>
                                 <li>Les poids doivent être en kilogrammes</li>
@@ -357,7 +486,7 @@
                         <div class="alert alert-warning">
                             <h6><i class="fas fa-exclamation-triangle me-2"></i>Attention</h6>
                             <p class="mb-0 small">
-                                Une fois créé, le numéro de lancement ne peut plus être modifié.
+                                Le numéro de lancement peut être dupliqué si nécessaire.
                             </p>
                         </div>
                     </div>
@@ -371,7 +500,64 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Gestion du filtrage AJAX des catégories
+    // NOUVEAU: Gestion du toggle pour le type de production
+    const typeProductionRadios = document.querySelectorAll('input[name="type_production"]');
+    const weightFieldsContainer = document.getElementById('weight-fields');
+    const weightWaiting = document.getElementById('weight-waiting');
+    const assemblageFields = document.getElementById('assemblage-fields');
+    const debitageFields = document.getElementById('debitage-fields');
+    const productionIndicator = document.getElementById('production-indicator');
+
+    // Fonction pour afficher/masquer les champs de poids
+    function toggleWeightFields(productionType) {
+        // Animation de transition
+        weightFieldsContainer.classList.add('changing');
+        
+        setTimeout(() => {
+            // Masquer tous les champs
+            weightWaiting.style.display = 'none';
+            assemblageFields.classList.add('hidden');
+            assemblageFields.classList.remove('visible');
+            debitageFields.classList.add('hidden');
+            debitageFields.classList.remove('visible');
+            
+            // Afficher les champs selon le type
+            if (productionType === 'assemblage') {
+                assemblageFields.classList.remove('hidden');
+                assemblageFields.classList.add('visible');
+                productionIndicator.textContent = 'Assemblage';
+                productionIndicator.style.display = 'inline-block';
+            } else if (productionType === 'debitage') {
+                debitageFields.classList.remove('hidden');
+                debitageFields.classList.add('visible');
+                productionIndicator.textContent = 'Débitage';
+                productionIndicator.style.display = 'inline-block';
+            } else {
+                weightWaiting.style.display = 'block';
+                productionIndicator.style.display = 'none';
+            }
+            
+            // Fin de l'animation
+            weightFieldsContainer.classList.remove('changing');
+        }, 150);
+    }
+
+    // Écouteurs d'événements pour les radio buttons
+    typeProductionRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                toggleWeightFields(this.value);
+            }
+        });
+    });
+
+    // Initialisation : vérifier si un type est déjà sélectionné
+    const selectedType = document.querySelector('input[name="type_production"]:checked');
+    if (selectedType) {
+        toggleWeightFields(selectedType.value);
+    }
+
+    // Gestion du filtrage AJAX des catégories (code existant)
     const affaireSelect = document.getElementById('id_affaire');
     const categorieSelect = document.getElementById('id_categorie');
     const categoriesInfo = document.getElementById('categories-info');
@@ -529,6 +715,12 @@ function resetForm() {
             <i class="fas fa-info-circle me-2"></i>
             <strong>Veuillez d'abord sélectionner une affaire</strong> pour voir les catégories disponibles
         `;
+
+        // Réinitialiser les champs de poids
+        document.getElementById('weight-waiting').style.display = 'block';
+        document.getElementById('assemblage-fields').classList.add('hidden');
+        document.getElementById('debitage-fields').classList.add('hidden');
+        document.getElementById('production-indicator').style.display = 'none';
     }
 }
 
@@ -537,6 +729,7 @@ document.getElementById('lancementForm').addEventListener('submit', function(e) 
     const requiredFields = document.querySelectorAll('[required]:not(#id_date_lancement)');
     let isValid = true;
     
+    // Vérification des champs obligatoires
     requiredFields.forEach(field => {
         if (!field.value.trim()) {
             isValid = false;
@@ -545,6 +738,30 @@ document.getElementById('lancementForm').addEventListener('submit', function(e) 
             field.classList.remove('is-invalid');
         }
     });
+
+    // Vérification spéciale pour les champs de poids selon le type de production
+    const selectedType = document.querySelector('input[name="type_production"]:checked');
+    if (selectedType) {
+        if (selectedType.value === 'assemblage') {
+            const poidsAssemblage = document.getElementById('id_poids_assemblage');
+            if (!poidsAssemblage.value || poidsAssemblage.value === '0,000') {
+                isValid = false;
+                poidsAssemblage.classList.add('is-invalid');
+            }
+        } else if (selectedType.value === 'debitage') {
+            const poidsDebitage1 = document.getElementById('id_poids_debitage_1');
+            const poidsDebitage2 = document.getElementById('id_poids_debitage_2');
+            if ((!poidsDebitage1.value || poidsDebitage1.value === '0,000') && 
+                (!poidsDebitage2.value || poidsDebitage2.value === '0,000')) {
+                isValid = false;
+                poidsDebitage1.classList.add('is-invalid');
+                poidsDebitage2.classList.add('is-invalid');
+            }
+        }
+    } else {
+        isValid = false;
+        alert('Veuillez sélectionner un type de production.');
+    }
     
     if (!isValid) {
         e.preventDefault();

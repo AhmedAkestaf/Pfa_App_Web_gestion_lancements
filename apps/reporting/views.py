@@ -38,7 +38,7 @@ def number_format_french(value, decimal_places=3, unit="kg", include_unit=True):
     Fonction utilitaire pour formater les nombres avec le format français
     - Espaces comme séparateurs de milliers
     - Virgule comme séparateur décimal
-    - Nombre de décimales configurable (défaut: 3)
+    - Nombre de décimales configurable (défaut: 3 pour correspondre au modèle)
     """
     try:
         if value is None:
@@ -127,17 +127,20 @@ def rapports_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Statistiques globales
+    # Statistiques globales avec nouveaux champs
     total_rapports = RapportProduction.objects.count()
     total_lancements = Lancement.objects.count()
     
-    # Calcul du poids total
+    # Calcul du poids total selon les nouveaux champs
     lancements_aggregation = Lancement.objects.aggregate(
-        total_debitage=Sum('poids_debitage'),
-        total_assemblage=Sum('poids_assemblage')
+        total_assemblage=Sum('poids_assemblage'),
+        total_debitage_1=Sum('poids_debitage_1'),
+        total_debitage_2=Sum('poids_debitage_2')
     )
-    total_poids_debitage = lancements_aggregation['total_debitage'] or 0
     total_poids_assemblage = lancements_aggregation['total_assemblage'] or 0
+    total_poids_debitage_1 = lancements_aggregation['total_debitage_1'] or 0
+    total_poids_debitage_2 = lancements_aggregation['total_debitage_2'] or 0
+    total_poids_debitage = float(total_poids_debitage_1) + float(total_poids_debitage_2)
 
     try:
         rapport_recent = RapportProduction.objects.latest('created_at')
@@ -159,11 +162,12 @@ def rapports_list(request):
     return render(request, 'reporting/rapports_list.html', context)
 
 
+
 @login_required
 @permission_required('rapports', 'read')
 def rapport_detail(request, rapport_id):
     """
-    Vue pour afficher les détails d'un rapport spécifique
+    Vue pour afficher les détails d'un rapport spécifique - MISE À JOUR
     """
     rapport = get_object_or_404(RapportProduction, id=rapport_id)
 
@@ -172,42 +176,49 @@ def rapport_detail(request, rapport_id):
         date_lancement__range=[rapport.date_debut, rapport.date_fin]
     )
 
-    # Statistiques par atelier
+    # Statistiques par atelier avec nouveaux champs
     stats_ateliers = lancements.values(
         'atelier__id', 'atelier__nom_atelier', 'atelier__type_atelier'
     ).annotate(
         nb_lancements=Count('id'),
-        poids_debitage=Sum('poids_debitage'),
-        poids_assemblage=Sum('poids_assemblage')
+        poids_assemblage=Sum('poids_assemblage'),
+        poids_debitage_1=Sum('poids_debitage_1'),
+        poids_debitage_2=Sum('poids_debitage_2')
     )
 
-    # Calcul des totaux globaux
-    total_debitage_global = sum(float(stat['poids_debitage'] or 0) for stat in stats_ateliers)
+    # Calcul des totaux globaux avec nouveaux champs
     total_assemblage_global = sum(float(stat['poids_assemblage'] or 0) for stat in stats_ateliers)
+    total_debitage_1_global = sum(float(stat['poids_debitage_1'] or 0) for stat in stats_ateliers)
+    total_debitage_2_global = sum(float(stat['poids_debitage_2'] or 0) for stat in stats_ateliers)
+    total_debitage_global = total_debitage_1_global + total_debitage_2_global
 
     # Traitement des statistiques avec pourcentages
     stats_ateliers_list = []
     
     for stat in stats_ateliers:
-        debitage = float(stat['poids_debitage'] or 0)
         assemblage = float(stat['poids_assemblage'] or 0)
-        poids_total = debitage + assemblage
+        debitage_1 = float(stat['poids_debitage_1'] or 0)
+        debitage_2 = float(stat['poids_debitage_2'] or 0)
+        poids_debitage_total = debitage_1 + debitage_2
+        poids_total = assemblage + poids_debitage_total
         
         # Calcul des pourcentages par rapport aux totaux globaux
-        pourcentage_debitage = (debitage / total_debitage_global * 100) if total_debitage_global > 0 else 0
         pourcentage_assemblage = (assemblage / total_assemblage_global * 100) if total_assemblage_global > 0 else 0
-        pourcentage_poids = ((poids_total) / (total_debitage_global + total_assemblage_global) * 100) if (total_debitage_global + total_assemblage_global) > 0 else 0
+        pourcentage_debitage = (poids_debitage_total / total_debitage_global * 100) if total_debitage_global > 0 else 0
+        pourcentage_poids = ((poids_total) / (total_assemblage_global + total_debitage_global) * 100) if (total_assemblage_global + total_debitage_global) > 0 else 0
         
         stat_data = {
             'atelier__id': stat['atelier__id'],
             'atelier__nom_atelier': stat['atelier__nom_atelier'],
             'atelier__type_atelier': stat['atelier__type_atelier'],
             'nb_lancements': stat['nb_lancements'],
-            'poids_debitage': debitage,
             'poids_assemblage': assemblage,
+            'poids_debitage_1': debitage_1,
+            'poids_debitage_2': debitage_2,
+            'poids_debitage_total': poids_debitage_total,
             'poids_total': poids_total,
-            'pourcentage_debitage': pourcentage_debitage,
             'pourcentage_assemblage': pourcentage_assemblage,
+            'pourcentage_debitage': pourcentage_debitage,
             'pourcentage_poids': pourcentage_poids
         }
         stats_ateliers_list.append(stat_data)
@@ -215,32 +226,40 @@ def rapport_detail(request, rapport_id):
     # Tri par poids total décroissant
     stats_ateliers_list.sort(key=lambda x: x['poids_total'], reverse=True)
 
-    # Statistiques par collaborateur
+    # Statistiques par collaborateur avec nouveaux champs
     stats_collaborateurs_base = lancements.values(
         'collaborateur__id', 
         'collaborateur__nom_collaborateur', 
         'collaborateur__prenom_collaborateur'
     ).annotate(
         nb_lancements=Count('id'),
-        poids_debitage=Sum('poids_debitage'),
-        poids_assemblage=Sum('poids_assemblage')
+        poids_assemblage=Sum('poids_assemblage'),
+        poids_debitage_1=Sum('poids_debitage_1'),
+        poids_debitage_2=Sum('poids_debitage_2')
     )
 
     # Calcul des moyennes manuellement
     stats_collaborateurs_list = []
     for stat in stats_collaborateurs_base:
-        debitage = stat['poids_debitage'] or 0
         assemblage = stat['poids_assemblage'] or 0
-        stat['poids_total'] = debitage + assemblage
+        debitage_1 = stat['poids_debitage_1'] or 0
+        debitage_2 = stat['poids_debitage_2'] or 0
+        poids_debitage_total = debitage_1 + debitage_2
+        stat['poids_debitage_total'] = poids_debitage_total
+        stat['poids_total'] = assemblage + poids_debitage_total
         
         # Calcul des moyennes
         if stat['nb_lancements'] > 0:
-            stat['moyenne_debitage'] = debitage / stat['nb_lancements']
             stat['moyenne_assemblage'] = assemblage / stat['nb_lancements']
+            stat['moyenne_debitage_1'] = debitage_1 / stat['nb_lancements']
+            stat['moyenne_debitage_2'] = debitage_2 / stat['nb_lancements']
+            stat['moyenne_debitage_total'] = poids_debitage_total / stat['nb_lancements']
             stat['moyenne_poids'] = stat['poids_total'] / stat['nb_lancements']
         else:
-            stat['moyenne_debitage'] = 0
             stat['moyenne_assemblage'] = 0
+            stat['moyenne_debitage_1'] = 0
+            stat['moyenne_debitage_2'] = 0
+            stat['moyenne_debitage_total'] = 0
             stat['moyenne_poids'] = 0
         
         stats_collaborateurs_list.append(stat)
@@ -260,30 +279,63 @@ def rapport_detail(request, rapport_id):
     for stat in stats_collaborateurs_list:
         stat['pourcentage_performance'] = (stat['poids_total'] or 0) * 100 / max_poids_collaborateur
 
-    # Statistiques par affaire
+    # Statistiques par affaire avec nouveaux champs
     stats_affaires = lancements.values(
         'affaire__id', 'affaire__code_affaire', 'affaire__client', 'affaire__statut'
     ).annotate(
         nb_lancements=Count('id'),
-        poids_debitage=Sum('poids_debitage'),
-        poids_assemblage=Sum('poids_assemblage')
+        poids_assemblage=Sum('poids_assemblage'),
+        poids_debitage_1=Sum('poids_debitage_1'),
+        poids_debitage_2=Sum('poids_debitage_2')
     )
 
     # Traitement des affaires
     stats_affaires_list = []
     for stat in stats_affaires:
-        debitage = stat['poids_debitage'] or 0
         assemblage = stat['poids_assemblage'] or 0
-        stat['poids_total'] = debitage + assemblage
+        debitage_1 = stat['poids_debitage_1'] or 0
+        debitage_2 = stat['poids_debitage_2'] or 0
+        poids_debitage_total = debitage_1 + debitage_2
+        stat['poids_debitage_total'] = poids_debitage_total
+        stat['poids_total'] = assemblage + poids_debitage_total
         stats_affaires_list.append(stat)
 
     # Tri par poids total décroissant
     stats_affaires_list.sort(key=lambda x: x['poids_total'], reverse=True)
 
+    # Statistiques par type de production
+    stats_type_production = lancements.values('type_production').annotate(
+        nb_lancements=Count('id'),
+        poids_assemblage=Sum('poids_assemblage'),
+        poids_debitage_1=Sum('poids_debitage_1'),
+        poids_debitage_2=Sum('poids_debitage_2')
+    )
+
+    # Traitement des statistiques par type
+    stats_type_list = []
+    for stat in stats_type_production:
+        assemblage = stat['poids_assemblage'] or 0
+        debitage_1 = stat['poids_debitage_1'] or 0
+        debitage_2 = stat['poids_debitage_2'] or 0
+        poids_debitage_total = debitage_1 + debitage_2
+        
+        stat_data = {
+            'type_production': stat['type_production'],
+            'type_production_display': 'Assemblage' if stat['type_production'] == 'assemblage' else 'Débitage',
+            'nb_lancements': stat['nb_lancements'],
+            'poids_assemblage': assemblage,
+            'poids_debitage_1': debitage_1,
+            'poids_debitage_2': debitage_2,
+            'poids_debitage_total': poids_debitage_total,
+            'poids_total': assemblage + poids_debitage_total
+        }
+        stats_type_list.append(stat_data)
+
     # Statistiques générales
     stats = {
         'nb_ateliers': len(stats_ateliers_list),
         'nb_collaborateurs': len(stats_collaborateurs_list),
+        'nb_types_production': len(stats_type_list),
     }
 
     # Timeline des événements
@@ -302,6 +354,7 @@ def rapport_detail(request, rapport_id):
         'stats_ateliers': stats_ateliers_list,
         'stats_collaborateurs': stats_collaborateurs_list,
         'stats_affaires': stats_affaires_list,
+        'stats_type_production': stats_type_list,
         'timeline_events': timeline_events,
     }
 
@@ -312,7 +365,7 @@ def rapport_detail(request, rapport_id):
 @permission_required('rapports', 'read')
 def graphiques(request):
     """
-    Vue pour les tableaux de bord avec graphiques
+    Vue pour les tableaux de bord avec graphiques - MISE À JOUR
     """
     from datetime import datetime, timedelta
     from django.utils import timezone
@@ -342,50 +395,61 @@ def graphiques(request):
         date_lancement__range=[date_debut, date_fin]
     )
 
-    # Statistiques du dashboard
+    # Statistiques du dashboard avec nouveaux champs
     lancements_aggregation = lancements.aggregate(
-        total_debitage=Sum('poids_debitage'),
-        total_assemblage=Sum('poids_assemblage')
+        total_assemblage=Sum('poids_assemblage'),
+        total_debitage_1=Sum('poids_debitage_1'),
+        total_debitage_2=Sum('poids_debitage_2')
     )
-    poids_total_dashboard = (lancements_aggregation['total_debitage'] or 0) + (lancements_aggregation['total_assemblage'] or 0)
-    poids_debitage_total = (lancements_aggregation['total_debitage'] or 0)
     poids_assemblage_total = (lancements_aggregation['total_assemblage'] or 0)
+    poids_debitage_1_total = (lancements_aggregation['total_debitage_1'] or 0)
+    poids_debitage_2_total = (lancements_aggregation['total_debitage_2'] or 0)
+    poids_debitage_total = float(poids_debitage_1_total) + float(poids_debitage_2_total)
+    poids_total_dashboard = float(poids_assemblage_total) + poids_debitage_total
 
     # Calcul du nombre de jours d'analyse
     jours_analyse = (date_fin - date_debut).days + 1
 
     dashboard_stats = {
         'total_lancements': lancements.count(),
-        'poids__debitage_total': poids_debitage_total,
-        'poids__assemblage_total': poids_assemblage_total,
+        'poids_assemblage_total': poids_assemblage_total,
+        'poids_debitage_1_total': poids_debitage_1_total,
+        'poids_debitage_2_total': poids_debitage_2_total,
+        'poids_debitage_total': poids_debitage_total,
+        'poids_total': poids_total_dashboard,
         'efficacite': 85.5,
         'delai_moyen': 5,
         'completion_rate': 78.2,
     }
 
-    # Top collaborateurs pour les graphiques
+    # Top collaborateurs pour les graphiques avec nouveaux champs
     top_collaborateurs_data = lancements.values(
         'collaborateur__nom_collaborateur',
         'collaborateur__prenom_collaborateur'
     ).annotate(
-        poids_debitage=Sum('poids_debitage'),
-        poids_assemblage=Sum('poids_assemblage')
+        poids_assemblage=Sum('poids_assemblage'),
+        poids_debitage_1=Sum('poids_debitage_1'),
+        poids_debitage_2=Sum('poids_debitage_2')
     )
 
     # Traitement des top collaborateurs avec noms complets
     top_collaborateurs_list = []
     for collab in top_collaborateurs_data:
-        debitage = collab['poids_debitage'] or 0
         assemblage = collab['poids_assemblage'] or 0
-        poids_total = debitage + assemblage
+        debitage_1 = collab['poids_debitage_1'] or 0
+        debitage_2 = collab['poids_debitage_2'] or 0
+        poids_debitage_total = debitage_1 + debitage_2
+        poids_total = assemblage + poids_debitage_total
         
         # Construction du nom complet
         nom_complet = f"{collab['collaborateur__prenom_collaborateur']} {collab['collaborateur__nom_collaborateur']}"
         
         collab_data = {
             'nom_collaborateur': nom_complet,
-            'poids_debitage': debitage,
             'poids_assemblage': assemblage,
+            'poids_debitage_1': debitage_1,
+            'poids_debitage_2': debitage_2,
+            'poids_debitage_total': poids_debitage_total,
             'poids_total': poids_total
         }
         top_collaborateurs_list.append(collab_data)
@@ -394,58 +458,73 @@ def graphiques(request):
     top_collaborateurs_list.sort(key=lambda x: x['poids_total'], reverse=True)
     top_collaborateurs = top_collaborateurs_list[:10]
 
-    # Top affaires par poids débitage uniquement
+    # Top affaires avec nouveaux champs
     top_affaires_data = lancements.values(
         'affaire__code_affaire'
     ).annotate(
-        poids_debitage=Sum('poids_debitage'),
-        poids_assemblage=Sum('poids_assemblage')
+        poids_assemblage=Sum('poids_assemblage'),
+        poids_debitage_1=Sum('poids_debitage_1'),
+        poids_debitage_2=Sum('poids_debitage_2')
     )
 
     # Traitement des top affaires
     top_affaires_list = []
-    total_poids_debitage_affaires = 0
+    total_poids_affaires = 0
     
     for affaire in top_affaires_data:
-        poids_debitage = affaire['poids_debitage'] or 0
+        assemblage = affaire['poids_assemblage'] or 0
+        debitage_1 = affaire['poids_debitage_1'] or 0
+        debitage_2 = affaire['poids_debitage_2'] or 0
+        poids_debitage_total = debitage_1 + debitage_2
+        poids_total = assemblage + poids_debitage_total
         
         affaire_data = {
             'code_affaire': affaire['affaire__code_affaire'],
-            'poids_debitage': poids_debitage,
-            'poids_total': poids_debitage
+            'poids_assemblage': assemblage,
+            'poids_debitage_1': debitage_1,
+            'poids_debitage_2': debitage_2,
+            'poids_debitage_total': poids_debitage_total,
+            'poids_total': poids_total
         }
         top_affaires_list.append(affaire_data)
-        total_poids_debitage_affaires += poids_debitage
+        total_poids_affaires += poids_total
 
-    # Tri et limitation à 8 affaires par poids débitage
-    top_affaires_list.sort(key=lambda x: x['poids_debitage'], reverse=True)
+    # Tri et limitation à 8 affaires par poids total
+    top_affaires_list.sort(key=lambda x: x['poids_total'], reverse=True)
     top_affaires = top_affaires_list[:8]
 
     # Calcul des pourcentages pour les affaires
     for affaire in top_affaires:
-        if total_poids_debitage_affaires > 0:
-            affaire['pourcentage'] = (affaire['poids_debitage'] / total_poids_debitage_affaires) * 100
+        if total_poids_affaires > 0:
+            affaire['pourcentage'] = (affaire['poids_total'] / total_poids_affaires) * 100
         else:
             affaire['pourcentage'] = 0
 
-    # Répartition par catégories
+    # Répartition par catégories avec nouveaux champs
     repartition_categories = lancements.values(
         'categorie__nom_categorie'
     ).annotate(
-        poids_debitage=Sum('poids_debitage'),
         poids_assemblage=Sum('poids_assemblage'),
+        poids_debitage_1=Sum('poids_debitage_1'),
+        poids_debitage_2=Sum('poids_debitage_2'),
         nb_lancements=Count('id')
     )
 
     # Traitement des catégories
     categories_list = []
     for cat in repartition_categories:
-        debitage = cat['poids_debitage'] or 0
         assemblage = cat['poids_assemblage'] or 0
-        poids_total = debitage + assemblage
+        debitage_1 = cat['poids_debitage_1'] or 0
+        debitage_2 = cat['poids_debitage_2'] or 0
+        poids_debitage_total = debitage_1 + debitage_2
+        poids_total = assemblage + poids_debitage_total
         
         cat_data = {
             'categorie__nom_categorie': cat['categorie__nom_categorie'],
+            'poids_assemblage': assemblage,
+            'poids_debitage_1': debitage_1,
+            'poids_debitage_2': debitage_2,
+            'poids_debitage_total': poids_debitage_total,
             'poids_total': poids_total,
             'nb_lancements': cat['nb_lancements']
         }
@@ -454,15 +533,18 @@ def graphiques(request):
     # Tri par poids total décroissant
     categories_list.sort(key=lambda x: x['poids_total'], reverse=True)
 
-    # Performance des ateliers
+    # Performance des ateliers avec nouveaux champs
     performance_ateliers = Atelier.objects.annotate(
         nb_lancements=Count('lancements', filter=Q(
             lancements__date_lancement__range=[date_debut, date_fin]
         )),
-        poids_debitage=Sum('lancements__poids_debitage', filter=Q(
+        poids_assemblage=Sum('lancements__poids_assemblage', filter=Q(
             lancements__date_lancement__range=[date_debut, date_fin]
         )),
-        poids_assemblage=Sum('lancements__poids_assemblage', filter=Q(
+        poids_debitage_1=Sum('lancements__poids_debitage_1', filter=Q(
+            lancements__date_lancement__range=[date_debut, date_fin]
+        )),
+        poids_debitage_2=Sum('lancements__poids_debitage_2', filter=Q(
             lancements__date_lancement__range=[date_debut, date_fin]
         ))
     ).filter(nb_lancements__gt=0)
@@ -471,9 +553,11 @@ def graphiques(request):
     performance_ateliers_list = []
     for atelier in performance_ateliers:
         # Calcul du poids total
-        debitage = atelier.poids_debitage or 0
         assemblage = atelier.poids_assemblage or 0
-        atelier.poids_total = debitage + assemblage
+        debitage_1 = atelier.poids_debitage_1 or 0
+        debitage_2 = atelier.poids_debitage_2 or 0
+        atelier.poids_debitage_total = debitage_1 + debitage_2
+        atelier.poids_total = assemblage + atelier.poids_debitage_total
         
         # Simulation d'efficacité
         base_efficacite = 70
@@ -485,6 +569,33 @@ def graphiques(request):
 
     # Tri par poids total décroissant
     performance_ateliers_list.sort(key=lambda x: x.poids_total, reverse=True)
+
+    # Répartition par type de production
+    stats_type_production = lancements.values('type_production').annotate(
+        nb_lancements=Count('id'),
+        poids_assemblage=Sum('poids_assemblage'),
+        poids_debitage_1=Sum('poids_debitage_1'),
+        poids_debitage_2=Sum('poids_debitage_2')
+    )
+
+    type_production_list = []
+    for stat in stats_type_production:
+        assemblage = stat['poids_assemblage'] or 0
+        debitage_1 = stat['poids_debitage_1'] or 0
+        debitage_2 = stat['poids_debitage_2'] or 0
+        poids_debitage_total = debitage_1 + debitage_2
+        
+        type_data = {
+            'type_production': stat['type_production'],
+            'type_production_display': 'Assemblage' if stat['type_production'] == 'assemblage' else 'Débitage',
+            'nb_lancements': stat['nb_lancements'],
+            'poids_assemblage': assemblage,
+            'poids_debitage_1': debitage_1,
+            'poids_debitage_2': debitage_2,
+            'poids_debitage_total': poids_debitage_total,
+            'poids_total': assemblage + poids_debitage_total
+        }
+        type_production_list.append(type_data)
 
     # Insights
     top_performer = performance_ateliers_list[0] if performance_ateliers_list else None
@@ -501,10 +612,15 @@ def graphiques(request):
     )
     
     precedent_aggregation = lancements_precedents.aggregate(
-        total_debitage=Sum('poids_debitage'),
-        total_assemblage=Sum('poids_assemblage')
+        total_assemblage=Sum('poids_assemblage'),
+        total_debitage_1=Sum('poids_debitage_1'),
+        total_debitage_2=Sum('poids_debitage_2')
     )
-    poids_total_precedent = (precedent_aggregation['total_debitage'] or 0) + (precedent_aggregation['total_assemblage'] or 0)
+    poids_total_precedent = (
+        float(precedent_aggregation['total_assemblage'] or 0) + 
+        float(precedent_aggregation['total_debitage_1'] or 0) + 
+        float(precedent_aggregation['total_debitage_2'] or 0)
+    )
 
     # Calcul de la tendance
     if poids_total_precedent > 0:
@@ -529,6 +645,7 @@ def graphiques(request):
         'top_affaires': top_affaires,
         'repartition_categories': categories_list,
         'performance_ateliers': performance_ateliers_list,
+        'stats_type_production': type_production_list,
         
         # Insights
         'top_performer': top_performer,
@@ -544,6 +661,7 @@ def graphiques(request):
     }
 
     return render(request, 'reporting/graphiques.html', context)
+
 
 
 @login_required
@@ -584,7 +702,7 @@ def export_page(request):
 @permission_required('rapports', 'export')
 def process_export(request):
     """
-    Traitement de l'export des données avec formatage français
+    Traitement de l'export des données avec formatage français - MISE À JOUR
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Méthode non autorisée'})
@@ -673,7 +791,7 @@ def process_export(request):
 
 def generate_excel_export(lancements, date_debut, date_fin, include_stats, detailed_data):
     """
-    Génération d'un fichier Excel avec formatage français des nombres
+    Génération d'un fichier Excel avec formatage français des nombres - MISE À JOUR
     """
     output = BytesIO()
     workbook = xlsxwriter.Workbook(output)
@@ -701,11 +819,12 @@ def generate_excel_export(lancements, date_debut, date_fin, include_stats, detai
     # Feuille principale - Données des lancements
     worksheet = workbook.add_worksheet('Lancements')
     
-    # En-têtes
+    # En-têtes mis à jour
     headers = [
         'Numéro Lancement', 'Date Lancement', 'Date Réception', 
         'Affaire', 'Client', 'Sous-livrable', 'Atelier', 'Type Atelier',
-        'Collaborateur', 'Catégorie', 'Poids Débitage', 'Poids Assemblage',
+        'Collaborateur', 'Catégorie', 'Type Production',
+        'Poids Assemblage', 'Poids Débitage 1', 'Poids Débitage 2',
         'Statut', 'Observations'
     ]
     
@@ -725,16 +844,15 @@ def generate_excel_export(lancements, date_debut, date_fin, include_stats, detai
         worksheet.write(row, 7, lancement.atelier.get_type_atelier_display(), data_format)
         worksheet.write(row, 8, lancement.collaborateur.get_full_name(), data_format)
         worksheet.write(row, 9, lancement.categorie.nom_categorie, data_format)
-        worksheet.write(row, 10, float(lancement.poids_debitage), number_format_french)
-        worksheet.write(row, 11, float(lancement.poids_assemblage), number_format_french)
-        worksheet.write(row, 12, lancement.get_statut_display(), data_format)
-        worksheet.write(row, 13, lancement.observations or '', data_format)
+        worksheet.write(row, 10, lancement.get_type_production_display(), data_format)
+        worksheet.write(row, 11, float(lancement.poids_assemblage or 0), number_format_french)
+        worksheet.write(row, 12, float(lancement.poids_debitage_1 or 0), number_format_french)
+        worksheet.write(row, 13, float(lancement.poids_debitage_2 or 0), number_format_french)
+        worksheet.write(row, 14, lancement.get_statut_display(), data_format)
+        worksheet.write(row, 15, lancement.observations or '', data_format)
 
     # Ajustement de la largeur des colonnes
-    worksheet.set_column('A:N', 15)
-
-    total_debitage = lancements.aggregate(Sum('poids_debitage'))['poids_debitage__sum'] or 0
-    total_assemblage = lancements.aggregate(Sum('poids_assemblage'))['poids_assemblage__sum'] or 0
+    worksheet.set_column('A:P', 15)
 
     # Feuille statistiques avec formatage français
     if include_stats:
@@ -747,22 +865,38 @@ def generate_excel_export(lancements, date_debut, date_fin, include_stats, detai
         stats_worksheet.write('A2', 'Nombre total de lancements', header_format)
         stats_worksheet.write('B2', lancements.count(), data_format)
     
-        # Calcul des poids totaux avec formatage français
-        total_debitage = sum(float(l.poids_debitage or 0) for l in lancements)
-        total_assemblage = sum(float(l.poids_assemblage or 0) for l in lancements)
+        # Calcul des poids totaux avec nouveaux champs
+        aggregation = lancements.aggregate(
+            total_assemblage=Sum('poids_assemblage'),
+            total_debitage_1=Sum('poids_debitage_1'),
+            total_debitage_2=Sum('poids_debitage_2')
+        )
+        
+        total_assemblage = float(aggregation['total_assemblage'] or 0)
+        total_debitage_1 = float(aggregation['total_debitage_1'] or 0)
+        total_debitage_2 = float(aggregation['total_debitage_2'] or 0)
+        total_debitage = total_debitage_1 + total_debitage_2
     
-        stats_worksheet.write('A3', 'Poids débitage total', header_format)
-        stats_worksheet.write('B3', number_format_french(total_debitage), data_format)
+        stats_worksheet.write('A3', 'Poids assemblage total', header_format)
+        stats_worksheet.write('B3', number_format_french(total_assemblage), data_format)
     
-        stats_worksheet.write('A4', 'Poids assemblage total', header_format)
-        stats_worksheet.write('B4', number_format_french(total_assemblage), data_format)
+        stats_worksheet.write('A4', 'Poids débitage 1 total', header_format)
+        stats_worksheet.write('B4', number_format_french(total_debitage_1), data_format)
+        
+        stats_worksheet.write('A5', 'Poids débitage 2 total', header_format)
+        stats_worksheet.write('B5', number_format_french(total_debitage_2), data_format)
+        
+        stats_worksheet.write('A6', 'Poids débitage total', header_format)
+        stats_worksheet.write('B6', number_format_french(total_debitage), data_format)
     
-        # Statistiques par atelier avec formatage français
-        stats_worksheet.write('A6', 'Statistiques par Atelier', header_format)
-        stats_worksheet.write('A7', 'Atelier', header_format)
-        stats_worksheet.write('B7', 'Nb Lancements', header_format)
-        stats_worksheet.write('C7', 'Poids Débitage', header_format)
-        stats_worksheet.write('D7', 'Poids Assemblage', header_format)
+        # Statistiques par atelier avec nouveaux champs
+        stats_worksheet.write('A8', 'Statistiques par Atelier', header_format)
+        stats_worksheet.write('A9', 'Atelier', header_format)
+        stats_worksheet.write('B9', 'Nb Lancements', header_format)
+        stats_worksheet.write('C9', 'Poids Assemblage', header_format)
+        stats_worksheet.write('D9', 'Poids Débitage 1', header_format)
+        stats_worksheet.write('E9', 'Poids Débitage 2', header_format)
+        stats_worksheet.write('F9', 'Poids Débitage Total', header_format)
     
         # Calcul des statistiques par atelier
         ateliers_stats = {}
@@ -771,20 +905,25 @@ def generate_excel_export(lancements, date_debut, date_fin, include_stats, detai
             if atelier not in ateliers_stats:
                 ateliers_stats[atelier] = {
                     'nb': 0, 
-                    'poids_debitage': 0, 
-                    'poids_assemblage': 0
+                    'poids_assemblage': 0, 
+                    'poids_debitage_1': 0,
+                    'poids_debitage_2': 0
                 }
             ateliers_stats[atelier]['nb'] += 1
-            ateliers_stats[atelier]['poids_debitage'] += float(lancement.poids_debitage or 0)
             ateliers_stats[atelier]['poids_assemblage'] += float(lancement.poids_assemblage or 0)
+            ateliers_stats[atelier]['poids_debitage_1'] += float(lancement.poids_debitage_1 or 0)
+            ateliers_stats[atelier]['poids_debitage_2'] += float(lancement.poids_debitage_2 or 0)
     
         # Écriture des statistiques par atelier avec formatage français
-        row = 8
+        row = 10
         for atelier, stats in ateliers_stats.items():
+            debitage_total = stats['poids_debitage_1'] + stats['poids_debitage_2']
             stats_worksheet.write(row, 0, atelier, data_format)
             stats_worksheet.write(row, 1, stats['nb'], data_format)
-            stats_worksheet.write(row, 2, number_format_french(stats['poids_debitage'], include_unit=False), data_format)
-            stats_worksheet.write(row, 3, number_format_french(stats['poids_assemblage'], include_unit=False), data_format)
+            stats_worksheet.write(row, 2, number_format_french(stats['poids_assemblage'], include_unit=False), data_format)
+            stats_worksheet.write(row, 3, number_format_french(stats['poids_debitage_1'], include_unit=False), data_format)
+            stats_worksheet.write(row, 4, number_format_french(stats['poids_debitage_2'], include_unit=False), data_format)
+            stats_worksheet.write(row, 5, number_format_french(debitage_total, include_unit=False), data_format)
             row += 1
 
     workbook.close()
@@ -820,14 +959,18 @@ def generate_pdf_export(lancements, date_debut, date_fin, include_graphics, incl
         story.append(Paragraph("Statistiques Générales", styles['Heading2']))
         
         # Calcul du poids total avec formatage français
-        total_debitage = sum(float(l.poids_debitage or 0) for l in lancements)
         total_assemblage = sum(float(l.poids_assemblage or 0) for l in lancements)
+        total_debitage_1 = sum(float(l.poids_debitage_1 or 0) for l in lancements)
+        total_debitage_2 = sum(float(l.poids_debitage_2 or 0) for l in lancements)
+        total_debitage = total_debitage_1 + total_debitage_2
 
         stats_data = [
             ['Métrique', 'Valeur'],
             ['Nombre de lancements', str(lancements.count())],
-            ['Poids débitage total', number_format_french(total_debitage)],
             ['Poids assemblage total', number_format_french(total_assemblage)],
+            ['Poids débitage 1 total', number_format_french(total_debitage_1)],
+            ['Poids débitage 2 total', number_format_french(total_debitage_2)],
+            ['Poids débitage total', number_format_french(total_debitage)],
             ['Période', f'{date_debut.strftime("%d/%m/%Y")} - {date_fin.strftime("%d/%m/%Y")}']
         ]
         
@@ -849,11 +992,12 @@ def generate_pdf_export(lancements, date_debut, date_fin, include_graphics, incl
     # Tableau des lancements avec formatage français
     story.append(Paragraph("Détail des Lancements", styles['Heading2']))
     
-    table_data = [['N° Lanc.', 'Date', 'Affaire', 'Atelier', 'Collaborateur', 'Débitage', 'Assemblage']]
+    table_data = [['N° Lanc.', 'Date', 'Affaire', 'Atelier', 'Collaborateur', 'Assemblage', 'Débitage 1', 'Débitage 2']]
     
     for lancement in lancements[:50]:  # Limiter à 50 pour le PDF
-        poids_debitage = float(lancement.poids_debitage or 0)
         poids_assemblage = float(lancement.poids_assemblage or 0)
+        poids_debitage_1 = float(lancement.poids_debitage_1 or 0)
+        poids_debitage_2 = float(lancement.poids_debitage_2 or 0)
         
         table_data.append([
             lancement.num_lanc,
@@ -861,8 +1005,9 @@ def generate_pdf_export(lancements, date_debut, date_fin, include_graphics, incl
             lancement.affaire.code_affaire,
             lancement.atelier.nom_atelier,
             lancement.collaborateur.get_full_name()[:20],
-            number_format_french(poids_debitage, include_unit=False),
-            number_format_french(poids_assemblage, include_unit=False)
+            number_format_french(poids_assemblage, include_unit=False),
+            number_format_french(poids_debitage_1, include_unit=False),
+            number_format_french(poids_debitage_2, include_unit=False)
         ])
 
     table = Table(table_data)
@@ -910,8 +1055,8 @@ def generate_csv_export(lancements, detailed_data):
     headers = [
         'Numéro Lancement', 'Date Lancement', 'Date Réception',
         'Code Affaire', 'Client', 'Sous-livrable', 'Atelier',
-        'Collaborateur', 'Catégorie', 'Poids Débitage',
-        'Poids Assemblage', 'Statut'
+        'Collaborateur', 'Catégorie', 'Poids Assemblage',
+        'Poids Débitage 1', 'Poids Débitage 2', 'Statut'
     ]
     
     if detailed_data:
@@ -921,8 +1066,9 @@ def generate_csv_export(lancements, detailed_data):
     
     # Données avec formatage français
     for lancement in lancements:
-        poids_debitage = number_format_french(lancement.poids_debitage, include_unit=False)
         poids_assemblage = number_format_french(lancement.poids_assemblage, include_unit=False)
+        poids_debitage_1 = number_format_french(lancement.poids_debitage_1, include_unit=False)
+        poids_debitage_2 = number_format_french(lancement.poids_debitage_2, include_unit=False)
         
         row = [
             lancement.num_lanc,
@@ -934,8 +1080,9 @@ def generate_csv_export(lancements, detailed_data):
             lancement.atelier.nom_atelier,
             lancement.collaborateur.get_full_name(),
             lancement.categorie.nom_categorie,
-            poids_debitage,
             poids_assemblage,
+            poids_debitage_1,
+            poids_debitage_2,
             lancement.get_statut_display()
         ]
         
@@ -977,8 +1124,9 @@ def generate_json_export(lancements, detailed_data):
             },
             'categorie': lancement.categorie.nom_categorie,
             'poids': {
-                'debitage': float(lancement.poids_debitage),
                 'assemblage': float(lancement.poids_assemblage),
+                'debitage_1': float(lancement.poids_debitage_1),
+                'debitage_2': float(lancement.poids_debitage_2),
             },
             'statut': lancement.statut
         }
@@ -1081,17 +1229,22 @@ def generate_dashboard_excel(lancements, date_debut, date_fin):
     # Calculs des statistiques
     total_lancements = lancements.count()
     aggregation = lancements.aggregate(
-        total_debitage=Sum('poids_debitage'),
-        total_assemblage=Sum('poids_assemblage')
+        total_assemblage=Sum('poids_assemblage'),
+        total_debitage_1=Sum('poids_debitage_1'),
+        total_debitage_2=Sum('poids_debitage_2')
     )
     
-    total_debitage = float(aggregation['total_debitage'] or 0)
     total_assemblage = float(aggregation['total_assemblage'] or 0)
+    total_debitage_1 = float(aggregation['total_debitage_1'] or 0)
+    total_debitage_2 = float(aggregation['total_debitage_2'] or 0)
+    total_debitage = total_debitage_1 + total_debitage_2
     
     stats_data = [
         ['Nombre total de lancements', total_lancements],
-        ['Poids total débitage', number_format_french(total_debitage)],
         ['Poids total assemblage', number_format_french(total_assemblage)],
+        ['Poids total débitage 1', number_format_french(total_debitage_1)],
+        ['Poids total débitage 2', number_format_french(total_debitage_2)],
+        ['Poids total débitage', number_format_french(total_debitage)],
         ['Nombre de jours analysés', (date_fin - date_debut).days + 1]
     ]
     
@@ -1109,10 +1262,10 @@ def generate_dashboard_excel(lancements, date_debut, date_fin):
     current_row += 2
     
     # TOP COLLABORATEURS avec formatage français
-    worksheet.merge_range(f'A{current_row+1}:C{current_row+1}', 'TOP COLLABORATEURS', header_format)
+    worksheet.merge_range(f'A{current_row+1}:D{current_row+1}', 'TOP COLLABORATEURS', header_format)
     current_row += 1
     
-    collab_headers = ['Collaborateur', 'Poids Débitage', 'Poids Assemblage']
+    collab_headers = ['Collaborateur', 'Poids Assemblage', 'Poids Débitage 1', 'Poids Débitage 2']
     for col, header in enumerate(collab_headers):
         worksheet.write(current_row, col, header, header_format)
     
@@ -1121,70 +1274,85 @@ def generate_dashboard_excel(lancements, date_debut, date_fin):
         'collaborateur__nom_collaborateur',
         'collaborateur__prenom_collaborateur'
     ).annotate(
-        poids_debitage=Sum('poids_debitage'),
-        poids_assemblage=Sum('poids_assemblage')
+        poids_assemblage=Sum('poids_assemblage'),
+        poids_debitage_1=Sum('poids_debitage_1'),
+        poids_debitage_2=Sum('poids_debitage_2')
     )
     
     collab_list = []
     for collab in collab_data:
-        debitage = float(collab['poids_debitage'] or 0)
         assemblage = float(collab['poids_assemblage'] or 0)
+        debitage_1 = float(collab['poids_debitage_1'] or 0)
+        debitage_2 = float(collab['poids_debitage_2'] or 0)
+        poids_total = assemblage + debitage_1 + debitage_2
         nom_complet = f"{collab['collaborateur__prenom_collaborateur']} {collab['collaborateur__nom_collaborateur']}"
         collab_list.append({
             'nom': nom_complet,
-            'debitage': debitage,
-            'assemblage': assemblage
+            'assemblage': assemblage,
+            'debitage_1': debitage_1,
+            'debitage_2': debitage_2,
+            'total': poids_total
         })
     
-    collab_list.sort(key=lambda x: x['debitage'], reverse=True)
+    collab_list.sort(key=lambda x: x['total'], reverse=True)
     
     # Écriture des données collaborateurs avec formatage français
     for collab in collab_list[:10]:
         current_row += 1
         worksheet.write(current_row, 0, collab['nom'], data_format)
-        worksheet.write(current_row, 1, number_format_french(collab['debitage'], include_unit=False), data_format)
-        worksheet.write(current_row, 2, number_format_french(collab['assemblage'], include_unit=False), data_format)
+        worksheet.write(current_row, 1, number_format_french(collab['assemblage'], include_unit=False), data_format)
+        worksheet.write(current_row, 2, number_format_french(collab['debitage_1'], include_unit=False), data_format)
+        worksheet.write(current_row, 3, number_format_french(collab['debitage_2'], include_unit=False), data_format)
     
     current_row += 2
     
     # TOP AFFAIRES avec formatage français
-    worksheet.merge_range(f'A{current_row+1}:C{current_row+1}', 'TOP AFFAIRES', header_format)
+    worksheet.merge_range(f'A{current_row+1}:D{current_row+1}', 'TOP AFFAIRES', header_format)
     current_row += 1
     
-    affaire_headers = ['Code Affaire', 'Poids Débitage', 'Pourcentage']
+    affaire_headers = ['Code Affaire', 'Poids Assemblage', 'Poids Débitage Total', 'Pourcentage']
     for col, header in enumerate(affaire_headers):
         worksheet.write(current_row, col, header, header_format)
     
     # Données affaires avec formatage français
     affaire_data = lancements.values('affaire__code_affaire').annotate(
-        poids_debitage=Sum('poids_debitage')
+        poids_assemblage=Sum('poids_assemblage'),
+        poids_debitage_1=Sum('poids_debitage_1'),
+        poids_debitage_2=Sum('poids_debitage_2')
     )
     
     affaire_list = []
-    total_debitage_affaires = 0
+    total_poids_affaires = 0
     
     for affaire in affaire_data:
-        poids_debitage = float(affaire['poids_debitage'] or 0)
+        assemblage = float(affaire['poids_assemblage'] or 0)
+        debitage_1 = float(affaire['poids_debitage_1'] or 0)
+        debitage_2 = float(affaire['poids_debitage_2'] or 0)
+        poids_debitage_total = debitage_1 + debitage_2
+        poids_total = assemblage + poids_debitage_total
         affaire_list.append({
             'code': affaire['affaire__code_affaire'],
-            'poids_debitage': poids_debitage
+            'assemblage': assemblage,
+            'debitage_total': poids_debitage_total,
+            'total': poids_total
         })
-        total_debitage_affaires += poids_debitage
+        total_poids_affaires += poids_total
     
-    affaire_list.sort(key=lambda x: x['poids_debitage'], reverse=True)
+    affaire_list.sort(key=lambda x: x['total'], reverse=True)
     
     # Écriture des données affaires avec formatage français
     for affaire in affaire_list[:8]:
         current_row += 1
-        pourcentage = (affaire['poids_debitage'] / total_debitage_affaires * 100) if total_debitage_affaires > 0 else 0
+        pourcentage = (affaire['total'] / total_poids_affaires * 100) if total_poids_affaires > 0 else 0
         worksheet.write(current_row, 0, affaire['code'], data_format)
-        worksheet.write(current_row, 1, number_format_french(affaire['poids_debitage'], include_unit=False), data_format)
-        worksheet.write(current_row, 2, f"{pourcentage:.1f}%".replace('.', ','), data_format)
+        worksheet.write(current_row, 1, number_format_french(affaire['assemblage'], include_unit=False), data_format)
+        worksheet.write(current_row, 2, number_format_french(affaire['debitage_total'], include_unit=False), data_format)
+        worksheet.write(current_row, 3, f"{pourcentage:.1f}%".replace('.', ','), data_format)
     
     # Ajustement des largeurs de colonnes
     worksheet.set_column('A:A', 25)
-    worksheet.set_column('B:C', 15)
-    worksheet.set_column('D:E', 12)
+    worksheet.set_column('B:D', 15)
+    worksheet.set_column('E:E', 12)
     
     workbook.close()
     output.seek(0)
@@ -1219,15 +1387,23 @@ def generate_dashboard_pdf(lancements, date_debut, date_fin):
     
     total_lancements = lancements.count()
     aggregation = lancements.aggregate(
-        total_debitage=Sum('poids_debitage'),
-        total_assemblage=Sum('poids_assemblage')
+        total_assemblage=Sum('poids_assemblage'),
+        total_debitage_1=Sum('poids_debitage_1'),
+        total_debitage_2=Sum('poids_debitage_2')
     )
+    
+    total_assemblage = float(aggregation['total_assemblage'] or 0)
+    total_debitage_1 = float(aggregation['total_debitage_1'] or 0)
+    total_debitage_2 = float(aggregation['total_debitage_2'] or 0)
+    total_debitage = total_debitage_1 + total_debitage_2
     
     stats_data = [
         ['Métrique', 'Valeur'],
         ['Nombre de lancements', str(total_lancements)],
-        ['Poids débitage', number_format_french(aggregation['total_debitage'] or 0)],
-        ['Poids assemblage', number_format_french(aggregation['total_assemblage'] or 0)],
+        ['Poids assemblage', number_format_french(total_assemblage)],
+        ['Poids débitage 1', number_format_french(total_debitage_1)],
+        ['Poids débitage 2', number_format_french(total_debitage_2)],
+        ['Poids débitage total', number_format_french(total_debitage)],
         ['Durée d\'analyse', f"{(date_fin - date_debut).days + 1} jour(s)"]
     ]
     
@@ -1253,22 +1429,26 @@ def generate_dashboard_pdf(lancements, date_debut, date_fin):
         'collaborateur__nom_collaborateur',
         'collaborateur__prenom_collaborateur'
     ).annotate(
-        poids_debitage=Sum('poids_debitage'),
-        poids_assemblage=Sum('poids_assemblage')
+        poids_assemblage=Sum('poids_assemblage'),
+        poids_debitage_1=Sum('poids_debitage_1'),
+        poids_debitage_2=Sum('poids_debitage_2')
     )
     
-    collab_table_data = [['Collaborateur', 'Débitage', 'Assemblage']]
+    collab_table_data = [['Collaborateur', 'Assemblage', 'Débitage 1', 'Débitage 2']]
     
     collab_list = []
     for collab in collab_data:
-        debitage = float(collab['poids_debitage'] or 0)
         assemblage = float(collab['poids_assemblage'] or 0)
+        debitage_1 = float(collab['poids_debitage_1'] or 0)
+        debitage_2 = float(collab['poids_debitage_2'] or 0)
+        poids_total = assemblage + debitage_1 + debitage_2
         nom_complet = f"{collab['collaborateur__prenom_collaborateur']} {collab['collaborateur__nom_collaborateur']}"
         collab_list.append({
             'nom': nom_complet,
-            'debitage': debitage,
             'assemblage': assemblage,
-            'total': debitage + assemblage
+            'debitage_1': debitage_1,
+            'debitage_2': debitage_2,
+            'total': poids_total
         })
     
     collab_list.sort(key=lambda x: x['total'], reverse=True)
@@ -1277,8 +1457,9 @@ def generate_dashboard_pdf(lancements, date_debut, date_fin):
     for collab in collab_list[:10]:
         collab_table_data.append([
             collab['nom'],
-            number_format_french(collab['debitage'], include_unit=False),
-            number_format_french(collab['assemblage'], include_unit=False)
+            number_format_french(collab['assemblage'], include_unit=False),
+            number_format_french(collab['debitage_1'], include_unit=False),
+            number_format_french(collab['debitage_2'], include_unit=False)
         ])
     
     collab_table = Table(collab_table_data)
@@ -1327,37 +1508,49 @@ def generate_dashboard_csv(lancements, date_debut, date_fin):
     writer.writerow(['STATISTIQUES GENERALES'])
     total_lancements = lancements.count()
     aggregation = lancements.aggregate(
-        total_debitage=Sum('poids_debitage'),
-        total_assemblage=Sum('poids_assemblage')
+        total_assemblage=Sum('poids_assemblage'),
+        total_debitage_1=Sum('poids_debitage_1'),
+        total_debitage_2=Sum('poids_debitage_2')
     )
     
+    total_assemblage = float(aggregation['total_assemblage'] or 0)
+    total_debitage_1 = float(aggregation['total_debitage_1'] or 0)
+    total_debitage_2 = float(aggregation['total_debitage_2'] or 0)
+    total_debitage = total_debitage_1 + total_debitage_2
+    
     writer.writerow(['Nombre de lancements', total_lancements])
-    writer.writerow(['Poids débitage', number_format_french(aggregation['total_debitage'] or 0, include_unit=False)])
-    writer.writerow(['Poids assemblage', number_format_french(aggregation['total_assemblage'] or 0, include_unit=False)])
+    writer.writerow(['Poids assemblage', number_format_french(total_assemblage, include_unit=False)])
+    writer.writerow(['Poids débitage 1', number_format_french(total_debitage_1, include_unit=False)])
+    writer.writerow(['Poids débitage 2', number_format_french(total_debitage_2, include_unit=False)])
+    writer.writerow(['Poids débitage total', number_format_french(total_debitage, include_unit=False)])
     writer.writerow([])
     
     # Collaborateurs avec formatage français
     writer.writerow(['TOP COLLABORATEURS'])
-    writer.writerow(['Collaborateur', 'Poids Débitage', 'Poids Assemblage'])
+    writer.writerow(['Collaborateur', 'Poids Assemblage', 'Poids Débitage 1', 'Poids Débitage 2'])
     
     collab_data = lancements.values(
         'collaborateur__nom_collaborateur',
         'collaborateur__prenom_collaborateur'
     ).annotate(
-        poids_debitage=Sum('poids_debitage'),
-        poids_assemblage=Sum('poids_assemblage')
+        poids_assemblage=Sum('poids_assemblage'),
+        poids_debitage_1=Sum('poids_debitage_1'),
+        poids_debitage_2=Sum('poids_debitage_2')
     )
     
     collab_list = []
     for collab in collab_data:
-        debitage = float(collab['poids_debitage'] or 0)
         assemblage = float(collab['poids_assemblage'] or 0)
+        debitage_1 = float(collab['poids_debitage_1'] or 0)
+        debitage_2 = float(collab['poids_debitage_2'] or 0)
+        poids_total = assemblage + debitage_1 + debitage_2
         nom_complet = f"{collab['collaborateur__prenom_collaborateur']} {collab['collaborateur__nom_collaborateur']}"
         collab_list.append({
             'nom': nom_complet,
-            'debitage': debitage,
             'assemblage': assemblage,
-            'total': debitage + assemblage
+            'debitage_1': debitage_1,
+            'debitage_2': debitage_2,
+            'total': poids_total
         })
     
     collab_list.sort(key=lambda x: x['total'], reverse=True)
@@ -1366,8 +1559,9 @@ def generate_dashboard_csv(lancements, date_debut, date_fin):
     for collab in collab_list[:10]:
         writer.writerow([
             collab['nom'],
-            number_format_french(collab['debitage'], include_unit=False),
-            number_format_french(collab['assemblage'], include_unit=False)
+            number_format_french(collab['assemblage'], include_unit=False),
+            number_format_french(collab['debitage_1'], include_unit=False),
+            number_format_french(collab['debitage_2'], include_unit=False)
         ])
     
     return response
@@ -1478,8 +1672,9 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
         'Type Atelier',
         'Collaborateur',
         'Catégorie',
-        'Poids Débitage',
         'Poids Assemblage',
+        'Poids Débitage 1',
+        'Poids Débitage 2',
         'Statut',
         'Observations'
     ]
@@ -1492,8 +1687,9 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
     row = 1
     for lancement in lancements:
         # Calcul du poids total
-        poids_debitage = float(lancement.poids_debitage or 0)
         poids_assemblage = float(lancement.poids_assemblage or 0)
+        poids_debitage_1 = float(lancement.poids_debitage_1 or 0)
+        poids_debitage_2 = float(lancement.poids_debitage_2 or 0)
 
         # Données de la ligne
         data_row = [
@@ -1507,8 +1703,9 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
             lancement.atelier.get_type_atelier_display() if lancement.atelier else '',
             lancement.collaborateur.get_full_name() if lancement.collaborateur else '',
             lancement.categorie.nom_categorie if lancement.categorie else '',
-            poids_debitage,
             poids_assemblage,
+            poids_debitage_1,
+            poids_debitage_2,
             lancement.get_statut_display() if hasattr(lancement, 'get_statut_display') else lancement.statut,
             lancement.observations or ''
         ]
@@ -1517,7 +1714,7 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
         for col, value in enumerate(data_row):
             if col in [1, 2]:  # Dates
                 worksheet.write(row, col, value, date_format)
-            elif col in [10, 11]:  # Poids (nombres)
+            elif col in [10, 11, 12]:  # Poids (nombres)
                 worksheet.write(row, col, value, number_format)
             else:  # Texte
                 worksheet.write(row, col, str(value), data_format)
@@ -1535,8 +1732,9 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
         12,  # Type Atelier
         20,  # Collaborateur
         15,  # Catégorie
-        12,  # Poids Débitage
         12,  # Poids Assemblage
+        12,  # Poids Débitage 1
+        12,  # Poids Débitage 2
         12,  # Statut
         25   # Observations
     ]
@@ -1557,22 +1755,27 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
         'border': 1
     })
     
-    summary_worksheet.merge_range('A1:D1', f'RAPPORT DE PRODUCTION - {date_debut.strftime("%d/%m/%Y")} au {date_fin.strftime("%d/%m/%Y")}', title_format)
+    summary_worksheet.merge_range('A1:E1', f'RAPPORT DE PRODUCTION - {date_debut.strftime("%d/%m/%Y")} au {date_fin.strftime("%d/%m/%Y")}', title_format)
 
     # Statistiques générales
     total_lancements = lancements.count()
     aggregation = lancements.aggregate(
-        total_debitage=Sum('poids_debitage'),
-        total_assemblage=Sum('poids_assemblage')
+        total_assemblage=Sum('poids_assemblage'),
+        total_debitage_1=Sum('poids_debitage_1'),
+        total_debitage_2=Sum('poids_debitage_2')
     )
-    total_debitage = float(aggregation['total_debitage'] or 0)
     total_assemblage = float(aggregation['total_assemblage'] or 0)
+    total_debitage_1 = float(aggregation['total_debitage_1'] or 0)
+    total_debitage_2 = float(aggregation['total_debitage_2'] or 0)
+    total_debitage = total_debitage_1 + total_debitage_2
 
     stats_data = [
         ['Statistique', 'Valeur', 'Unité', 'Description'],
         ['Nombre de lancements', total_lancements, 'unités', 'Total des lancements sur la période'],
-        ['Poids débitage total', total_debitage, 'kg', 'Somme des poids de débitage'],
         ['Poids assemblage total', total_assemblage, 'kg', 'Somme des poids d\'assemblage'],
+        ['Poids débitage 1 total', total_debitage_1, 'kg', 'Somme des poids de débitage 1'],
+        ['Poids débitage 2 total', total_debitage_2, 'kg', 'Somme des poids de débitage 2'],
+        ['Poids débitage total', total_debitage, 'kg', 'Somme des poids de débitage 1 et 2'],
         ['Durée d\'analyse', (date_fin - date_debut).days + 1, 'jours', 'Nombre de jours analysés']
     ]
 
@@ -1592,6 +1795,7 @@ def generate_rapport_excel(lancements, date_debut, date_fin):
     summary_worksheet.set_column('B:B', 15)
     summary_worksheet.set_column('C:C', 10)
     summary_worksheet.set_column('D:D', 30)
+    summary_worksheet.set_column('E:E', 15)
 
     workbook.close()
     output.seek(0)
@@ -1623,15 +1827,16 @@ def generate_rapport_csv(lancements, date_debut, date_fin):
     headers = [
         'Numéro Lancement', 'Date Lancement', 'Date Réception', 'Affaire', 'Client', 
         'Sous-livrable', 'Atelier', 'Type Atelier', 'Collaborateur', 'Catégorie',
-        'Poids Débitage', 'Poids Assemblage', 'Statut', 'Observations'
+        'Poids Assemblage', 'Poids Débitage 1', 'Poids Débitage 2', 'Statut', 'Observations'
     ]
 
     writer.writerow(headers)
 
     # Données avec formatage français
     for lancement in lancements:
-        poids_debitage = number_format_french(lancement.poids_debitage, include_unit=False)
         poids_assemblage = number_format_french(lancement.poids_assemblage, include_unit=False)
+        poids_debitage_1 = number_format_french(lancement.poids_debitage_1, include_unit=False)
+        poids_debitage_2 = number_format_french(lancement.poids_debitage_2, include_unit=False)
 
         row = [
             lancement.num_lanc,
@@ -1644,8 +1849,9 @@ def generate_rapport_csv(lancements, date_debut, date_fin):
             lancement.atelier.get_type_atelier_display() if lancement.atelier else '',
             lancement.collaborateur.get_full_name() if lancement.collaborateur else '',
             lancement.categorie.nom_categorie if lancement.categorie else '',
-            poids_debitage,
             poids_assemblage,
+            poids_debitage_1,
+            poids_debitage_2,
             lancement.get_statut_display() if hasattr(lancement, 'get_statut_display') else lancement.statut,
             lancement.observations or ''
         ]
@@ -1673,8 +1879,9 @@ def generate_rapport_pdf(lancements, date_debut, date_fin):
     # Résumé des statistiques avec formatage français
     total_lancements = lancements.count()
     aggregation = lancements.aggregate(
-        total_debitage=Sum('poids_debitage'),
-        total_assemblage=Sum('poids_assemblage')
+        total_assemblage=Sum('poids_assemblage'),
+        total_debitage_1=Sum('poids_debitage_1'),
+        total_debitage_2=Sum('poids_debitage_2')
     )
 
     story.append(Paragraph("SYNTHÈSE GÉNÉRALE", styles['Heading2']))
@@ -1682,8 +1889,9 @@ def generate_rapport_pdf(lancements, date_debut, date_fin):
     stats_data = [
         ['Métrique', 'Valeur'],
         ['Nombre de lancements', str(total_lancements)],
-        ['Poids total débitage', number_format_french(aggregation['total_debitage'] or 0)],
         ['Poids total assemblage', number_format_french(aggregation['total_assemblage'] or 0)],
+        ['Poids total débitage 1', number_format_french(aggregation['total_debitage_1'] or 0)],
+        ['Poids total débitage 2', number_format_french(aggregation['total_debitage_2'] or 0)],
         ['Période d\'analyse', f"{(date_fin - date_debut).days + 1} jour(s)"]
     ]
 
@@ -1705,11 +1913,12 @@ def generate_rapport_pdf(lancements, date_debut, date_fin):
     # Tableau détaillé avec formatage français
     story.append(Paragraph("DÉTAIL DES LANCEMENTS", styles['Heading2']))
     
-    table_data = [['N° Lanc.', 'Date', 'Affaire', 'Atelier', 'Collaborateur', 'Débitage', 'Assemblage']]
+    table_data = [['N° Lanc.', 'Date', 'Affaire', 'Atelier', 'Collaborateur', 'Assemblage', 'Débitage 1', 'Débitage 2']]
 
     for lancement in lancements[:50]:  # Limiter pour le PDF
-        poids_debitage = float(lancement.poids_debitage or 0)
         poids_assemblage = float(lancement.poids_assemblage or 0)
+        poids_debitage_1 = float(lancement.poids_debitage_1 or 0)
+        poids_debitage_2 = float(lancement.poids_debitage_2 or 0)
 
         table_data.append([
             lancement.num_lanc,
@@ -1717,8 +1926,9 @@ def generate_rapport_pdf(lancements, date_debut, date_fin):
             lancement.affaire.code_affaire[:12] if lancement.affaire else '',
             lancement.atelier.nom_atelier[:15] if lancement.atelier else '',
             lancement.collaborateur.get_full_name()[:18] if lancement.collaborateur else '',
-            number_format_french(poids_debitage, include_unit=False),
-            number_format_french(poids_assemblage, include_unit=False)
+            number_format_french(poids_assemblage, include_unit=False),
+            number_format_french(poids_debitage_1, include_unit=False),
+            number_format_french(poids_debitage_2, include_unit=False)
         ])
 
     table = Table(table_data)
@@ -1759,37 +1969,47 @@ def generate_rapport_pdf(lancements, date_debut, date_fin):
 @require_http_methods(["POST"])
 def generate_rapport(request):
     """
-    Génération d'un nouveau rapport de production
+    Génération d'un nouveau rapport de production - MISE À JOUR
     """
     try:
         type_rapport = request.POST.get('type_rapport')
         date_debut = datetime.strptime(request.POST.get('date_debut'), '%Y-%m-%d').date()
         date_fin = datetime.strptime(request.POST.get('date_fin'), '%Y-%m-%d').date()
 
-        # Calcul des métriques
+        # Calcul des métriques avec nouveaux champs
         lancements = Lancement.objects.filter(
             date_lancement__range=[date_debut, date_fin]
         )
         
         nb_lancements = lancements.count()
         
-        # Calcul correct du poids total
-        lancements_aggregation = lancements.aggregate(
-            total_debitage=Sum('poids_debitage'),
-            total_assemblage=Sum('poids_assemblage')
+        # Calculs par type de production
+        nb_lancements_assemblage = lancements.filter(type_production='assemblage').count()
+        nb_lancements_debitage = lancements.filter(type_production='debitage').count()
+        
+        # Calcul correct des poids totaux avec nouveaux champs
+        aggregation = lancements.aggregate(
+            total_assemblage=Sum('poids_assemblage'),
+            total_debitage_1=Sum('poids_debitage_1'),
+            total_debitage_2=Sum('poids_debitage_2')
         )
-        total_debitage = (lancements_aggregation['total_debitage'] or 0)
-        total_assemblage = (lancements_aggregation['total_assemblage'] or 0)
-        poids_total = total_debitage + total_assemblage
+        
+        poids_assemblage_total = aggregation['total_assemblage'] or 0
+        poids_debitage_1_total = aggregation['total_debitage_1'] or 0
+        poids_debitage_2_total = aggregation['total_debitage_2'] or 0
+        poids_total = float(poids_assemblage_total) + float(poids_debitage_1_total) + float(poids_debitage_2_total)
 
-        # Création du rapport
+        # Création du rapport avec nouveaux champs
         rapport = RapportProduction.objects.create(
             date_debut=date_debut,
             date_fin=date_fin,
             type_rapport=type_rapport,
             nb_lancements=nb_lancements,
-            poids_debitage=total_debitage,
-            poids_assemblage=total_assemblage,
+            nb_lancements_assemblage=nb_lancements_assemblage,
+            nb_lancements_debitage=nb_lancements_debitage,
+            poids_assemblage_total=poids_assemblage_total,
+            poids_debitage_1_total=poids_debitage_1_total,
+            poids_debitage_2_total=poids_debitage_2_total,
             poids_total=poids_total
         )
 
@@ -1874,13 +2094,21 @@ def dashboard_data_api(request):
     )
 
     lancements_aggregation = lancements.aggregate(
-        total_debitage=Sum('poids_debitage'),
-        total_assemblage=Sum('poids_assemblage')
+        total_assemblage=Sum('poids_assemblage'),
+        total_debitage_1=Sum('poids_debitage_1'),
+        total_debitage_2=Sum('poids_debitage_2')
     )
-    poids_total = (lancements_aggregation['total_debitage'] or 0) + (lancements_aggregation['total_assemblage'] or 0)
+    
+    poids_assemblage = lancements_aggregation['total_assemblage'] or 0
+    poids_debitage_1 = lancements_aggregation['total_debitage_1'] or 0
+    poids_debitage_2 = lancements_aggregation['total_debitage_2'] or 0
+    poids_total = float(poids_assemblage) + float(poids_debitage_1) + float(poids_debitage_2)
 
     data = {
         'total_lancements': lancements.count(),
+        'poids_assemblage': float(poids_assemblage),
+        'poids_debitage_1': float(poids_debitage_1),
+        'poids_debitage_2': float(poids_debitage_2),
         'poids_total': float(poids_total),
         'poids_total_formatted': number_format_french(poids_total),
         'efficacite': 85.5,
@@ -1907,10 +2135,11 @@ def chart_data_api(request, chart_type):
     if chart_type == 'ateliers':
         data = list(lancements.values('atelier__nom_atelier').annotate(
             count=Count('id'),
-            poids_debitage=Sum('poids_debitage'),
-            poids_assemblage=Sum('poids_assemblage')
+            poids_assemblage=Sum('poids_assemblage'),
+            poids_debitage_1=Sum('poids_debitage_1'),
+            poids_debitage_2=Sum('poids_debitage_2')
         ).annotate(
-            poids=F('poids_debitage') + F('poids_assemblage')
+            poids=F('poids_assemblage') + F('poids_debitage_1') + F('poids_debitage_2')
         ))
         
         # Ajouter le formatage français
@@ -1923,10 +2152,11 @@ def chart_data_api(request, chart_type):
             'collaborateur__prenom_collaborateur'
         ).annotate(
             count=Count('id'),
-            poids_debitage=Sum('poids_debitage'),
-            poids_assemblage=Sum('poids_assemblage')
+            poids_assemblage=Sum('poids_assemblage'),
+            poids_debitage_1=Sum('poids_debitage_1'),
+            poids_debitage_2=Sum('poids_debitage_2')
         ).annotate(
-            poids=F('poids_debitage') + F('poids_assemblage')
+            poids=F('poids_assemblage') + F('poids_debitage_1') + F('poids_debitage_2')
         )[:10])
         
         # Ajouter le formatage français
@@ -1942,24 +2172,12 @@ def chart_data_api(request, chart_type):
 @permission_required('rapports', 'create')
 def regenerate_rapport(request, rapport_id):
     """
-    Régénérer un rapport existant
+    Régénérer un rapport existant - MISE À JOUR
     """
     rapport = get_object_or_404(RapportProduction, id=rapport_id)
     
-    lancements = Lancement.objects.filter(
-        date_lancement__range=[rapport.date_debut, rapport.date_fin]
-    )
-    
-    rapport.nb_lancements = lancements.count()
-    
-    lancements_aggregation = lancements.aggregate(
-        total_debitage=Sum('poids_debitage'),
-        total_assemblage=Sum('poids_assemblage')
-    )
-    rapport.poids_debitage = (lancements_aggregation['total_debitage'] or 0)
-    rapport.poids_assemblage = (lancements_aggregation['total_assemblage'] or 0)
-    rapport.poids_total = rapport.poids_debitage + rapport.poids_assemblage
-    rapport.save()
+    # Recalcul avec la nouvelle méthode
+    rapport.recalculate_metrics()
     
     messages.success(request, 'Rapport régénéré avec succès.')
     return redirect('reporting:rapport_detail', rapport_id=rapport.id)

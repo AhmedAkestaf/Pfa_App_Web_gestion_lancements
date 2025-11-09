@@ -539,11 +539,28 @@ def affaire_detail(request, affaire_id):
         'suspendus': lancements.filter(statut='suspendu').count(),
     }
     
-    # Calcul du poids total
-    poids_total = lancements.aggregate(
-        debitage=models.Sum('poids_debitage'),
-        assemblage=models.Sum('poids_assemblage')
-    )
+    # NOUVEAU CALCUL POIDS ADAPTÉ AUX NOUVEAUX CHAMPS
+    # Utiliser la nouvelle méthode get_poids_total() du modèle
+    poids_total = {
+        'assemblage': 0,
+        'debitage_1': 0,
+        'debitage_2': 0,
+        'debitage_total': 0,
+        'global_total': 0
+    }
+    
+    for lancement in lancements:
+        if lancement.type_production == 'assemblage':
+            poids_assemblage = float(lancement.poids_assemblage or 0)
+            poids_total['assemblage'] += poids_assemblage
+            poids_total['global_total'] += poids_assemblage
+        elif lancement.type_production == 'debitage':
+            poids_deb1 = float(lancement.poids_debitage_1 or 0)
+            poids_deb2 = float(lancement.poids_debitage_2 or 0)
+            poids_total['debitage_1'] += poids_deb1
+            poids_total['debitage_2'] += poids_deb2
+            poids_total['debitage_total'] += (poids_deb1 + poids_deb2)
+            poids_total['global_total'] += (poids_deb1 + poids_deb2)
     
     # Durée prévue vs réalisée - GESTION DES VALEURS NULL
     from datetime import date
@@ -1041,19 +1058,23 @@ def dashboard_with_stats(request):
             from django.db.models import Sum, Avg
             from apps.lancements.models import Lancement
             
-            # Performances des ateliers
+            # Performances des ateliers avec NOUVEAUX CHAMPS
             ateliers_performance = {}
             from apps.ateliers.models import Atelier
             
             for atelier in Atelier.objects.all():
                 lancements_atelier = Lancement.objects.filter(atelier=atelier)
+                
+                # Calcul du poids total avec les nouveaux champs
+                poids_total = 0
+                for lancement in lancements_atelier:
+                    poids_total += lancement.get_poids_total()  # Utilise la méthode du modèle
+                
                 ateliers_performance[atelier.nom_atelier] = {
                     'total_lancements': lancements_atelier.count(),
                     'en_cours': lancements_atelier.filter(statut='en_cours').count(),
                     'termines': lancements_atelier.filter(statut='termine').count(),
-                    'poids_total': lancements_atelier.aggregate(
-                        total=Sum('poids_debitage') + Sum('poids_assemblage')
-                    )['total'] or 0
+                    'poids_total': poids_total
                 }
             
             context['ateliers_performance'] = ateliers_performance

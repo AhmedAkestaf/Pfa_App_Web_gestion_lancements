@@ -1,4 +1,4 @@
-# apps/lancements/forms.py - COMPLET avec formatage français des poids
+# apps/lancements/forms.py - MODIFIÉ avec nouveaux champs de poids et toggle
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -95,25 +95,52 @@ class LancementForm(forms.ModelForm):
     Formulaire pour créer et modifier un lancement avec formatage français des poids
     """
     
-    # Redéfinir les champs de poids avec le format français
-    poids_debitage = FrenchDecimalField(
-        max_digits=12,
-        decimal_places=3,
-        required=False,
-        help_text='Poids en kilogrammes (3 chiffres après la virgule)',
-        widget=FrenchDecimalWidget(attrs={
-            'placeholder': '0,000'
-        })
+    # NOUVEAU : Champ pour le type de production
+    type_production = forms.ChoiceField(
+        choices=Lancement.TYPE_PRODUCTION_CHOICES,
+        widget=forms.RadioSelect(attrs={
+            'class': 'form-check-input',
+            'id': 'id_type_production'
+        }),
+        label='Type de production',
+        help_text='Sélectionnez le type de production pour afficher les champs de poids correspondants'
     )
     
+    # Redéfinir les champs de poids avec le format français
     poids_assemblage = FrenchDecimalField(
         max_digits=12,
         decimal_places=3,
         required=False,
         help_text='Poids en kilogrammes (3 chiffres après la virgule)',
         widget=FrenchDecimalWidget(attrs={
-            'placeholder': '0,000'
-        })
+            'placeholder': '0,000',
+            'id': 'id_poids_assemblage'
+        }),
+        label='Poids assemblage (kg)'
+    )
+    
+    poids_debitage_1 = FrenchDecimalField(
+        max_digits=12,
+        decimal_places=3,
+        required=False,
+        help_text='Poids débitage 1 en kilogrammes (3 chiffres après la virgule)',
+        widget=FrenchDecimalWidget(attrs={
+            'placeholder': '0,000',
+            'id': 'id_poids_debitage_1'
+        }),
+        label='Poids débitage 1 (kg)'
+    )
+    
+    poids_debitage_2 = FrenchDecimalField(
+        max_digits=12,
+        decimal_places=3,
+        required=False,
+        help_text='Poids débitage 2 en kilogrammes (3 chiffres après la virgule)',
+        widget=FrenchDecimalWidget(attrs={
+            'placeholder': '0,000',
+            'id': 'id_poids_debitage_2'
+        }),
+        label='Poids débitage 2 (kg)'
     )
     
     class Meta:
@@ -121,7 +148,8 @@ class LancementForm(forms.ModelForm):
         fields = [
             'num_lanc', 'affaire', 'sous_livrable', 'date_reception', 
             'date_lancement', 'atelier', 'categorie', 'collaborateur',
-            'poids_debitage', 'poids_assemblage', 'observations', 'statut'
+            'type_production', 'poids_assemblage', 'poids_debitage_1', 
+            'poids_debitage_2', 'observations', 'statut'
         ]
         
         widgets = {
@@ -183,20 +211,21 @@ class LancementForm(forms.ModelForm):
             'atelier': 'Atelier',
             'categorie': 'Catégorie',
             'collaborateur': 'Collaborateur responsable',
-            'poids_debitage': 'Poids débitage (kg)',
+            'type_production': 'Type de production',
             'poids_assemblage': 'Poids assemblage (kg)',
+            'poids_debitage_1': 'Poids débitage 1 (kg)',
+            'poids_debitage_2': 'Poids débitage 2 (kg)',
             'observations': 'Observations',
             'statut': 'Statut'
         }
         
         help_texts = {
-            'num_lanc': 'Format recommandé: LC-YYYY-XXX (ex: LC-2024-001)',
+            'num_lanc': 'Format recommandé: LC-YYYY-XXX (ex: LC-2024-001). Peut être dupliqué.',
             'affaire': 'Sélectionnez d\'abord l\'affaire pour filtrer les catégories disponibles',
             'categorie': 'Les catégories affichées dépendent de l\'affaire sélectionnée',
             'date_reception': 'Date à laquelle la demande a été reçue',
             'date_lancement': 'Date prévue pour le début de la production',
-            'poids_debitage': 'Format : 1 234,567 kg (3 chiffres après la virgule)',
-            'poids_assemblage': 'Format : 1 234,567 kg (3 chiffres après la virgule)',
+            'type_production': 'Sélectionnez assemblage ou débitage selon le type de production',
         }
 
     def __init__(self, *args, **kwargs):
@@ -269,7 +298,7 @@ class LancementForm(forms.ModelForm):
             self.fields['categorie'].empty_label = "Sélectionnez une catégorie"
 
     def clean_num_lanc(self):
-        """Validation spéciale pour le numéro de lancement"""
+        """Validation pour le numéro de lancement (unicité supprimée)"""
         num_lanc = self.cleaned_data.get('num_lanc')
         
         if self.instance.pk and self.instance.num_lanc == num_lanc:
@@ -278,14 +307,7 @@ class LancementForm(forms.ModelForm):
         if not self.instance.pk and not num_lanc:
             return self.generate_lancement_number()
         
-        if num_lanc:
-            existing = Lancement.objects.filter(num_lanc=num_lanc)
-            if self.instance.pk:
-                existing = existing.exclude(pk=self.instance.pk)
-            
-            if existing.exists():
-                raise ValidationError("Ce numéro de lancement existe déjà.")
-        
+        # UNICITÉ SUPPRIMÉE : on accepte les doublons
         return num_lanc
 
     def clean_date_lancement(self):
@@ -326,29 +348,6 @@ class LancementForm(forms.ModelForm):
         except Exception as e:
             raise ValidationError(f"[DATES] Erreur dans la validation de la date de réception: {str(e)}")
 
-    def clean_poids_debitage(self):
-        """Validation du poids de débitage avec format français"""
-        try:
-            poids_debitage = self.cleaned_data.get('poids_debitage')
-            
-            if poids_debitage is not None:
-                if poids_debitage < 0:
-                    raise ValidationError("Le poids de débitage ne peut pas être négatif.")
-                
-                if poids_debitage > Decimal('999999999.999'):
-                    raise ValidationError("Le poids de débitage semble anormalement élevé.")
-                    
-                # Vérifier que les décimales n'excèdent pas 3 chiffres
-                if poids_debitage.as_tuple().exponent < -3:
-                    raise ValidationError("Maximum 3 chiffres après la virgule.")
-
-            return poids_debitage
-            
-        except (ValueError, TypeError) as e:
-            raise ValidationError(f"Format de poids de débitage invalide. Utilisez le format : 1 234,567")
-        except Exception as e:
-            raise ValidationError(f"Erreur dans la validation du poids de débitage: {str(e)}")
-
     def clean_poids_assemblage(self):
         """Validation du poids d'assemblage avec format français"""
         try:
@@ -364,7 +363,7 @@ class LancementForm(forms.ModelForm):
                 # Vérifier que les décimales n'excèdent pas 3 chiffres
                 if poids_assemblage.as_tuple().exponent < -3:
                     raise ValidationError("Maximum 3 chiffres après la virgule.")
-            
+
             return poids_assemblage
             
         except (ValueError, TypeError) as e:
@@ -372,30 +371,75 @@ class LancementForm(forms.ModelForm):
         except Exception as e:
             raise ValidationError(f"Erreur dans la validation du poids d'assemblage: {str(e)}")
 
+    def clean_poids_debitage_1(self):
+        """Validation du poids débitage 1 avec format français"""
+        try:
+            poids_debitage_1 = self.cleaned_data.get('poids_debitage_1')
+            
+            if poids_debitage_1 is not None:
+                if poids_debitage_1 < 0:
+                    raise ValidationError("Le poids débitage 1 ne peut pas être négatif.")
+                
+                if poids_debitage_1 > Decimal('999999999.999'):
+                    raise ValidationError("Le poids débitage 1 semble anormalement élevé.")
+                    
+                # Vérifier que les décimales n'excèdent pas 3 chiffres
+                if poids_debitage_1.as_tuple().exponent < -3:
+                    raise ValidationError("Maximum 3 chiffres après la virgule.")
+            
+            return poids_debitage_1
+            
+        except (ValueError, TypeError) as e:
+            raise ValidationError(f"Format de poids débitage 1 invalide. Utilisez le format : 1 234,567")
+        except Exception as e:
+            raise ValidationError(f"Erreur dans la validation du poids débitage 1: {str(e)}")
+
+    def clean_poids_debitage_2(self):
+        """Validation du poids débitage 2 avec format français"""
+        try:
+            poids_debitage_2 = self.cleaned_data.get('poids_debitage_2')
+            
+            if poids_debitage_2 is not None:
+                if poids_debitage_2 < 0:
+                    raise ValidationError("Le poids débitage 2 ne peut pas être négatif.")
+                
+                if poids_debitage_2 > Decimal('999999999.999'):
+                    raise ValidationError("Le poids débitage 2 semble anormalement élevé.")
+                    
+                # Vérifier que les décimales n'excèdent pas 3 chiffres
+                if poids_debitage_2.as_tuple().exponent < -3:
+                    raise ValidationError("Maximum 3 chiffres après la virgule.")
+            
+            return poids_debitage_2
+            
+        except (ValueError, TypeError) as e:
+            raise ValidationError(f"Format de poids débitage 2 invalide. Utilisez le format : 1 234,567")
+        except Exception as e:
+            raise ValidationError(f"Erreur dans la validation du poids débitage 2: {str(e)}")
+
     def clean(self):
         """Validation globale du formulaire"""
         cleaned_data = super().clean()
         
         try:
-            poids_debitage = cleaned_data.get('poids_debitage', Decimal('0'))
-            poids_assemblage = cleaned_data.get('poids_assemblage', Decimal('0'))
+            type_production = cleaned_data.get('type_production')
+            poids_assemblage = cleaned_data.get('poids_assemblage')
+            poids_debitage_1 = cleaned_data.get('poids_debitage_1')
+            poids_debitage_2 = cleaned_data.get('poids_debitage_2')
             
-            if poids_debitage is not None:
-                poids_debitage = Decimal(str(poids_debitage))
-            else:
-                poids_debitage = Decimal('0')
-                
-            if poids_assemblage is not None:
-                poids_assemblage = Decimal(str(poids_assemblage))
-            else:
-                poids_assemblage = Decimal('0')
-            
-            # Vérifier que les poids ne sont pas tous les deux à zéro
-            if poids_debitage == Decimal('0') and poids_assemblage == Decimal('0'):
-                self.add_error(
-                    'poids_debitage',
-                    "Au moins un des poids (débitage ou assemblage) doit être supérieur à zéro."
-                )
+            # Validation selon le type de production
+            if type_production == 'assemblage':
+                if not poids_assemblage or poids_assemblage == Decimal('0'):
+                    self.add_error(
+                        'poids_assemblage',
+                        "Le poids d'assemblage est obligatoire pour ce type de production."
+                    )
+            elif type_production == 'debitage':
+                if (not poids_debitage_1 or poids_debitage_1 == Decimal('0')) and (not poids_debitage_2 or poids_debitage_2 == Decimal('0')):
+                    self.add_error(
+                        'poids_debitage_1',
+                        "Au moins un des poids de débitage doit être supérieur à zéro."
+                    )
             
             # Vérification de cohérence affaire-catégorie
             affaire = cleaned_data.get('affaire')
@@ -458,11 +502,7 @@ class LancementForm(forms.ModelForm):
             
             base_number = f"LC-{year}{month:02d}-{count:03d}"
             
-            counter = 0
-            while Lancement.objects.filter(num_lanc=base_number).exists():
-                counter += 1
-                base_number = f"LC-{year}{month:02d}-{count + counter:03d}"
-            
+            # UNICITÉ SUPPRIMÉE : on ne vérifie plus l'existence
             return base_number
             
         except Exception as e:
@@ -525,171 +565,3 @@ class LancementFilterForm(forms.Form):
         }),
         label='Date de fin'
     )
-
-
-class LancementStatusUpdateForm(forms.Form):
-    """
-    Formulaire simple pour mettre à jour rapidement le statut d'un lancement
-    """
-    statut = forms.ChoiceField(
-        choices=Lancement._meta.get_field('statut').choices,
-        widget=forms.Select(attrs={
-            'class': 'form-select form-select-sm'
-        }),
-        label='Nouveau statut'
-    )
-    
-    def __init__(self, *args, **kwargs):
-        self.lancement = kwargs.pop('lancement', None)
-        super().__init__(*args, **kwargs)
-        
-        if self.lancement:
-            self.fields['statut'].initial = self.lancement.statut
-
-
-class LancementQuickCreateForm(forms.ModelForm):
-    """
-    Formulaire simplifié pour création rapide de lancement (modal ou popup)
-    """
-    class Meta:
-        model = Lancement
-        fields = ['num_lanc', 'affaire', 'atelier', 'collaborateur', 'date_lancement', 'statut']
-        
-        widgets = {
-            'num_lanc': forms.TextInput(attrs={
-                'class': 'form-control form-control-sm',
-                'placeholder': 'Auto-généré si vide'
-            }),
-            'affaire': forms.Select(attrs={
-                'class': 'form-select form-select-sm',
-                'required': True
-            }),
-            'atelier': forms.Select(attrs={
-                'class': 'form-select form-select-sm',
-                'required': True
-            }),
-            'collaborateur': forms.Select(attrs={
-                'class': 'form-select form-select-sm',
-                'required': True
-            }),
-            'date_lancement': forms.DateInput(attrs={
-                'class': 'form-control form-control-sm',
-                'type': 'date',
-                'required': True
-            }),
-            'statut': forms.Select(attrs={
-                'class': 'form-select form-select-sm'
-            })
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        # Filtrer les options pour la création rapide
-        self.fields['affaire'].queryset = Affaire.objects.filter(
-            statut__in=['en_cours', 'planifie']
-        ).order_by('code_affaire')
-        
-        self.fields['collaborateur'].queryset = Collaborateur.objects.filter(
-            is_active=True
-        ).order_by('nom_collaborateur', 'prenom_collaborateur')
-        
-        # Valeurs par défaut
-        self.fields['date_lancement'].initial = timezone.now().date()
-        self.fields['statut'].initial = 'planifie'
-        
-        # Rendre le numéro optionnel pour auto-génération
-        self.fields['num_lanc'].required = False
-
-
-class LancementBulkActionForm(forms.Form):
-    """
-    Formulaire pour les actions en lot sur plusieurs lancements
-    """
-    ACTION_CHOICES = [
-        ('', 'Choisir une action'),
-        ('update_status', 'Changer le statut'),
-        ('assign_atelier', 'Réaffecter à un atelier'),
-        ('assign_collaborateur', 'Réaffecter à un collaborateur'),
-        ('export', 'Exporter la sélection'),
-        ('delete', 'Supprimer la sélection'),
-    ]
-    
-    action = forms.ChoiceField(
-        choices=ACTION_CHOICES,
-        widget=forms.Select(attrs={
-            'class': 'form-select',
-            'id': 'bulk-action-select'
-        }),
-        label='Action à effectuer'
-    )
-    
-    # Champs conditionnels selon l'action choisie
-    new_statut = forms.ChoiceField(
-        required=False,
-        choices=Lancement._meta.get_field('statut').choices,
-        widget=forms.Select(attrs={
-            'class': 'form-select',
-            'style': 'display: none;'
-        }),
-        label='Nouveau statut'
-    )
-    
-    new_atelier = forms.ModelChoiceField(
-        required=False,
-        queryset=Atelier.objects.all(),
-        widget=forms.Select(attrs={
-            'class': 'form-select',
-            'style': 'display: none;'
-        }),
-        label='Nouvel atelier'
-    )
-    
-    new_collaborateur = forms.ModelChoiceField(
-        required=False,
-        queryset=Collaborateur.objects.filter(is_active=True),
-        widget=forms.Select(attrs={
-            'class': 'form-select',
-            'style': 'display: none;'
-        }),
-        label='Nouveau collaborateur'
-    )
-    
-    selected_lancements = forms.CharField(
-        widget=forms.HiddenInput(),
-        label='Lancements sélectionnés'
-    )
-    
-    def clean_selected_lancements(self):
-        """
-        Valide que des lancements ont été sélectionnés
-        """
-        selected = self.cleaned_data.get('selected_lancements')
-        if not selected:
-            raise ValidationError("Aucun lancement sélectionné.")
-        
-        try:
-            ids = [int(id.strip()) for id in selected.split(',') if id.strip()]
-            if not ids:
-                raise ValidationError("Aucun lancement valide sélectionné.")
-            return ids
-        except ValueError:
-            raise ValidationError("Format de sélection invalide.")
-
-    def clean(self):
-        """
-        Validation selon l'action choisie
-        """
-        cleaned_data = super().clean()
-        action = cleaned_data.get('action')
-        
-        if action == 'update_status' and not cleaned_data.get('new_statut'):
-            raise ValidationError("[ACTION] Veuillez choisir un nouveau statut.")
-        
-        if action == 'assign_atelier' and not cleaned_data.get('new_atelier'):
-            raise ValidationError("[ACTION] Veuillez choisir un nouvel atelier.")
-        
-        if action == 'assign_collaborateur' and not cleaned_data.get('new_collaborateur'):
-            raise ValidationError("[ACTION] Veuillez choisir un nouveau collaborateur.")
-        
-        return cleaned_data

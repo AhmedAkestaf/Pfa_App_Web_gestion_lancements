@@ -66,13 +66,20 @@ def lancement_list(request):
     if date_from:
         lancements = lancements.filter(date_lancement__gte=date_from)
     
-    # Calcul des statistiques
-    stats = lancements.aggregate(
-        total_lancements=Count('id'),
-        en_cours=Count('id', filter=Q(statut='en_cours')),
-        termines=Count('id', filter=Q(statut='termine')),
-        poids_total=Sum('poids_debitage') + Sum('poids_assemblage') or 0
-    )
+    # Calcul des statistiques MISE À JOUR avec les nouveaux champs
+    stats = {
+        'total_lancements': lancements.count(),
+        'en_cours': lancements.filter(statut='en_cours').count(),
+        'termines': lancements.filter(statut='termine').count(),
+        'assemblage': lancements.filter(type_production='assemblage').count(),
+        'debitage': lancements.filter(type_production='debitage').count(),
+    }
+    
+    # Calcul du poids total MISE À JOUR
+    poids_total = 0
+    for lancement in lancements:
+        poids_total += lancement.get_poids_total()
+    stats['poids_total'] = poids_total
     
     # Pagination
     paginator = Paginator(lancements, 20)  # 20 lancements par page
@@ -215,6 +222,7 @@ def lancement_edit(request, pk):
                     'atelier': lancement.atelier.nom_atelier if lancement.atelier else None,
                     'collaborateur': lancement.collaborateur.get_full_name() if lancement.collaborateur else None,
                     'date_lancement': lancement.date_lancement,
+                    'type_production': lancement.type_production,
                 }
                 
                 updated_lancement = form.save()
@@ -232,6 +240,9 @@ def lancement_edit(request, pk):
                 
                 if old_values['date_lancement'] != updated_lancement.date_lancement:
                     changes.append(f"Date: {old_values['date_lancement'].strftime('%d/%m/%Y')} → {updated_lancement.date_lancement.strftime('%d/%m/%Y')}")
+                
+                if old_values['type_production'] != updated_lancement.type_production:
+                    changes.append(f"Type production: {old_values['type_production']} → {updated_lancement.get_type_production_display()}")
                 
                 # Message de succès avec détails des changements
                 if changes:
@@ -346,7 +357,7 @@ def lancement_delete(request, pk):
             'affaire': lancement.affaire.code_affaire if lancement.affaire else "Aucune",
             'atelier': lancement.atelier.nom_atelier if lancement.atelier else "Aucun",
             'collaborateur': lancement.collaborateur.get_full_name() if lancement.collaborateur else "Aucun",
-            'poids_total': lancement.get_poids_total() if hasattr(lancement, 'get_poids_total') else 0,
+            'poids_total': lancement.get_poids_total(),
         }
     }
     
@@ -393,43 +404,45 @@ def lancement_planning(request):
         lancements_data = []
         for lancement in lancements:
             try:
-                # Calculer le poids total de manière sécurisée
-                poids_debitage = float(lancement.poids_debitage or 0)
-                poids_assemblage = float(lancement.poids_assemblage or 0)
-                poids_total = poids_debitage + poids_assemblage
-            except (ValueError, TypeError):
-                poids_total = 0.0
+                # Calculer le poids total avec la nouvelle méthode
+                poids_total = lancement.get_poids_total()
+                    
+                # CORRECTION: Validation des données essentielles
+                if not lancement.date_lancement:
+                    logger.warning(f"⚠️ Lancement {lancement.id} sans date de lancement, ignoré")
+                    continue
+                    
+                # Préparer les données avec gestion des valeurs nulles
+                lancement_data = {
+                    'id': lancement.id,
+                    'num_lanc': lancement.num_lanc or f'L-{lancement.id}',
+                    'date_lancement': lancement.date_lancement.strftime('%Y-%m-%d'),
+                    'affaire_code': lancement.affaire.code_affaire if lancement.affaire else 'N/A',
+                    'client': getattr(lancement.affaire, 'client', 'N/A') if lancement.affaire else 'N/A',
+                    'atelier_nom': lancement.atelier.nom_atelier if lancement.atelier else 'Aucun atelier',
+                    'atelier_id': lancement.atelier.id if lancement.atelier else None,
+                    'collaborateur_nom': lancement.collaborateur.get_full_name() if lancement.collaborateur else 'Aucun',
+                    'collaborateur_id': lancement.collaborateur.id if lancement.collaborateur else None,
+                    'statut': lancement.statut,
+                    'statut_display': lancement.get_statut_display(),
+                    'type_production': lancement.type_production,
+                    'type_production_display': lancement.get_type_production_display(),
+                    'poids_total': round(poids_total, 2),
+                    'sous_livrable': (
+                        lancement.sous_livrable[:100] + '...' 
+                        if lancement.sous_livrable and len(lancement.sous_livrable) > 100 
+                        else (lancement.sous_livrable or 'Pas de description')
+                    ),
+                    'date_reception': lancement.date_reception.strftime('%Y-%m-%d') if lancement.date_reception else '',
+                    'observations': lancement.observations or ''
+                }
                 
-            # CORRECTION: Validation des données essentielles
-            if not lancement.date_lancement:
-                logger.warning(f"⚠️ Lancement {lancement.id} sans date de lancement, ignoré")
-                continue
-                
-            # Préparer les données avec gestion des valeurs nulles
-            lancement_data = {
-                'id': lancement.id,
-                'num_lanc': lancement.num_lanc or f'L-{lancement.id}',
-                'date_lancement': lancement.date_lancement.strftime('%Y-%m-%d'),
-                'affaire_code': lancement.affaire.code_affaire if lancement.affaire else 'N/A',
-                'client': getattr(lancement.affaire, 'client', 'N/A') if lancement.affaire else 'N/A',
-                'atelier_nom': lancement.atelier.nom_atelier if lancement.atelier else 'Aucun atelier',
-                'atelier_id': lancement.atelier.id if lancement.atelier else None,
-                'collaborateur_nom': lancement.collaborateur.get_full_name() if lancement.collaborateur else 'Aucun',
-                'collaborateur_id': lancement.collaborateur.id if lancement.collaborateur else None,
-                'statut': lancement.statut,
-                'statut_display': lancement.get_statut_display(),
-                'poids_total': round(poids_total, 2),
-                'sous_livrable': (
-                    lancement.sous_livrable[:100] + '...' 
-                    if lancement.sous_livrable and len(lancement.sous_livrable) > 100 
-                    else (lancement.sous_livrable or 'Pas de description')
-                ),
-                'date_reception': lancement.date_reception.strftime('%Y-%m-%d') if lancement.date_reception else '',
-                'observations': lancement.observations or ''
-            }
+                lancements_data.append(lancement_data)
+                logger.debug(f"✅ Lancement {lancement.num_lanc} ajouté aux données")
             
-            lancements_data.append(lancement_data)
-            logger.debug(f"✅ Lancement {lancement.num_lanc} ajouté aux données")
+            except Exception as e:
+                logger.error(f"❌ Erreur traitement lancement {lancement.id}: {str(e)}")
+                continue
         
         # CORRECTION: Statistiques seulement pour le mois demandé (pas toute la période)
         # Calculer les dates du mois demandé pour les stats
@@ -450,14 +463,13 @@ def lancement_planning(request):
         termines_month = lancements_month.filter(statut='termine').count()
         planifies_month = lancements_month.filter(statut='planifie').count()
         en_attente_month = lancements_month.filter(statut='en_attente').count()
+        assemblage_month = lancements_month.filter(type_production='assemblage').count()
+        debitage_month = lancements_month.filter(type_production='debitage').count()
         
-        # Calcul du poids total du mois (corrigé)
+        # Calcul du poids total du mois (corrigé avec nouvelle méthode)
         poids_total_month = 0
         for lancement in lancements_month:
-            try:
-                poids_total_month += float(lancement.poids_debitage or 0) + float(lancement.poids_assemblage or 0)
-            except (ValueError, TypeError):
-                continue
+            poids_total_month += lancement.get_poids_total()
         
         stats = {
             'total_month': total_month,
@@ -465,6 +477,8 @@ def lancement_planning(request):
             'termines_month': termines_month,
             'planifies_month': planifies_month,
             'en_attente_month': en_attente_month,
+            'assemblage_month': assemblage_month,
+            'debitage_month': debitage_month,
             'poids_total_month': round(poids_total_month, 2)
         }
         
@@ -596,11 +610,8 @@ def get_lancements_data(request):
                     logger.warning(f"⚠️ Lancement {lancement.id} sans date de lancement, ignoré")
                     continue
                 
-                # Calcul du poids total avec gestion des erreurs
-                try:
-                    poids_total = float(lancement.poids_debitage or 0) + float(lancement.poids_assemblage or 0)
-                except (ValueError, TypeError):
-                    poids_total = 0.0
+                # Calcul du poids total avec la nouvelle méthode
+                poids_total = lancement.get_poids_total()
                 
                 # Construction de l'événement
                 event = {
@@ -618,6 +629,8 @@ def get_lancements_data(request):
                         'collaborateur_id': lancement.collaborateur.id if lancement.collaborateur else None,
                         'statut': lancement.statut,
                         'statut_display': lancement.get_statut_display(),
+                        'type_production': lancement.type_production,
+                        'type_production_display': lancement.get_type_production_display(),
                         'poids_total': round(poids_total, 2),
                         'sous_livrable': (
                             lancement.sous_livrable[:100] + '...' 
@@ -718,36 +731,51 @@ def lancement_statistics(request):
             count=Count('id')
         ).order_by('statut')
         
+        # NOUVEAU: Répartition par type de production
+        type_production_stats = Lancement.objects.values('type_production').annotate(
+            count=Count('id')
+        ).order_by('type_production')
+        
         # Répartition par atelier
         atelier_stats = Lancement.objects.values(
             'atelier__nom_atelier'
         ).annotate(
             count=Count('id'),
-            poids_total=Sum('poids_debitage') + Sum('poids_assemblage')
+            # MISE À JOUR: Calcul du poids total avec nouvelle méthode
         ).order_by('-count')
+        
+        # Calcul des poids totaux par atelier (nouvelle méthode)
+        for stat in atelier_stats:
+            atelier_lancements = Lancement.objects.filter(atelier__nom_atelier=stat['atelier__nom_atelier'])
+            poids_total = sum(lancement.get_poids_total() for lancement in atelier_lancements)
+            stat['poids_total'] = round(poids_total, 2)
         
         # Statistiques mensuelles (6 derniers mois)
         from django.db.models import Extract
         monthly_stats = []
         for i in range(6):
             date = timezone.now() - timedelta(days=30*i)
-            month_data = Lancement.objects.filter(
+            month_lancements = Lancement.objects.filter(
                 date_lancement__year=date.year,
                 date_lancement__month=date.month
-            ).aggregate(
-                count=Count('id'),
-                poids_total=Sum('poids_debitage') + Sum('poids_assemblage') or 0
             )
+            
+            # Calcul du poids total du mois avec nouvelle méthode
+            poids_total_month = sum(lancement.get_poids_total() for lancement in month_lancements)
+            
             monthly_stats.append({
                 'month': date.strftime('%Y-%m'),
                 'month_name': date.strftime('%B %Y'),
-                'count': month_data['count'],
-                'poids_total': month_data['poids_total']
+                'count': month_lancements.count(),
+                'assemblage': month_lancements.filter(type_production='assemblage').count(),
+                'debitage': month_lancements.filter(type_production='debitage').count(),
+                'poids_total': round(poids_total_month, 2)
             })
         
         context = {
             'total_lancements': total_lancements,
             'statut_stats': statut_stats,
+            'type_production_stats': type_production_stats,
             'atelier_stats': atelier_stats,
             'monthly_stats': reversed(monthly_stats),
         }
@@ -785,16 +813,12 @@ def lancement_export(request):
             writer = csv.writer(response)
             writer.writerow([
                 'Numéro', 'Affaire', 'Client', 'Atelier', 'Collaborateur',
-                'Date Lancement', 'Statut', 'Poids Débitage', 'Poids Assemblage',
+                'Date Lancement', 'Statut', 'Type Production', 
+                'Poids Assemblage', 'Poids Débitage 1', 'Poids Débitage 2',
                 'Poids Total', 'Date Création'
             ])
             
             for lancement in lancements:
-                try:
-                    poids_total = lancement.get_poids_total() if hasattr(lancement, 'get_poids_total') else 0
-                except:
-                    poids_total = 0
-                    
                 writer.writerow([
                     lancement.num_lanc or '',
                     lancement.affaire.code_affaire if lancement.affaire else '',
@@ -803,9 +827,11 @@ def lancement_export(request):
                     lancement.collaborateur.get_full_name() if lancement.collaborateur else '',
                     lancement.date_lancement.strftime('%d/%m/%Y') if lancement.date_lancement else '',
                     lancement.get_statut_display(),
-                    lancement.poids_debitage or 0,
+                    lancement.get_type_production_display(),
                     lancement.poids_assemblage or 0,
-                    poids_total,
+                    lancement.poids_debitage_1 or 0,
+                    lancement.poids_debitage_2 or 0,
+                    lancement.get_poids_total(),
                     lancement.created_at.strftime('%d/%m/%Y %H:%M') if lancement.created_at else ''
                 ])
             

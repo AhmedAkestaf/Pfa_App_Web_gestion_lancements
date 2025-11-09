@@ -1,4 +1,4 @@
-# apps/lancements/models.py - MODIFIÉ avec associations automatiques
+# apps/lancements/models.py - MODIFIÉ avec nouveaux champs de poids
 
 from django.db import models
 from apps.collaborateurs.models import Collaborateur
@@ -19,7 +19,7 @@ class Lancement(models.Model):
     - Pour une catégorie de produit/service
     Cette table contient aussi les informations de production (poids, dates, etc.).
     """
-    # Identifiant unique du lancement
+    # Identifiant unique du lancement (UNICITÉ SUPPRIMÉE)
     num_lanc = models.CharField(max_length=50, unique=False, verbose_name="Numéro de lancement")
     
     # Dates importantes du processus
@@ -28,18 +28,42 @@ class Lancement(models.Model):
     # Description du sous-livrable
     sous_livrable = models.TextField(verbose_name="Description du sous-livrable")
     
-    # Données de production (poids en kg)
-    poids_debitage = models.DecimalField(
-        max_digits=10, 
-        decimal_places=3, 
-        default=0, 
-        verbose_name="Poids débitage (kg)"
+    # NOUVEAU: Type de production pour déterminer les champs de poids à afficher
+    TYPE_PRODUCTION_CHOICES = [
+        ('assemblage', 'Assemblage'),
+        ('debitage', 'Débitage'),
+    ]
+    type_production = models.CharField(
+        max_length=20, 
+        choices=TYPE_PRODUCTION_CHOICES, 
+        default='assemblage',
+        verbose_name="Type de production"
     )
+    
+    # NOUVEAU: Données de production avec nouveaux champs
     poids_assemblage = models.DecimalField(
         max_digits=10, 
         decimal_places=3, 
         default=0, 
+        blank=True,
+        null=True,
         verbose_name="Poids assemblage (kg)"
+    )
+    poids_debitage_1 = models.DecimalField(
+        max_digits=10, 
+        decimal_places=3, 
+        default=0, 
+        blank=True,
+        null=True,
+        verbose_name="Poids débitage 1 (kg)"
+    )
+    poids_debitage_2 = models.DecimalField(
+        max_digits=10, 
+        decimal_places=3, 
+        default=0, 
+        blank=True,
+        null=True,
+        verbose_name="Poids débitage 2 (kg)"
     )
     
     # Notes et observations
@@ -95,11 +119,15 @@ class Lancement(models.Model):
         return f"Lancement {self.num_lanc}"
 
     def get_poids_total(self):
-        """Méthode pour calculer le poids total avec gestion des erreurs"""
+        """Méthode pour calculer le poids total selon le type de production"""
         try:
-            poids_debitage = float(self.poids_debitage or 0)
-            poids_assemblage = float(self.poids_assemblage or 0)
-            return poids_debitage + poids_assemblage
+            if self.type_production == 'assemblage':
+                return float(self.poids_assemblage or 0)
+            elif self.type_production == 'debitage':
+                poids_debitage_1 = float(self.poids_debitage_1 or 0)
+                poids_debitage_2 = float(self.poids_debitage_2 or 0)
+                return poids_debitage_1 + poids_debitage_2
+            return 0.0
         except (ValueError, TypeError):
             return 0.0
     
@@ -207,4 +235,5 @@ class Lancement(models.Model):
             models.Index(fields=['statut']),
             models.Index(fields=['affaire']),
             models.Index(fields=['atelier']),
+            models.Index(fields=['type_production']),
         ]

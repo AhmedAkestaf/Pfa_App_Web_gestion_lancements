@@ -2,7 +2,6 @@
 {% load static %}
 {% load weight_formatting %}
 
-
 {% block title %}Export de Données{% endblock %}
 
 {% block breadcrumb_items %}
@@ -97,6 +96,29 @@
     border: none;
     padding: 1rem 1.5rem;
 }
+
+.weight-preview {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.export-type-toggle {
+    margin-bottom: 1.5rem;
+}
+
+.btn-toggle {
+    border-radius: 25px;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-toggle.active {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    border-color: #28a745;
+    color: white;
+}
 </style>
 {% endblock %}
 
@@ -104,16 +126,16 @@
 <div class="container-fluid">
     <div class="row">
         <main class="col-12 px-md-4">
-            <!-- En-tête -->
+            <!-- En-tête avec statistiques mises à jour -->
             <div class="export-header">
                 <div class="row align-items-center">
                     <div class="col-md-8">
                         <h1 class="h2 mb-0">
                             <i class="fas fa-download me-3"></i>
-                            Export de Données
+                            Export de Données de Production
                         </h1>
                         <p class="mt-2 mb-0 opacity-75">
-                            Exportez vos données de production dans différents formats
+                            Exportez vos données avec les nouveaux champs de poids (Assemblage, Débitage 1 & 2)
                         </p>
                     </div>
                     <div class="col-md-4 text-end">
@@ -155,10 +177,10 @@
                                         <i class="fas fa-file-excel"></i>
                                     </div>
                                     <h5>Excel (.xlsx)</h5>
-                                    <p class="text-muted mb-3">Parfait pour les analyses et calculs</p>
+                                    <p class="text-muted mb-3">Formatage français automatique</p>
                                     <div class="d-flex justify-content-between">
-                                        <small class="text-success">✓ Tableaux croisés</small>
-                                        <small class="text-success">✓ Formules</small>
+                                        <small class="text-success">✓ Poids séparés</small>
+                                        <small class="text-success">✓ Formules FR</small>
                                     </div>
                                 </div>
                             </div>
@@ -170,10 +192,10 @@
                                         <i class="fas fa-file-pdf"></i>
                                     </div>
                                     <h5>PDF</h5>
-                                    <p class="text-muted mb-3">Idéal pour les rapports officiels</p>
+                                    <p class="text-muted mb-3">Rapport complet avec graphiques</p>
                                     <div class="d-flex justify-content-between">
+                                        <small class="text-success">✓ Synthèse</small>
                                         <small class="text-success">✓ Mise en page</small>
-                                        <small class="text-success">✓ Graphiques</small>
                                     </div>
                                 </div>
                             </div>
@@ -185,10 +207,10 @@
                                         <i class="fas fa-file-csv"></i>
                                     </div>
                                     <h5>CSV</h5>
-                                    <p class="text-muted mb-3">Compatible avec tous les outils</p>
+                                    <p class="text-muted mb-3">Séparateur français (;)</p>
                                     <div class="d-flex justify-content-between">
-                                        <small class="text-success">✓ Universel</small>
-                                        <small class="text-success">✓ Léger</small>
+                                        <small class="text-success">✓ Excel FR</small>
+                                        <small class="text-success">✓ UTF-8 BOM</small>
                                     </div>
                                 </div>
                             </div>
@@ -200,10 +222,10 @@
                                         <i class="fas fa-file-code"></i>
                                     </div>
                                     <h5>JSON</h5>
-                                    <p class="text-muted mb-3">Pour les développeurs et APIs</p>
+                                    <p class="text-muted mb-3">Structure avec nouveaux champs</p>
                                     <div class="d-flex justify-content-between">
-                                        <small class="text-success">✓ Structuré</small>
                                         <small class="text-success">✓ API Ready</small>
+                                        <small class="text-success">✓ Complet</small>
                                     </div>
                                 </div>
                             </div>
@@ -213,7 +235,7 @@
                     </div>
                 </div>
 
-                <!-- Filtres centrés -->
+                <!-- Filtres avec nouveaux champs -->
                 <div class="row justify-content-center">
                     <div class="col-lg-10 col-xl-8">
                         <div class="filter-section">
@@ -235,7 +257,7 @@
                                     <label for="ateliers" class="form-label">Ateliers</label>
                                     <select multiple class="form-select" id="ateliers" name="ateliers">
                                         {% for atelier in ateliers %}
-                                            <option value="{{ atelier.id }}">{{ atelier.nom_atelier }}</option>
+                                            <option value="{{ atelier.id }}">{{ atelier.nom_atelier }} ({{ atelier.get_type_atelier_display }})</option>
                                         {% endfor %}
                                     </select>
                                 </div>
@@ -265,20 +287,17 @@
                                     </select>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Boutons d'action -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <button type="button" class="btn btn-outline-info" onclick="previewExport()">
-                        <i class="fas fa-eye me-2"></i>Aperçu
+                        <i class="fas fa-eye me-2"></i>Aperçu des Données
                     </button>
                     <div>
                         <button type="button" class="btn btn-outline-secondary me-2" onclick="resetForm()">
                             <i class="fas fa-undo me-2"></i>Réinitialiser
                         </button>
-                        <button type="submit" class="btn btn-success btn-lg" id="exportBtn">
+                        <button type="submit" class="btn btn-success btn-lg" id="exportBtn" disabled>
                             <i class="fas fa-download me-2"></i>Exporter
                         </button>
                     </div>
@@ -292,6 +311,7 @@
                         <div class="d-flex align-items-center mb-3">
                             <div class="spinner-border spinner-border-sm text-success me-3" role="status"></div>
                             <strong>Export en cours...</strong>
+                            <span class="ms-auto" id="progressPercent">0%</span>
                         </div>
                         <div class="progress-export">
                             <div class="progress-bar-export" id="progressBar" style="width: 0%"></div>
@@ -301,7 +321,7 @@
                 </div>
             </div>
 
-            <!-- Aperçu de l'export -->
+            <!-- Aperçu mis à jour -->
             <div class="export-preview" id="exportPreview" style="display: none;">
                 <h4 class="mb-3">
                     <i class="fas fa-search me-2 text-info"></i>
@@ -309,6 +329,34 @@
                 </h4>
                 <div id="previewContent">
                     <!-- Contenu généré dynamiquement -->
+                </div>
+                
+                <!-- Aperçu des champs de poids -->
+                <div class="weight-preview">
+                    <h6><i class="fas fa-weight me-2"></i>Champs de Poids Inclus:</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center p-2">
+                                <i class="fas fa-tools text-primary"></i>
+                                <div class="fw-bold">Poids Assemblage</div>
+                                <small class="text-muted">Formatage français</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center p-2">
+                                <i class="fas fa-cut text-warning"></i>
+                                <div class="fw-bold">Poids Débitage 1</div>
+                                <small class="text-muted">Première phase</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center p-2">
+                                <i class="fas fa-industry text-info"></i>
+                                <div class="fw-bold">Poids Débitage 2</div>
+                                <small class="text-muted">Phase finale</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -326,6 +374,7 @@
 {% block extra_js %}
 <script>
 let selectedFormat = '';
+let exportType = 'detailed';
 
 function selectFormat(format) {
     // Désélectionner tous les formats
@@ -340,6 +389,25 @@ function selectFormat(format) {
     
     // Activer le bouton d'export
     document.getElementById('exportBtn').disabled = false;
+    
+    // Ajuster les options selon le format
+    adjustOptionsForFormat(format);
+}
+
+function adjustOptionsForFormat(format) {
+    const graphicsOption = document.getElementById('include_graphics');
+    const graphicsLabel = document.querySelector('label[for="include_graphics"]');
+    
+    if (format === 'pdf') {
+        graphicsOption.disabled = false;
+        graphicsLabel.classList.remove('text-muted');
+        graphicsLabel.innerHTML = 'Inclure les graphiques (recommandé pour PDF)';
+    } else {
+        graphicsOption.disabled = true;
+        graphicsOption.checked = false;
+        graphicsLabel.classList.add('text-muted');
+        graphicsLabel.innerHTML = 'Inclure les graphiques (PDF uniquement)';
+    }
 }
 
 function resetForm() {
@@ -349,7 +417,9 @@ function resetForm() {
             option.classList.remove('selected');
         });
         selectedFormat = '';
+        exportType = 'detailed';
         document.getElementById('exportBtn').disabled = true;
+        document.getElementById('emailSection').style.display = 'none';
     }
 }
 
@@ -361,20 +431,60 @@ function previewExport() {
     
     // Collecter les données du formulaire
     const formData = new FormData(document.getElementById('exportForm'));
+    const dateDebut = formData.get('date_debut');
+    const dateFin = formData.get('date_fin');
     
-    // Afficher l'aperçu
+    // Compter les filtres sélectionnés
+    const ateliers = formData.getAll('ateliers');
+    const collaborateurs = formData.getAll('collaborateurs');
+    const affaires = formData.getAll('affaires');
+    
+    // Afficher l'aperçu mis à jour
     const previewDiv = document.getElementById('exportPreview');
     const previewContent = document.getElementById('previewContent');
     
     previewContent.innerHTML = `
         <div class="row">
             <div class="col-md-6">
-                <h6>Format sélectionné:</h6>
-                <span class="badge bg-primary">${selectedFormat.toUpperCase()}</span>
+                <h6><i class="fas fa-file me-2"></i>Format sélectionné:</h6>
+                <span class="badge bg-primary fs-6">${selectedFormat.toUpperCase()}</span>
+                <div class="mt-2">
+                    <small class="text-muted">Type: ${exportType === 'detailed' ? 'Export Détaillé' : exportType === 'dashboard' ? 'Tableau de Bord' : 'Statistiques'}</small>
+                </div>
             </div>
             <div class="col-md-6">
-                <h6>Période:</h6>
-                <p>${formData.get('date_debut')} → ${formData.get('date_fin')}</p>
+                <h6><i class="fas fa-calendar me-2"></i>Période:</h6>
+                <p class="mb-0">${dateDebut || 'Non définie'} → ${dateFin || 'Non définie'}</p>
+                <small class="text-muted">${calculateDays(dateDebut, dateFin)} jours</small>
+            </div>
+        </div>
+        <hr>
+        <div class="row">
+            <div class="col-md-4">
+                <h6><i class="fas fa-filter me-2"></i>Filtres appliqués:</h6>
+                <ul class="list-unstyled small">
+                    <li>Ateliers: ${ateliers.length || 'Tous'}</li>
+                    <li>Collaborateurs: ${collaborateurs.length || 'Tous'}</li>
+                    <li>Affaires: ${affaires.length || 'Toutes'}</li>
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <h6><i class="fas fa-cog me-2"></i>Options:</h6>
+                <ul class="list-unstyled small">
+                    <li>${formData.get('include_stats') ? '✓' : '✗'} Statistiques</li>
+                    <li>${formData.get('detailed_data') ? '✓' : '✗'} Données détaillées</li>
+                    <li>${formData.get('weight_breakdown') ? '✓' : '✗'} Détail des poids</li>
+                    <li>${formData.get('french_formatting') ? '✓' : '✗'} Formatage français</li>
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <h6><i class="fas fa-weight me-2"></i>Champs de poids:</h6>
+                <ul class="list-unstyled small">
+                    <li><span class="badge bg-secondary">Assemblage</span></li>
+                    <li><span class="badge bg-warning">Débitage 1</span></li>
+                    <li><span class="badge bg-info">Débitage 2</span></li>
+                    <li><span class="badge bg-success">Total calculé</span></li>
+                </ul>
             </div>
         </div>
     `;
@@ -383,12 +493,29 @@ function previewExport() {
     previewDiv.scrollIntoView({ behavior: 'smooth' });
 }
 
+function calculateDays(dateDebut, dateFin) {
+    if (!dateDebut || !dateFin) return '0';
+    const date1 = new Date(dateDebut);
+    const date2 = new Date(dateFin);
+    const diffTime = Math.abs(date2 - date1);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+}
+
 // Gestion de l'envoi du formulaire
 document.getElementById('exportForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
     if (!selectedFormat) {
-        alert('Veuillez sélectionner un format d\'export.');
+        showAlert('Veuillez sélectionner un format d\'export.', 'warning');
+        return;
+    }
+    
+    const dateDebut = document.getElementById('date_debut').value;
+    const dateFin = document.getElementById('date_fin').value;
+    
+    if (!dateDebut || !dateFin) {
+        showAlert('Veuillez sélectionner les dates de début et fin.', 'warning');
         return;
     }
     
@@ -400,87 +527,81 @@ function startExportProcess() {
     document.getElementById('exportProgress').style.display = 'block';
     document.getElementById('exportBtn').disabled = true;
     
+    // Faire défiler vers la barre de progression
+    document.getElementById('exportProgress').scrollIntoView({ behavior: 'smooth' });
+    
     // Créer un formulaire caché pour le téléchargement
     const form = document.getElementById('exportForm');
-    const originalAction = form.action;
     const originalTarget = form.target;
     
     // Ouvrir dans un nouvel onglet pour le téléchargement
     form.target = '_blank';
     
-    // Simulation de progression
+    // Simulation de progression améliorée
     let progress = 0;
+    const progressTexts = [
+        'Collecte des données de production...',
+        'Traitement des poids (assemblage, débitage 1&2)...',
+        'Application du formatage français...',
+        'Génération des statistiques...',
+        'Création du fichier ' + selectedFormat.toUpperCase() + '...',
+        'Finalisation de l\'export...'
+    ];
+    
+    let textIndex = 0;
+    
     const interval = setInterval(() => {
-        progress += Math.random() * 15 + 5; // Progression plus rapide
-        if (progress > 90) progress = 90; // S'arrêter à 90% jusqu'à ce que le téléchargement commence
+        progress += Math.random() * 12 + 8;
+        if (progress > 90) progress = 90;
         
         document.getElementById('progressBar').style.width = progress + '%';
+        document.getElementById('progressPercent').textContent = Math.round(progress) + '%';
         
-        if (progress < 30) {
-            document.getElementById('progressText').textContent = 'Collecte des données...';
-        } else if (progress < 60) {
-            document.getElementById('progressText').textContent = 'Traitement en cours...';
-        } else if (progress < 90) {
-            document.getElementById('progressText').textContent = 'Génération du fichier...';
-        } else {
-            document.getElementById('progressText').textContent = 'Préparation du téléchargement...';
+        // Changer le texte de progression
+        if (progress > (textIndex + 1) * 15 && textIndex < progressTexts.length - 1) {
+            textIndex++;
+            document.getElementById('progressText').textContent = progressTexts[textIndex];
         }
-    }, 300);
+    }, 400);
     
-    // Soumettre le formulaire pour téléchargement direct
+    // Soumettre le formulaire
     setTimeout(() => {
         try {
             form.submit();
             
-            // Finaliser après un délai
             setTimeout(() => {
                 clearInterval(interval);
                 document.getElementById('progressBar').style.width = '100%';
-                document.getElementById('progressText').textContent = 'Export terminé !';
+                document.getElementById('progressPercent').textContent = '100%';
+                document.getElementById('progressText').textContent = 'Export terminé avec succès !';
                 
                 setTimeout(() => {
                     document.getElementById('exportProgress').style.display = 'none';
                     document.getElementById('exportBtn').disabled = false;
-                    showSuccessMessage('Export terminé avec succès !');
-                }, 1000);
-            }, 2000);
+                    showAlert('Export terminé avec succès ! Le fichier a été téléchargé.', 'success');
+                }, 1500);
+            }, 2500);
             
         } catch (error) {
             clearInterval(interval);
             showExportError('Erreur lors du téléchargement: ' + error.message);
         }
         
-        // Restaurer les attributs du formulaire
-        form.action = originalAction;
         form.target = originalTarget;
-        
-    }, 1000);
+    }, 1500);
 }
 
 function showExportError(message) {
     document.getElementById('exportProgress').style.display = 'none';
     document.getElementById('exportBtn').disabled = false;
-    
-    const alertDiv = document.createElement('div');
-    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
-    alertDiv.innerHTML = `
-        <i class="fas fa-exclamation-triangle me-2"></i>
-        <strong>Erreur d'export:</strong> ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    document.querySelector('.export-header').after(alertDiv);
-    
-    setTimeout(() => {
-        alertDiv.remove();
-    }, 10000);
+    showAlert(message, 'danger');
 }
 
-function showSuccessMessage(message) {
+function showAlert(message, type) {
     const alertDiv = document.createElement('div');
-    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+    alertDiv.className = `alert alert-${type} alert-export alert-dismissible fade show`;
     alertDiv.innerHTML = `
-        <i class="fas fa-check-circle me-2"></i>
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'times-circle'} me-2"></i>
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
@@ -488,8 +609,177 @@ function showSuccessMessage(message) {
     document.querySelector('.export-header').after(alertDiv);
     
     setTimeout(() => {
-        alertDiv.remove();
-    }, 5000);
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, type === 'success' ? 5000 : 8000);
+}
+
+// Gestion des types d'export
+document.addEventListener('change', function(e) {
+    if (e.target.name === 'export_type') {
+        exportType = e.target.value;
+        updateExportOptions(exportType);
+    }
+    
+    if (e.target.id === 'send_email') {
+        const emailSection = document.getElementById('emailSection');
+        emailSection.style.display = e.target.checked ? 'block' : 'none';
+    }
+});
+
+function updateExportOptions(type) {
+    const detailedDataOption = document.getElementById('detailed_data');
+    const statsOption = document.getElementById('include_stats');
+    const graphicsOption = document.getElementById('include_graphics');
+    
+    switch(type) {
+        case 'detailed':
+            detailedDataOption.checked = true;
+            detailedDataOption.disabled = false;
+            statsOption.checked = true;
+            break;
+        case 'dashboard':
+            detailedDataOption.checked = false;
+            detailedDataOption.disabled = true;
+            statsOption.checked = true;
+            graphicsOption.checked = true;
+            break;
+        case 'stats':
+            detailedDataOption.checked = false;
+            detailedDataOption.disabled = true;
+            statsOption.checked = true;
+            statsOption.disabled = false;
+            break;
+    }
+}
+
+// Validation des dates
+document.getElementById('date_debut').addEventListener('change', validateDates);
+document.getElementById('date_fin').addEventListener('change', validateDates);
+
+function validateDates() {
+    const dateDebut = document.getElementById('date_debut').value;
+    const dateFin = document.getElementById('date_fin').value;
+    
+    if (dateDebut && dateFin) {
+        const debut = new Date(dateDebut);
+        const fin = new Date(dateFin);
+        
+        if (debut > fin) {
+            showAlert('La date de début ne peut pas être postérieure à la date de fin.', 'warning');
+            document.getElementById('date_debut').value = '';
+            return;
+        }
+        
+        // Vérifier si la période n'est pas trop longue (plus de 1 an)
+        const diffTime = Math.abs(fin - debut);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays > 365) {
+            if (!confirm('La période sélectionnée est supérieure à 1 an. Cela peut générer un fichier très volumineux. Continuer ?')) {
+                document.getElementById('date_fin').value = '';
+                return;
+            }
+        }
+    }
+}
+
+// Auto-completion et suggestions
+function setupAutoSuggestions() {
+    // Suggestions de périodes courantes
+    const periodSuggestions = document.createElement('div');
+    periodSuggestions.className = 'btn-group mb-3';
+    periodSuggestions.innerHTML = `
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPeriod(7)">7 derniers jours</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPeriod(30)">30 derniers jours</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPeriod(90)">3 derniers mois</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setCurrentMonth()">Mois actuel</button>
+    `;
+    
+    document.getElementById('date_debut').parentNode.before(periodSuggestions);
+}
+
+function setPeriod(days) {
+    const today = new Date();
+    const pastDate = new Date(today.getTime() - (days * 24 * 60 * 60 * 1000));
+    
+    document.getElementById('date_fin').value = today.toISOString().split('T')[0];
+    document.getElementById('date_debut').value = pastDate.toISOString().split('T')[0];
+}
+
+function setCurrentMonth() {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    document.getElementById('date_debut').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('date_fin').value = lastDay.toISOString().split('T')[0];
+}
+
+// Gestion des raccourcis clavier
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+            case 'Enter':
+                e.preventDefault();
+                if (!document.getElementById('exportBtn').disabled) {
+                    document.getElementById('exportForm').dispatchEvent(new Event('submit'));
+                }
+                break;
+            case 'r':
+                e.preventDefault();
+                resetForm();
+                break;
+            case 'p':
+                e.preventDefault();
+                previewExport();
+                break;
+        }
+    }
+});
+
+// Sauvegarde automatique des préférences dans sessionStorage
+function savePreferences() {
+    const prefs = {
+        format: selectedFormat,
+        exportType: exportType,
+        includeStats: document.getElementById('include_stats').checked,
+        detailedData: document.getElementById('detailed_data').checked,
+        weightBreakdown: document.getElementById('weight_breakdown').checked,
+        frenchFormatting: document.getElementById('french_formatting').checked
+    };
+    
+    try {
+        sessionStorage.setItem('exportPreferences', JSON.stringify(prefs));
+    } catch(e) {
+        // Ignorer les erreurs de sessionStorage
+    }
+}
+
+function loadPreferences() {
+    try {
+        const prefs = JSON.parse(sessionStorage.getItem('exportPreferences') || '{}');
+        
+        if (prefs.format) {
+            selectFormat(prefs.format);
+        }
+        
+        if (prefs.exportType) {
+            document.querySelector(`[value="${prefs.exportType}"]`).checked = true;
+            exportType = prefs.exportType;
+        }
+        
+        // Charger les autres préférences
+        Object.keys(prefs).forEach(key => {
+            const element = document.getElementById(key.replace(/([A-Z])/g, '_$1').toLowerCase());
+            if (element && typeof prefs[key] === 'boolean') {
+                element.checked = prefs[key];
+            }
+        });
+    } catch(e) {
+        // Ignorer les erreurs de chargement
+    }
 }
 
 // Initialisation
@@ -501,8 +791,47 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('date_fin').value = today.toISOString().split('T')[0];
     document.getElementById('date_debut').value = thirtyDaysAgo.toISOString().split('T')[0];
     
-    // Désactiver le bouton d'export initialement
-    document.getElementById('exportBtn').disabled = true;
+    // Configuration initiale
+    setupAutoSuggestions();
+    loadPreferences();
+    
+    // Event listeners pour sauvegarder les préférences
+    document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(input => {
+        input.addEventListener('change', savePreferences);
+    });
+    
+    // Tooltip pour les options
+    const tooltips = {
+        'include_stats': 'Inclut les statistiques par atelier, collaborateur et affaire',
+        'include_graphics': 'Ajoute des graphiques et visualisations (PDF seulement)',
+        'detailed_data': 'Exporte tous les champs disponibles des lancements',
+        'weight_breakdown': 'Détaille les poids assemblage, débitage 1 et débitage 2 séparément',
+        'french_formatting': 'Utilise le format français : virgule décimale et espaces pour milliers',
+        'send_email': 'Envoie le fichier par email après génération'
+    };
+    
+    Object.keys(tooltips).forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.setAttribute('title', tooltips[id]);
+            element.setAttribute('data-bs-toggle', 'tooltip');
+        }
+    });
+    
+    // Initialiser les tooltips Bootstrap si disponible
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+    
+    console.log('Template d\'export mis à jour avec les nouveaux champs de poids');
+});
+
+// Fonction de nettoyage à la fermeture
+window.addEventListener('beforeunload', function() {
+    savePreferences();
 });
 </script>
 {% endblock %}

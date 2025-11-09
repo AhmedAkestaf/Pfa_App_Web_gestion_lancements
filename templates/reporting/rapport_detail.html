@@ -2,7 +2,6 @@
 {% load static %}
 {% load weight_formatting %}
 
-
 {% block title %}Détail du Rapport {{ rapport.get_type_rapport_display }}{% endblock %}
 
 {% block breadcrumb_items %}
@@ -226,9 +225,9 @@
                 {% endfor %}
             {% endif %}
 
-            <!-- Métriques principales -->
+            <!-- Métriques principales - MISES À JOUR (sans poids total) -->
             <div class="row mb-4">
-                <div class="col-xl-3 col-md-6 mb-4">
+                <div class="col-xl-2 col-md-4 mb-4">
                     <div class="card metric-card h-100">
                         <div class="card-body text-center">
                             <div class="text-primary mb-3">
@@ -239,42 +238,64 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-xl-3 col-md-6 mb-4">
-                    <div class="card metric-card h-100">
-                        <div class="card-body text-center">
-                            <div class="text-warning mb-3">
-                                <i class="fas fa-cut fa-3x"></i>
-                            </div>
-                            <h2 class="text-warning">{{ rapport.poids_debitage|format_weight }}</h2>
-                            <p class="mb-0 text-muted">Poids Débitage</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-md-6 mb-4">
+                <div class="col-xl-2 col-md-4 mb-4">
                     <div class="card metric-card h-100">
                         <div class="card-body text-center">
                             <div class="text-success mb-3">
                                 <i class="fas fa-tools fa-3x"></i>
                             </div>
-                            <h2 class="text-success">{{ rapport.poids_assemblage|format_weight }}</h2>
+                            <h2 class="text-success">{{ rapport.poids_assemblage_total|format_weight }}</h2>
                             <p class="mb-0 text-muted">Poids Assemblage</p>
                         </div>
                     </div>
                 </div>
-                <div class="col-xl-3 col-md-6 mb-4">
+                <div class="col-xl-2 col-md-4 mb-4">
+                    <div class="card metric-card h-100">
+                        <div class="card-body text-center">
+                            <div class="text-warning mb-3">
+                                <i class="fas fa-cut fa-3x"></i>
+                            </div>
+                            <h2 class="text-warning">{{ rapport.poids_debitage_1_total|format_weight }}</h2>
+                            <p class="mb-0 text-muted">Poids Débitage 1</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-2 col-md-4 mb-4">
                     <div class="card metric-card h-100">
                         <div class="card-body text-center">
                             <div class="text-info mb-3">
+                                <i class="fas fa-cut fa-3x"></i>
+                            </div>
+                            <h2 class="text-info">{{ rapport.poids_debitage_2_total|format_weight }}</h2>
+                            <p class="mb-0 text-muted">Poids Débitage 2</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-2 col-md-4 mb-4">
+                    <div class="card metric-card h-100">
+                        <div class="card-body text-center">
+                            <div class="text-secondary mb-3">
+                                <i class="fas fa-balance-scale fa-3x"></i>
+                            </div>
+                            <h2 class="text-secondary">{{ rapport.get_poids_debitage_total|format_weight }}</h2>
+                            <p class="mb-0 text-muted">Poids Débitage Total</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-2 col-md-4 mb-4">
+                    <div class="card metric-card h-100">
+                        <div class="card-body text-center">
+                            <div class="text-dark mb-3">
                                 <i class="fas fa-industry fa-3x"></i>
                             </div>
-                            <h2 class="text-info">{{ stats.nb_ateliers|default:0 }}</h2>
+                            <h2 class="text-dark">{{ stats.nb_ateliers|default:0 }}</h2>
                             <p class="mb-0 text-muted">Ateliers Actifs</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Détails par atelier -->
+            <!-- Détails par atelier - MISES À JOUR (sans poids total) -->
             <div class="data-section">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h3>
@@ -302,20 +323,28 @@
                                 </div>
                                 <div class="mt-2">
                                     <div class="d-flex justify-content-between mb-1">
-                                        <small>Poids débitage</small>
-                                        <small><strong>{{ stat.poids_debitage|format_weight }}</strong></small>
-                                    </div>
-                                    <div class="progress progress-custom mb-2">
-                                        <div class="progress-bar progress-bar-custom progress-bar-debitage-{{ forloop.counter }}"
-                                             data-width="{{ stat.pourcentage_debitage }}"></div>
-                                    </div>
-                                    <div class="d-flex justify-content-between mb-1">
                                         <small>Poids assemblage</small>
                                         <small><strong>{{ stat.poids_assemblage|format_weight }}</strong></small>
                                     </div>
-                                    <div class="progress progress-custom">
+                                    <div class="progress progress-custom mb-2">
                                         <div class="progress-bar bg-success progress-bar-assemblage-{{ forloop.counter }}"
                                              data-width="{{ stat.pourcentage_assemblage }}"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <small>Poids débitage 1</small>
+                                        <small><strong>{{ stat.poids_debitage_1|format_weight }}</strong></small>
+                                    </div>
+                                    <div class="progress progress-custom mb-2">
+                                        <div class="progress-bar bg-warning progress-bar-debitage1-{{ forloop.counter }}"
+                                             data-width="{{ stat.pourcentage_debitage_1|default:0 }}"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <small>Poids débitage 2</small>
+                                        <small><strong>{{ stat.poids_debitage_2|format_weight }}</strong></small>
+                                    </div>
+                                    <div class="progress progress-custom">
+                                        <div class="progress-bar bg-info progress-bar-debitage2-{{ forloop.counter }}"
+                                             data-width="{{ stat.pourcentage_debitage_2|default:0 }}"></div>
                                     </div>
                                 </div>
                             </div>
@@ -332,10 +361,10 @@
                                     <th>Atelier</th>
                                     <th>Type</th>
                                     <th>Lancements</th>
-                                    <th>Poids Débitage</th>
                                     <th>Poids Assemblage</th>
-                                    <th>% Débitage</th>
-                                    <th>% Assemblage</th>
+                                    <th>Poids Débitage 1</th>
+                                    <th>Poids Débitage 2</th>
+                                    <th>% du Total</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -353,24 +382,16 @@
                                         </span>
                                     </td>
                                     <td><span class="badge bg-secondary">{{ stat.nb_lancements }}</span></td>
-                                    <td><strong>{{ stat.poids_debitage|format_weight }}</strong></td>
                                     <td><strong>{{ stat.poids_assemblage|format_weight }}</strong></td>
+                                    <td><strong>{{ stat.poids_debitage_1|format_weight }}</strong></td>
+                                    <td><strong>{{ stat.poids_debitage_2|format_weight }}</strong></td>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="progress progress-custom progress-width-60 me-2">
-                                                <div class="progress-bar progress-bar-custom progress-bar-table-debitage-{{ forloop.counter }}"
-                                                     data-width="{{ stat.pourcentage_debitage }}"></div>
+                                                <div class="progress-bar progress-bar-custom progress-bar-table-total-{{ forloop.counter }}"
+                                                     data-width="{{ stat.pourcentage_poids }}"></div>
                                             </div>
-                                            <span>{{ stat.pourcentage_debitage|floatformat:1 }}%</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="progress progress-custom progress-width-60 me-2">
-                                                <div class="progress-bar bg-success progress-bar-table-assemblage-{{ forloop.counter }}"
-                                                     data-width="{{ stat.pourcentage_assemblage }}"></div>
-                                            </div>
-                                            <span>{{ stat.pourcentage_assemblage|floatformat:1 }}%</span>
+                                            <span>{{ stat.pourcentage_poids|floatformat:1 }}%</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -381,7 +402,7 @@
                 </div>
             </div>
 
-            <!-- Détails par collaborateur -->
+            <!-- Détails par collaborateur - MISES À JOUR (sans poids total dans le card) -->
             <div class="data-section">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h3>
@@ -405,8 +426,9 @@
                                     <h6 class="mb-1">{{ stat.collaborateur__nom_collaborateur }} {{ stat.collaborateur__prenom_collaborateur }}</h6>
                                     <small class="text-muted">{{ stat.nb_lancements }} lancements</small>
                                     <div class="mt-1">
-                                        <small>Débitage: <strong>{{ stat.poids_debitage|format_weight }}</strong></small><br>
-                                        <small>Assemblage: <strong>{{ stat.poids_assemblage|format_weight }}</strong></small>
+                                        <small>Assemblage: <strong>{{ stat.poids_assemblage|format_weight }}</strong></small><br>
+                                        <small>Débitage 1: <strong>{{ stat.poids_debitage_1|format_weight }}</strong></small><br>
+                                        <small>Débitage 2: <strong>{{ stat.poids_debitage_2|format_weight }}</strong></small>
                                     </div>
                                 </div>
                             </div>
@@ -422,10 +444,10 @@
                                 <tr>
                                     <th>Collaborateur</th>
                                     <th>Lancements</th>
-                                    <th>Poids Débitage</th>
                                     <th>Poids Assemblage</th>
-                                    <th>Moyenne Débitage</th>
-                                    <th>Moyenne Assemblage</th>
+                                    <th>Poids Débitage 1</th>
+                                    <th>Poids Débitage 2</th>
+                                    <th>Moyenne/Lancement</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -442,10 +464,10 @@
                                         </div>
                                     </td>
                                     <td><span class="badge bg-primary">{{ stat.nb_lancements }}</span></td>
-                                    <td><strong>{{ stat.poids_debitage|format_weight }}</strong></td>
                                     <td><strong>{{ stat.poids_assemblage|format_weight }}</strong></td>
-                                    <td>{{ stat.moyenne_debitage|format_weight }}</td>
-                                    <td>{{ stat.moyenne_assemblage|format_weight }}</td>
+                                    <td><strong>{{ stat.poids_debitage_1|format_weight }}</strong></td>
+                                    <td><strong>{{ stat.poids_debitage_2|format_weight }}</strong></td>
+                                    <td>{{ stat.moyenne_poids|format_weight }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -454,7 +476,7 @@
                 </div>
             </div>
 
-            <!-- Détails par affaire -->
+            <!-- Détails par affaire - MISES À JOUR (sans poids total) -->
             <div class="data-section">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h3>
@@ -474,8 +496,9 @@
                                     <th>Code Affaire</th>
                                     <th>Client</th>
                                     <th>Lancements</th>
-                                    <th>Poids Débitage</th>
                                     <th>Poids Assemblage</th>
+                                    <th>Poids Débitage 1</th>
+                                    <th>Poids Débitage 2</th>
                                     <th>Statut</th>
                                 </tr>
                             </thead>
@@ -487,8 +510,9 @@
                                     </td>
                                     <td>{{ stat.affaire__client|truncatechars:30 }}</td>
                                     <td><span class="badge bg-secondary">{{ stat.nb_lancements }}</span></td>
-                                    <td><strong>{{ stat.poids_debitage|format_weight }}</strong></td>
                                     <td><strong>{{ stat.poids_assemblage|format_weight }}</strong></td>
+                                    <td><strong>{{ stat.poids_debitage_1|format_weight }}</strong></td>
+                                    <td><strong>{{ stat.poids_debitage_2|format_weight }}</strong></td>
                                     <td>
                                         <span class="badge 
                                             {% if stat.affaire__statut == 'en_cours' %}bg-warning
@@ -504,6 +528,7 @@
                     </div>
                 </div>
             </div>
+
 
             <!-- Timeline du rapport -->
             <div class="data-section">
@@ -589,20 +614,11 @@
         </main>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // Fonction pour appliquer les largeurs des barres de progression
 function applyProgressBars() {
-    // Barres de progression débitage (cartes)
-    document.querySelectorAll('[class*="progress-bar-debitage-"]').forEach(function(element) {
-        const width = element.getAttribute('data-width');
-        if (width) {
-            element.style.width = width + '%';
-        }
-    });
-    
     // Barres de progression assemblage (cartes)
     document.querySelectorAll('[class*="progress-bar-assemblage-"]').forEach(function(element) {
         const width = element.getAttribute('data-width');
@@ -611,16 +627,24 @@ function applyProgressBars() {
         }
     });
     
-    // Barres de progression débitage (tableau)
-    document.querySelectorAll('[class*="progress-bar-table-debitage-"]').forEach(function(element) {
+    // Barres de progression débitage 1 (cartes)
+    document.querySelectorAll('[class*="progress-bar-debitage1-"]').forEach(function(element) {
         const width = element.getAttribute('data-width');
         if (width) {
             element.style.width = width + '%';
         }
     });
     
-    // Barres de progression assemblage (tableau)
-    document.querySelectorAll('[class*="progress-bar-table-assemblage-"]').forEach(function(element) {
+    // Barres de progression débitage 2 (cartes)
+    document.querySelectorAll('[class*="progress-bar-debitage2-"]').forEach(function(element) {
+        const width = element.getAttribute('data-width');
+        if (width) {
+            element.style.width = width + '%';
+        }
+    });
+    
+    // Barres de progression total (tableau)
+    document.querySelectorAll('[class*="progress-bar-table-total-"]').forEach(function(element) {
         const width = element.getAttribute('data-width');
         if (width) {
             element.style.width = width + '%';
@@ -717,4 +741,5 @@ window.addEventListener('afterprint', function() {
     }
 }
 </style>
+
 {% endblock %}

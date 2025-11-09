@@ -105,6 +105,42 @@
 .quick-action-btn:hover {
     transform: scale(1.05);
 }
+
+.poids-breakdown {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    padding: 1.5rem;
+}
+
+.poids-item {
+    border-left: 4px solid #007bff;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    background: rgba(255,255,255,0.8);
+    border-radius: 0 5px 5px 0;
+    transition: all 0.3s ease;
+}
+
+.poids-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.poids-item.assemblage { border-color: #28a745; }
+.poids-item.debitage { border-color: #17a2b8; }
+.poids-item.total { border-color: #6f42c1; font-weight: bold; }
+
+.type-production-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+
+.type-assemblage { background: #d4edda; color: #155724; }
+.type-debitage { background: #d1ecf1; color: #0c5460; }
 </style>
 {% endblock %}
 
@@ -307,21 +343,56 @@
 
         <!-- Timeline et poids -->
         <div class="col-md-6">
-            <!-- Poids total -->
-            {% if poids_total.debitage or poids_total.assemblage %}
+            <!-- Poids total - NOUVELLE VERSION AVEC DÉTAILS -->
+            {% if poids_total.global_total > 0 %}
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-weight me-2"></i>Poids total</h5>
+                    <h5 class="mb-0"><i class="fas fa-weight me-2"></i>Analyse des poids</h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-6 text-center">
-                            <h3 class="text-primary">{{ poids_total.debitage|floatformat:2|default:"0" }} kg</h3>
-                            <p class="text-muted">Débitage</p>
+                    <div class="poids-breakdown">
+                        <!-- Poids Assemblage -->
+                        {% if poids_total.assemblage > 0 %}
+                        <div class="poids-item assemblage">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-cogs me-2"></i>Poids Assemblage</span>
+                                <strong>{{ poids_total.assemblage|floatformat:2 }} kg</strong>
+                            </div>
                         </div>
-                        <div class="col-6 text-center">
-                            <h3 class="text-success">{{ poids_total.assemblage|floatformat:2|default:"0" }} kg</h3>
-                            <p class="text-muted">Assemblage</p>
+                        {% endif %}
+
+                        <!-- Poids Débitage -->
+                        {% if poids_total.debitage_total > 0 %}
+                        <div class="poids-item debitage">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-cut me-2"></i>Poids Débitage Total</span>
+                                <strong>{{ poids_total.debitage_total|floatformat:2 }} kg</strong>
+                            </div>
+                            {% if poids_total.debitage_1 > 0 %}
+                            <div class="ms-3 mt-2 small text-muted">
+                                <div class="d-flex justify-content-between">
+                                    <span>→ Débitage 1</span>
+                                    <span>{{ poids_total.debitage_1|floatformat:2 }} kg</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if poids_total.debitage_2 > 0 %}
+                            <div class="ms-3 small text-muted">
+                                <div class="d-flex justify-content-between">
+                                    <span>→ Débitage 2</span>
+                                    <span>{{ poids_total.debitage_2|floatformat:2 }} kg</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Poids Total Global -->
+                        <div class="poids-item total">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-balance-scale me-2"></i>POIDS TOTAL</span>
+                                <strong class="fs-4">{{ poids_total.global_total|floatformat:2 }} kg</strong>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -370,10 +441,12 @@
                         <thead class="table-dark">
                             <tr>
                                 <th>N° Lancement</th>
+                                <th>Type Production</th>
                                 <th>Atelier</th>
                                 <th>Catégorie</th>
                                 <th>Collaborateur</th>
                                 <th>Date Lancement</th>
+                                <th>Poids Total</th>
                                 <th>Statut</th>
                                 <th>Actions</th>
                             </tr>
@@ -382,15 +455,35 @@
                             {% for lancement in lancements %}
                                 <tr>
                                     <td><strong>{{ lancement.num_lanc }}</strong></td>
+                                    <td>
+                                        <span class="type-production-badge 
+                                            {% if lancement.type_production == 'assemblage' %}type-assemblage
+                                            {% else %}type-debitage{% endif %}">
+                                            {% if lancement.type_production == 'assemblage' %}
+                                                <i class="fas fa-cogs"></i> Assemblage
+                                            {% else %}
+                                                <i class="fas fa-cut"></i> Débitage
+                                            {% endif %}
+                                        </span>
+                                    </td>
                                     <td>{{ lancement.atelier.nom_atelier }}</td>
                                     <td>{{ lancement.categorie.nom_categorie }}</td>
                                     <td>{{ lancement.collaborateur.get_full_name }}</td>
                                     <td>{{ lancement.date_lancement|date:"d/m/Y" }}</td>
                                     <td>
+                                        <strong>{{ lancement.get_poids_total_display }}</strong>
+                                        {% if lancement.type_production == 'debitage' %}
+                                            <div class="small text-muted">
+                                                {% if lancement.poids_debitage_1 %}D1: {{ lancement.poids_debitage_1|floatformat:1 }}kg{% endif %}
+                                                {% if lancement.poids_debitage_2 %} | D2: {{ lancement.poids_debitage_2|floatformat:1 }}kg{% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
                                         <span class="badge 
                                             {% if lancement.statut == 'en_cours' %}bg-primary
                                             {% elif lancement.statut == 'termine' %}bg-success
-                                            {% elif lancement.statut == 'suspendu' %}bg-warning
+                                            {% elif lancement.statut == 'en_attente' %}bg-warning
                                             {% else %}bg-secondary{% endif %}">
                                             {{ lancement.get_statut_display }}
                                         </span>
@@ -469,6 +562,59 @@ document.addEventListener('DOMContentLoaded', function() {
             progressCircle.style.transition = 'stroke-dashoffset 1s ease-in-out';
             progressCircle.style.strokeDashoffset = offset;
         }, 500);
+    }
+
+    // Animation des éléments de poids
+    const poidsItems = document.querySelectorAll('.poids-item');
+    poidsItems.forEach((item, index) => {
+        item.style.opacity = '0';
+        item.style.transform = 'translateX(-20px)';
+        
+        setTimeout(() => {
+            item.style.transition = 'all 0.5s ease';
+            item.style.opacity = '1';
+            item.style.transform = 'translateX(0)';
+        }, 200 * (index + 1));
+    });
+
+    // Animation des cartes de statistiques
+    const statsCards = document.querySelectorAll('.stats-card');
+    statsCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'all 0.6s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, 100 * (index + 1));
+    });
+});
+
+// Tooltip pour les types de production
+document.addEventListener('DOMContentLoaded', function() {
+    const typesBadges = document.querySelectorAll('.type-production-badge');
+    typesBadges.forEach(badge => {
+        const type = badge.textContent.includes('Assemblage') ? 'assemblage' : 'debitage';
+        let tooltip = '';
+        
+        if (type === 'assemblage') {
+            tooltip = 'Production d\'assemblage - Poids unique';
+        } else {
+            tooltip = 'Production de débitage - Peut avoir 2 poids différents';
+        }
+        
+        badge.setAttribute('title', tooltip);
+        badge.setAttribute('data-bs-toggle', 'tooltip');
+        badge.setAttribute('data-bs-placement', 'top');
+    });
+    
+    // Initialiser les tooltips Bootstrap si disponible
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
     }
 });
 </script>

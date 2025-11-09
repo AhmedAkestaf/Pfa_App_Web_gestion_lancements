@@ -75,6 +75,43 @@
     position: sticky;
     top: 20px;
 }
+
+.weight-display {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 0.5rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+
+.weight-display.assemblage {
+    background: linear-gradient(135deg, #007bff, #17a2b8);
+}
+
+.weight-display.debitage {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.type-production-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.type-assemblage {
+    background-color: #e7f3ff;
+    color: #0056b3;
+    border: 1px solid #b3d9ff;
+}
+
+.type-debitage {
+    background-color: #e8f5e8;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
 </style>
 {% endblock %}
 
@@ -154,10 +191,60 @@
                                             </span>
                                         </div>
                                     </div>
+                                    <!-- NOUVEAU: Affichage du type de production -->
+                                    <div class="summary-row">
+                                        <div class="summary-label">Type de production</div>
+                                        <div class="summary-value">
+                                            <span class="type-production-badge 
+                                                {% if lancement.type_production == 'assemblage' %}type-assemblage
+                                                {% elif lancement.type_production == 'debitage' %}type-debitage
+                                                {% endif %}">
+                                                {{ lancement.get_type_production_display }}
+                                            </span>
+                                        </div>
+                                    </div>
                                     <div class="summary-row">
                                         <div class="summary-label">Date de création</div>
                                         <div class="summary-value">{{ lancement.created_at|date:"d/m/Y à H:i" }}</div>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- NOUVEAU: Affichage des données de poids selon le type -->
+                            <div class="summary-row mt-3 pt-3 border-top">
+                                <div class="summary-label">Données de production</div>
+                                <div class="summary-value">
+                                    {% if lancement.type_production == 'assemblage' %}
+                                        {% if lancement.poids_assemblage and lancement.poids_assemblage > 0 %}
+                                            <div class="weight-display assemblage">
+                                                <i class="fas fa-weight me-2"></i>
+                                                <strong>Assemblage:</strong> {{ lancement.get_poids_total_display }}
+                                            </div>
+                                        {% else %}
+                                            <small class="text-muted">Aucun poids d'assemblage défini</small>
+                                        {% endif %}
+                                    {% elif lancement.type_production == 'debitage' %}
+                                        {% if lancement.poids_debitage_1 and lancement.poids_debitage_1 > 0 %}
+                                            <div class="weight-display debitage">
+                                                <i class="fas fa-weight me-2"></i>
+                                                <strong>Débitage 1:</strong> {{ lancement.poids_debitage_1 }} kg
+                                            </div>
+                                        {% endif %}
+                                        {% if lancement.poids_debitage_2 and lancement.poids_debitage_2 > 0 %}
+                                            <div class="weight-display debitage">
+                                                <i class="fas fa-weight me-2"></i>
+                                                <strong>Débitage 2:</strong> {{ lancement.poids_debitage_2 }} kg
+                                            </div>
+                                        {% endif %}
+                                        {% if not lancement.poids_debitage_1 and not lancement.poids_debitage_2 %}
+                                            <small class="text-muted">Aucun poids de débitage défini</small>
+                                        {% endif %}
+                                        {% if lancement.poids_debitage_1 or lancement.poids_debitage_2 %}
+                                            <div class="mt-2">
+                                                <strong>Total:</strong> {{ lancement.get_poids_total_display }}
+                                            </div>
+                                        {% endif %}
+                                    {% endif %}
                                 </div>
                             </div>
 
@@ -190,11 +277,18 @@
                                 <h6 class="text-danger"><i class="fas fa-warning me-2"></i>Cette action entraînera :</h6>
                                 <ul class="mb-0">
                                     <li>La suppression définitive du lancement <strong>{{ lancement.num_lanc }}</strong></li>
-                                    <li>La perte de toutes les données de production associées</li>
+                                    <li>La perte de toutes les données de production associées
+                                        {% if lancement.get_poids_total > 0 %}
+                                        ({{ lancement.get_poids_total_display }} de production)
+                                        {% endif %}
+                                    </li>
                                     <li>La suppression de l'historique des modifications</li>
                                     <li>L'impact sur les statistiques de production de l'atelier</li>
                                     {% if lancement.statut == 'en_cours' %}
                                     <li class="text-danger"><strong>Attention :</strong> Ce lancement est actuellement en cours de production</li>
+                                    {% endif %}
+                                    {% if lancement.type_production == 'debitage' and lancement.poids_debitage_1 and lancement.poids_debitage_2 %}
+                                    <li class="text-warning"><strong>Note :</strong> Ce lancement contient plusieurs poids de débitage</li>
                                     {% endif %}
                                 </ul>
                             </div>
@@ -208,6 +302,7 @@
                                     <li>Le marquer comme "Annulé" ou "En attente"</li>
                                     <li>Le modifier pour corriger les erreurs</li>
                                     <li>Le conserver pour l'historique</li>
+                                    <li>Modifier le type de production ou les poids si nécessaire</li>
                                 </ul>
                             </div>
                         </div>
@@ -290,6 +385,10 @@
                                         <div class="col-6">
                                             <strong class="text-primary d-block">{{ lancement.date_lancement|timesince }}</strong>
                                             <small class="text-muted">Depuis création</small>
+                                        </div>
+                                        <div class="col-6">
+                                            <strong class="text-info d-block">{{ lancement.get_poids_total_display }}</strong>
+                                            <small class="text-muted">Poids total</small>
                                         </div>
                                     </div>
                                 </div>
